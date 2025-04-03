@@ -79,6 +79,7 @@ function App() {
     // We use submitSuccess changing as a trigger. A more robust way might involve a counter.
   }, [submitSuccess]); // <-- Dependency array includes submitSuccess
 
+
   // --- Updated Form Submission Handler ---
   const handleTransactionSubmit = async (event) => { // Make the handler async
     event.preventDefault(); // Prevent default page reload
@@ -133,6 +134,49 @@ function App() {
     } finally {
       // --- Runs after success or error ---
       setIsSubmitting(false); // Indicate submission end
+    }
+  };
+
+  // --- New Transaction Deletion Handler ---
+  const handleDeleteTransaction = async (id) => {
+    // Confirmation dialog
+    if (!window.confirm('Are you sure you want to delete this transaction?')) {
+      return; // Stop if user clicks Cancel
+    }
+
+    // Optional: Add a state to disable the specific button being clicked
+    // For simplicity now, we won't add individual button loading state
+
+    try {
+      // Make the DELETE request to the backend
+      // Use template literal to include the id in the URL
+      const response = await axios.delete(`http://localhost:5001/api/transactions/${id}`);
+
+      console.log('Delete response:', response.data); // Log success message from backend
+
+      // Update the frontend state to remove the deleted transaction
+      // Use the functional update form for safety
+      setTransactions(currentTransactions =>
+        currentTransactions.filter(transaction => transaction.id !== id)
+      );
+
+      // Optional: Show a temporary success message (could reuse submitSuccess/Error states or add new ones)
+      setSubmitSuccess(response.data.message || 'Transaction deleted.'); // Show success
+      setTimeout(() => setSubmitSuccess(null), 3000); // Clear after 3s
+      setSubmitError(null); // Clear any previous errors
+
+
+    } catch (err) {
+      console.error('Error deleting transaction:', err);
+      let errorMessage = 'Failed to delete transaction.';
+      if (err.response && err.response.data && err.response.data.message) {
+        errorMessage = err.response.data.message; // Show specific error from backend
+      }
+      // Optional: Show error message (could reuse submitSuccess/Error states or add new ones)
+      setSubmitError(errorMessage); // Show error
+      setSubmitSuccess(null); // Clear any previous success
+      // Consider clearing the error message after some time too
+      // setTimeout(() => setSubmitError(null), 5000);
     }
   };
 
@@ -194,62 +238,75 @@ function App() {
 
         {/* --- Transaction Form Section --- */}
         <section>
-          <h2>Add New Transaction</h2>
-          {/* Status Messages */}
-          {submitError && <p style={{ color: 'red' }}>Error: {submitError}</p>}
-          {submitSuccess && <p style={{ color: 'green' }}>{submitSuccess}</p>}
-          {/* The Form */}
-          <form onSubmit={handleTransactionSubmit}>
-              {/* ... (form inputs remain the same) ... */}
-              {/* Description Input */}
-              <div>
-                <label htmlFor="description">Description:</label>
-                <input
-                    type="text" id="description" value={description}
+              <h2>Add New Transaction</h2>
+              {/* Display Submission Status Messages */}
+              {submitError && <p style={{ color: 'red' }}>Error: {submitError}</p>}
+              {submitSuccess && <p style={{ color: 'green' }}>{submitSuccess}</p>}
+
+              {/* The Form */}
+              <form onSubmit={handleTransactionSubmit}>
+                {/* Description Input */}
+                <div>
+                  <label htmlFor="description">Description:</label>
+                  <input
+                    type="text"
+                    id="description"
+                    value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Optional description" disabled={isSubmitting}
-                />
-              </div>
-              {/* Amount Input */}
-              <div>
-                <label htmlFor="amount">Amount:</label>
-                <input
-                    type="number" id="amount" value={amount}
+                    placeholder="Optional description"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                {/* Amount Input */}
+                <div>
+                  <label htmlFor="amount">Amount:</label>
+                  <input
+                    type="number"
+                    id="amount"
+                    value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    placeholder="e.g., 25.50" step="0.01" required disabled={isSubmitting}
-                />
-              </div>
-              {/* Date Input */}
-              <div>
-                <label htmlFor="transactionDate">Date:</label>
-                <input
-                    type="date" id="transactionDate" value={transactionDate}
+                    placeholder="e.g., 25.50"
+                    step="0.01"
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+                {/* Date Input */}
+                <div>
+                  <label htmlFor="transactionDate">Date:</label>
+                  <input
+                    type="date"
+                    id="transactionDate"
+                    value={transactionDate}
                     onChange={(e) => setTransactionDate(e.target.value)}
-                    required disabled={isSubmitting}
-                />
-              </div>
-              {/* Category Select */}
-              <div>
-                <label htmlFor="category">Category:</label>
-                <select
-                    id="category" value={selectedCategoryId}
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+                {/* Category Select */}
+                <div>
+                  <label htmlFor="category">Category:</label>
+                  <select
+                    id="category"
+                    value={selectedCategoryId}
                     onChange={(e) => setSelectedCategoryId(e.target.value)}
-                    required disabled={isSubmitting || categories.length === 0}
-                >
-                  <option value="" disabled>-- Select a Category --</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id.toString()}>
+                    required
+                    disabled={isSubmitting || categories.length === 0}
+                  >
+                    <option value="" disabled>-- Select a Category --</option>
+                    {categories.map(category => (
+                      <option key={category.id} value={category.id.toString()}>
                         {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {/* Submit Button */}
-              <button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Adding...' : 'Add Transaction'}
-              </button>
-          </form>
-        </section>
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Submit Button */}
+                <button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Adding...' : 'Add Transaction'}
+                </button>
+              </form>
+            </section> 
 
 
         {/* --- Transactions List Section --- */}
@@ -258,13 +315,10 @@ function App() {
           {loadingTransactions && <p>Loading transactions...</p>}
           {errorTransactions && <p style={{ color: 'red' }}>Error: {errorTransactions}</p>}
 
-          {/* Display transactions only if not loading and no errors */}
           {!loadingTransactions && !errorTransactions && (
-            // Check if there are any transactions at all
             transactions.length === 0 ? (
               <p>No transactions recorded yet.</p>
             ) : (
-              // Iterate over the grouped transactions object
               Object.entries(groupedTransactions).map(([categoryName, transactionsInCategory]) => (
                 <div key={categoryName} className="category-group">
                   <h3>{categoryName}</h3>
@@ -275,13 +329,19 @@ function App() {
                           <span>{t.transaction_date}</span> - {' '}
                           <span>{t.description || <i>(No description)</i>}</span>:{' '}
                           <strong>{formatCurrency(t.amount)}</strong>
-                          {/* Add Edit/Delete buttons later */}
+                          {/* --- Add Delete Button --- */}
+                          <button
+                            onClick={() => handleDeleteTransaction(t.id)} // Call handler with transaction ID
+                            style={{ marginLeft: '10px', color: 'red', cursor: 'pointer' }} // Basic styling
+                            title="Delete Transaction" // Tooltip
+                          >
+                            X
+                          </button>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    // This case shouldn't happen with our current grouping logic, but good practice
-                    <p>No transactions in this category.</p>
+                     <p>No transactions in this category.</p>
                   )}
                 </div>
               ))
