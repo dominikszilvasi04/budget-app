@@ -1,10 +1,15 @@
 body {
   margin: 0;
-  font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f4f6f8; /* Light gray background */
-  color: #333; /* Default dark text color */
+  color: #333;
+  /* --- Increase base font size --- */
+  font-size: 17px; /* Or 16px, 18px - adjust as needed */
+  line-height: 1.5; /* Improve readability with more line spacing */
 }
 a {
   color: #007bff; /* Standard blue link color */
@@ -13,43 +18,46 @@ a {
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
 .App-header {
   min-height: auto;
   display: block;
-  background-color: #282c34; /* Keep header dark */
-  padding: 15px 30px;
-  color: white; /* Header text white */
+  background-color: #282c34;
+  padding: 20px 30px; /* Increase vertical padding slightly */
+  color: white;
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 25px; /* Increase space below header */
 }
 .App-header h1 {
   margin: 0;
-  font-size: 1.8em;
+  /* --- Increase H1 size --- */
+  font-size: 2em; /* Roughly 34px if body is 17px */
 }
-.App-link {
-  color: #61dafb;
-}
-
 
 .main-layout {
   display: flex;
   align-items: flex-start;
-  padding: 20px;
-  gap: 30px;
-  /* Background inherited from body */
+  padding: 0 30px 30px 30px; /* Adjust padding */
+  gap: 40px; /* Increase gap between columns */
+}
+.form-section {
+  flex-basis: 40%; /* Adjust basis if needed */
+  /* Or fixed width: flex-basis: 450px; */
+  flex-shrink: 0;
+  padding: 25px; /* Increase padding */
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #ffffff;
+  text-align: left; /* Add this line */
 }
 
-.form-section {
-  flex-basis: 35%;
-  flex-shrink: 0;
-  padding: 20px;
-  border: 1px solid #ddd; /* Lighter border */
-  border-radius: 5px;
-  background-color: #ffffff; /* White background for form */
+.form-section h2, .transactions-section h2 {
+  /* --- Increase H2 size --- */
+  font-size: 1.6em; /* Roughly 27px */
+  margin-top: 0; /* Remove default top margin */
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
 }
 /* Add some spacing below form elements */
 .form-section > form > div {
@@ -57,34 +65,34 @@ a {
 }
 .form-section label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 6px; /* Increase space below label */
   font-weight: bold;
-  color: #333; /* Ensure dark label color */
+  /* --- Increase label font size slightly if desired --- */
+  font-size: 1.05em; /* Slightly larger than body text */
 }
 .form-section input[type="text"],
 .form-section input[type="number"],
 .form-section input[type="date"],
 .form-section select {
     width: 100%;
-    padding: 10px;
+    padding: 12px; /* Increase padding */
     box-sizing: border-box;
-    border: 1px solid #ccc; /* Standard input border */
+    border: 1px solid #ccc;
     border-radius: 4px;
-    background-color: #fff; /* White input background */
-    color: #333; /* Dark text in inputs */
+    background-color: #fff;
+    color: #333;
+    /* --- Increase input font size --- */
+    font-size: 1em; /* Match body font size */
 }
 .form-section button[type="submit"] {
-  padding: 10px 20px;
-  background-color: #28a745; /* Green */
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  width: 100%;
-  font-size: 1em;
+  padding: 12px 20px; /* Increase padding */
+  /* Styles remain okay */
+  /* --- Increase button font size --- */
+  font-size: 1.1em;
 }
 .form-section button[type="submit"]:hover {
   background-color: #218838;
+  cursor: pointer;
 }
 .form-section button[type="submit"]:disabled {
   background-color: #cccccc; /* Light gray disabled */
@@ -92,91 +100,112 @@ a {
 }
 
 .transactions-section {
+  /* Keep allowing it to fill space or set a max-width if desired */
   flex-grow: 1;
+  /* max-width: 1000px; */ /* Example: Limit if needed */
+  flex-shrink: 1; /* Allow shrinking */
   margin-top: 0;
   padding: 0;
   text-align: left;
-  /* Background inherited from body */
+}
+.transactions-section h2 { /* Keep H2 styles */
+ font-size: 1.6em;
+ margin-top: 0;
+ color: #333;
+ border-bottom: 1px solid #eee;
+ padding-bottom: 10px;
+ margin-bottom: 20px;
 }
 
 
 .category-accordion {
-  border: 1px solid #ddd; /* Light border */
-  border-radius: 5px;
+  /* Styles remain the same */
+   border: none;
+   border-radius: 0;
 }
 
 .category-box {
-   border-bottom: 1px solid #eee; /* Lighter separator */
+  margin-bottom: 20px; /* Increase space between boxes */
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  overflow: hidden;
 }
-.category-box:last-child {
-  border-bottom: none;
-}
+/* No need to target :last-child for border removal anymore */
+
 
 .category-header {
-  padding: 10px 15px;
+  padding: 15px 20px; /* Increase padding */
   margin: 0;
-  background-color: #e9ecef; /* Use the light gray from before */
-  color: #333; /* Dark text */
-  /* cursor: pointer; */
-  font-size: 1.1em;
+  background-color: #e9ecef;
+  color: #333;
+  cursor: pointer;
+  /* --- Increase H3 size --- */
+  font-size: 1.25em; /* Roughly 21px */
   font-weight: bold;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  border-bottom: 1px solid #ddd;
+  position: relative;
+}
+/* Remove hover if not needed, or keep for interactivity */
+.category-header:hover {
+ background-color: #dee2e6;
+}
+/* Ensure arrow span is still styled correctly */
+.category-header span {
+  float: right;
+  transition: transform 0.2s;
+  line-height: inherit; /* Match line height */
 }
 
-.category-header:hover {
-  /* Make hover slightly darker than the base */
-  background-color: #dee2e6; /* Corresponds to #e9ecef */
-  /* Or for the subtle blue: */
-  /* background-color: #e1e8f0; */
-}
 
 .category-box ul {
   list-style: none;
-  padding: 10px 15px 15px 30px;
+  padding: 10px 20px 20px 30px; /* Adjust padding */
   margin: 0;
-  background-color: #ffffff; /* White list background */
-  color: #444; /* Dark text */
+  background-color: #ffffff;
+  color: #444;
+  /* Font size inherited from body */
 }
 
 .category-box li {
-  padding: 5px 0;
-  border-bottom: 1px dashed #eee; /* Light dashed line */
+  padding: 10px 5px; /* Increase padding */
+  border-bottom: 1px dashed #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* Font size inherited */
 }
 .category-box li:last-child {
-  border-bottom: none;
+    border-bottom: none;
 }
-
-
-/* Style for the delete button for better visibility */
+/* Adjust delete button size/padding */
 .category-box li button {
-  /* Adjust delete button for light mode */
-  background: none;
-  border: 1px solid #ffaaaa;
-  color: red; /* Standard red */
-  padding: 2px 5px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.8em;
-  line-height: 1;
-  float: right;
-  margin-left: 10px;
+    background: none;
+    border: 1px solid #ffaaaa;
+    color: red;
+    padding: 4px 8px; /* Increase padding */
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9em; /* Slightly larger button font */
+    line-height: 1;
+    margin-left: 15px; /* Increase spacing */
+    flex-shrink: 0;
 }
-.category-box li button:hover {
-  background-color: #ffeeee; /* Light red background on hover */
-}
-
-
 
 /* client/src/App.css */
 /* ... other styles ... */
-
-nav .nav-link { /* Style for NavLink */
+nav .nav-link {
   color: white;
-  margin-left: 20px;
+  margin-left: 25px; /* Increase spacing */
   text-decoration: none;
   font-weight: bold;
   padding: 5px 0;
   border-bottom: 2px solid transparent;
   transition: border-bottom 0.2s ease-in-out, color 0.2s ease-in-out;
+  /* Font size inherited from body */
 }
 nav .nav-link:hover {
   color: #b3e5fc; /* Lighter blue on hover */
@@ -199,10 +228,11 @@ nav .nav-link.active { /* Style for the active NavLink */
 }
 
 .history-category-group h3 {
-  border-bottom: 2px solid #ccc; /* Underline category title */
+  border-bottom: 2px solid #ccc;
   padding-bottom: 5px;
   margin-bottom: 10px;
-  color: #333; /* Ensure dark text on light background */
+  color: #333;
+  font-size: 1.25em; /* Add this - same as .category-header */
 }
 
 .history-category-group ul {
@@ -248,22 +278,3 @@ nav .nav-link.active { /* Style for the active NavLink */
   color: #777;
   padding-left: 10px;
 }
-
-/* Navigation Link Styling */
-nav {
-    margin-left: auto; /* Push nav to the right */
-}
-
-nav a {
-    color: white;
-    margin-left: 20px; /* Space between nav links */
-    text-decoration: none;
-    font-weight: bold;
-    padding: 5px 0;
-    border-bottom: 2px solid transparent; /* For active state */
-    transition: border-bottom 0.2s ease-in-out;
-}
-nav a:hover {
-    border-bottom: 2px solid #61dafb; /* React blue on hover */
-}
-/* Active link styling would require NavLink component from react-router-dom */
