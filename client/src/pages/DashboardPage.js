@@ -1,5 +1,5 @@
 // client/src/pages/DashboardPage.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Added useMemo, useCallback
 import axios from 'axios';
 
 // --- Helper Functions ---
@@ -40,35 +40,36 @@ function DashboardPage() {
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
     const [errorCategories, setErrorCategories] = useState(null);
+    // Transactions Data (for totals)
+    const [transactions, setTransactions] = useState([]);
+    const [loadingTransactions, setLoadingTransactions] = useState(true);
+    const [errorTransactions, setErrorTransactions] = useState(null);
+    // --- NEW Budget Data State ---
+    const [budgetData, setBudgetData] = useState([]); // Raw data from API [{id, name, budget_amount}]
+    const [loadingBudgets, setLoadingBudgets] = useState(true); // Loading state for budgets
+    const [errorBudgets, setErrorBudgets] = useState(null); // Error state for budgets
 
     // Transaction Popup Form State
     const [description, setDescription] = useState('');
-    const [amount, setAmount] = useState(''); // Amount stored as string
+    const [amount, setAmount] = useState('');
     const [isSubmittingTransaction, setIsSubmittingTransaction] = useState(false);
     const [submitTransactionError, setSubmitTransactionError] = useState(null);
     const [submitTransactionSuccess, setSubmitTransactionSuccess] = useState(null);
-
     // Transaction Popup Control State
-    const [selectedCategoryForPopup, setSelectedCategoryForPopup] = useState(null); // Stores category object or null
-
+    const [selectedCategoryForPopup, setSelectedCategoryForPopup] = useState(null);
     // Add Category Form State
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [addCategoryError, setAddCategoryError] = useState(null);
     const [addCategorySuccess, setAddCategorySuccess] = useState(null);
-
     // Category Options Popup State
-    const [optionsPopupCategory, setOptionsPopupCategory] = useState(null); // Category object for options, or null
-    const [isRenameMode, setIsRenameMode] = useState(false); // Is the options popup in rename mode?
-    const [renameCategoryName, setRenameCategoryName] = useState(''); // Input value for renaming
-    const [isProcessingCategoryAction, setIsProcessingCategoryAction] = useState(false); // Loading state for rename/delete
-    const [categoryActionError, setCategoryActionError] = useState(null); // Error for rename/delete
-
-    // Transactions Data State (for category totals)
-    const [transactions, setTransactions] = useState([]);
-    const [loadingTransactions, setLoadingTransactions] = useState(true); // Initially loading
-    const [errorTransactions, setErrorTransactions] = useState(null);
-    const [transactionRefetchTrigger, setTransactionRefetchTrigger] = useState(0); // Trigger for refetching transactions
+    const [optionsPopupCategory, setOptionsPopupCategory] = useState(null);
+    const [isRenameMode, setIsRenameMode] = useState(false);
+    const [renameCategoryName, setRenameCategoryName] = useState('');
+    const [isProcessingCategoryAction, setIsProcessingCategoryAction] = useState(false);
+    const [categoryActionError, setCategoryActionError] = useState(null);
+    // Trigger for refetching transactions
+    const [transactionRefetchTrigger, setTransactionRefetchTrigger] = useState(0);
 
     // --- Fetch Categories Effect ---
     useEffect(() => {
@@ -118,6 +119,32 @@ function DashboardPage() {
         return () => { controller.abort(); };
     }, [transactionRefetchTrigger]); // Re-run when the trigger value changes
 
+    // --- NEW Fetch Budgets Effect ---
+    useEffect(() => {
+        const controller = new AbortController();
+        const fetchBudgets = async () => {
+            setLoadingBudgets(true);
+            setErrorBudgets(null);
+            try {
+                const response = await axios.get('http://localhost:5001/api/budgets/current', {
+                    signal: controller.signal
+                });
+                // Store raw data - we'll create a map later
+                setBudgetData(response.data);
+            } catch (err) {
+                if (!axios.isCancel(err)) {
+                    console.error("Error fetching budget data:", err);
+                    setErrorBudgets('Failed to load budget data.');
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setLoadingBudgets(false);
+                }
+            }
+        };
+        fetchBudgets();
+        return () => { controller.abort(); };
+    }, [transactionRefetchTrigger]); // Also refetch budgets when transactions change (maybe overkill, but ensures sync)
 
     // --- Calculate Category Totals using useMemo ---
     const categoryTotals = React.useMemo(() => { // Explicitly use React.useMemo if needed
@@ -136,6 +163,22 @@ function DashboardPage() {
         return totals;
     }, [transactions, loadingTransactions]);
 
+
+    // --- NEW Memoized Budget Map ---
+    const budgetMap = useMemo(() => {
+        if (loadingBudgets || !budgetData) {
+            return {}; // Return empty while loading
+        }
+        const map = {};
+        // budgetData is expected to be [{ id, name, budget_amount }]
+        budgetData.forEach(item => {
+            // Store the budget amount (default to 0 if null/undefined)
+            map[item.id] = item.budget_amount === null || item.budget_amount === undefined
+                           ? 0.00
+                           : parseFloat(item.budget_amount);
+        });
+        return map;
+    }, [budgetData, loadingBudgets]);
 
     // --- Utility to clear Transaction form fields ---
     const clearTransactionFormFields = () => {
@@ -318,35 +361,43 @@ function DashboardPage() {
         }
     };
 
-
     // --- Render Logic ---
-    const isLoading = loadingCategories; // Base loading on categories for now
-    // Can refine loading state later if needed
+    // Use combined loading state for initial display
+    const isLoading = loadingCategories || loadingTransactions || loadingBudgets;
 
     if (isLoading) {
         return <div>Loading dashboard data...</div>;
     }
+    // Handle critical category error first
     if (errorCategories && categories.length === 0) {
         return <div style={{ color: 'red', padding: '20px' }}>Error loading categories: {errorCategories}. Cannot display dashboard.</div>;
     }
+    // Optionally display other errors non-critically
+    const displayError = errorTransactions || errorBudgets;
 
-    // --- Main Return Statement ---
+
+    // --- Main Return Statement (Updated Category Box) ---
     return (
         <> {/* React Fragment */}
             <div className="main-layout-single-column">
                 <section className="categories-display-section-full">
                     <h2>Categories</h2>
-                    {/* Optional: Display Transaction Loading Errors Here */}
-                    {errorTransactions && !loadingTransactions && <p style={{ color: 'orange', marginBottom: '15px' }}>Warning: Could not load transaction data. Totals may be inaccurate.</p>}
+                     {/* Display Transaction/Budget Loading Errors Here */}
+                     {displayError && !isLoading && <p style={{ color: 'orange', marginBottom: '15px' }}>Warning: Could not load all data. Totals/Budgets may be inaccurate. ({displayError})</p>}
 
-                    {/* Category Grid Display */}
+                    {/* Category Grid Display (Modified Box Content) */}
                     {categories.length === 0 && !loadingCategories ? (
                          <p>No categories defined yet. Add one below!</p>
                     ) : (
                         <div className="category-grid">
                             {categories.map(category => {
-                                // Get total for this category, default to 0
-                                const total = categoryTotals[category.id] || 0;
+                                // Lookup data for this category
+                                // Default budget to 0.00 if not found in map
+                                const allocatedBudget = budgetMap[category.id] ?? 0.00;
+                                // Default spent total to 0.00 if not found in map
+                                const totalSpent = categoryTotals[category.id] ?? 0.00;
+                                const difference = allocatedBudget - totalSpent;
+
                                 return (
                                     <div
                                         key={category.id}
@@ -364,45 +415,48 @@ function DashboardPage() {
                                         </button>
                                         {/* Category Name */}
                                         <h3>{category.name}</h3>
-                                        {/* Display Category Total */}
-                                        <p className="category-total">
-                                            {/* Show loading dots for total only if transactions are loading */}
-                                            {loadingTransactions ? '...' : formatCurrency(total)}
+
+                                        {/* --- Budget & Difference Display --- */}
+                                        <div className="category-financials">
+                                            <p className="category-budget">
+                                                Budget: <span>{formatCurrency(allocatedBudget)}</span>
+                                            </p>
+                                            <p className={`category-difference ${difference >= 0 ? 'positive' : 'negative'}`}>
+                                                {/* Display appropriate label based on difference */}
+                                                {difference >= 0 ? 'Remaining:' : 'Overspent:'}
+                                                {/* Display absolute value of difference */}
+                                                <span>{formatCurrency(Math.abs(difference))}</span>
+                                            </p>
+                                        </div>
+                                        {/* --- End Budget & Difference --- */}
+
+                                        {/* Display Total Spent */}
+                                        <p className="category-spent-total">
+                                            Spent: {formatCurrency(totalSpent)}
                                         </p>
-                                    </div>
+                                    </div> // End category-select-box
                                 );
                              })}
-                        </div>
+                        </div> // End category-grid
                     )}
 
                     {/* Add Category Form */}
-                    <div className="add-category-container">
-                        <form onSubmit={handleAddCategorySubmit} className="add-category-form">
-                            <input
-                                type="text"
-                                value={newCategoryName}
-                                onChange={(e) => {
-                                    setNewCategoryName(e.target.value);
-                                    if (addCategoryError) setAddCategoryError(null);
-                                }}
-                                placeholder="New category name..."
-                                disabled={isAddingCategory}
-                                maxLength="100"
-                                aria-describedby="category-add-status"
-                            />
-                            <button type="submit" disabled={isAddingCategory || !newCategoryName.trim()}>
-                                {isAddingCategory ? 'Adding...' : 'Add Category'}
-                            </button>
+                     <div className="add-category-container">
+                         <form onSubmit={handleAddCategorySubmit} className="add-category-form">
+                            <input type="text" value={newCategoryName} onChange={(e) => { setNewCategoryName(e.target.value); if (addCategoryError) setAddCategoryError(null); }} placeholder="New category name..." disabled={isAddingCategory} maxLength="100" aria-describedby="category-add-status" />
+                            <button type="submit" disabled={isAddingCategory || !newCategoryName.trim()}> {isAddingCategory ? 'Adding...' : 'Add Category'} </button>
                         </form>
                         <div id="category-add-status" className="category-add-status-container">
                             {addCategoryError && <span className="category-add-status error">{addCategoryError}</span>}
                             {addCategorySuccess && <span className="category-add-status success">{addCategorySuccess}</span>}
                         </div>
-                    </div>
-                </section>
-            </div>
+                    </div> {/* End Add Category Container */}
 
-            {/* --- Popup/Modal for Adding Transaction --- */}
+                </section> {/* End categories-display-section-full */}
+            </div> {/* End main-layout-single-column */}
+
+
+            {/* --- Transaction Popup/Modal --- */}
             {selectedCategoryForPopup && (
                 <div className="popup-overlay" onClick={handleClosePopup}>
                     <div className="popup-container" onClick={(e) => e.stopPropagation()}>
@@ -475,6 +529,5 @@ function DashboardPage() {
             )}
         </> // End React Fragment
     );
-} // End of DashboardPage component
-
-export default DashboardPage; // Export the component
+} // End of DashboardPage component - must be outside the return
+export default DashboardPage;

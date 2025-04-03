@@ -92,16 +92,16 @@ nav .nav-link.active {
 .category-select-box {
   border: 1px solid #ccc;
   border-radius: 8px;
-  padding: 20px 15px;
+  padding: 15px; /* Adjust padding */
   text-align: center;
   background-color: #fff;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  min-height: 140px;
+  min-height: 160px; /* Slightly taller maybe */
   display: flex;
   flex-direction: column;
-  justify-content: center; 
-  align-items: center; 
+  /* justify-content: center; */ /* Removed - allow space */
+  align-items: center;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   position: relative;
 }
@@ -110,13 +110,16 @@ nav .nav-link.active {
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 .category-select-box h3 {
-  font-size: 1.2em;
-  margin: 0 0 0px 0; /* Add margin below h3 */
+  font-size: 1.15em; /* Adjust if needed */
+  margin: 0 0 10px 0;
   color: #333;
-  font-weight: 800;
+  font-weight: 600;
   pointer-events: none;
-  flex-grow: 1; /* Allow h3 to push total down */
-  display: flex; /* Center text vertically if needed */
+  width: 100%; /* Ensure h3 takes width */
+  box-sizing: border-box;
+  text-align: center; /* Center title */
+  min-height: 40px; /* Give title space */
+  display: flex;
   align-items: center;
   justify-content: center;
 }
@@ -136,6 +139,42 @@ nav .nav-link.active {
   opacity: 0.6;
   transition: opacity 0.2s ease, color 0.2s ease;
   z-index: 2;
+}
+
+/* --- NEW: Financial Info Container --- */
+.category-financials {
+  width: 100%;
+  margin-bottom: 10px; /* Space before total spent */
+  padding-bottom: 10px; /* Space */
+  border-bottom: 1px dashed #eee; /* Separator line */
+}
+
+.category-budget, .category-difference {
+  font-size: 0.95em;
+  margin: 4px 0;
+  display: flex; /* Align label and value */
+  justify-content: space-between; /* Push value to right */
+}
+.category-budget span, .category-difference span {
+  font-weight: bold;
+}
+
+/* Style for remaining/overspent */
+.category-difference.positive span {
+  color: #28a745; /* Green for positive remaining */
+}
+.category-difference.negative span {
+  color: #dc3545; /* Red for negative (overspent) */
+}
+
+/* Renamed from category-total */
+.category-spent-total {
+  font-size: 1.0em; /* Adjust size */
+  font-weight: 500; /* Normal bold */
+  color: #555;
+  margin: 0; /* Remove default p margin */
+  width: 100%;
+  text-align: right; /* Align spent total right */
 }
 /* --- NEW Style for Category Total --- */
 .category-total {
