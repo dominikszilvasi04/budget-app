@@ -19,7 +19,7 @@ a {
 }
 
 .App {
-
+  /* No global text-align needed */
 }
 
 /* --- Header & Navigation --- */
@@ -30,7 +30,6 @@ a {
   background-color: #282c34;
   padding: 15px 30px; /* Adjusted padding */
   color: white;
-  /* text-align: left; /* Removed, flex handles alignment */
   margin-bottom: 25px;
 }
 .App-header h1 {
@@ -40,7 +39,7 @@ a {
 }
 
 nav {
-  /* margin-left: auto; /* Removed, flex alignment handles */
+  /* No margin needed, flex handles alignment */
 }
 nav .nav-link {
     color: white;
@@ -60,240 +59,22 @@ nav .nav-link.active {
     border-bottom: 2px solid #61dafb;
 }
 
-/* --- Main Layout (2 Columns) --- */
-.main-layout-single-column { /* Updated class name */
+
+/* --- Main Layout (Single Column - Dashboard) --- */
+.main-layout-single-column {
   padding: 0 30px 30px 30px;
-  /* No flex needed if only one child */
+  /* Can add max-width and margin:auto here if desired */
+  /* max-width: 1400px; */
+  /* margin: 0 auto; */
 }
 
 
-/* --- Categories Display Section (Takes full width or centered) --- */
-.categories-display-section-full { /* Updated class name */
-  max-width: 1200px;  /* Optional: Limit overall width */
-  margin: 0 auto;  /* Optional: Center if max-width is set */
-  text-align: left;
+/* --- Categories Display Section (Dashboard) --- */
+.categories-display-section-full {
+    text-align: left;
 }
-/* General H2 style */
+/* General H2 style for section titles */
 .categories-display-section-full h2, .history-list-section h2 {
-  font-size: 1.6em;
-  margin-top: 0;
-  color: #333;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
-  margin-bottom: 20px;
-}
-
-
-.category-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* Adjusted minmax for potentially more boxes */
-  gap: 20px;
-}
-
-.category-select-box {
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  padding: 20px 15px; /* Adjusted padding */
-  text-align: center;
-  background-color: #fff;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  min-height: 110px; /* Adjusted height */
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-.category-select-box:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-.category-select-box h3 {
-  margin: 0;
-  font-size: 1.1em; /* Adjusted size */
-  color: #333;
-}
-
-/* --- Popup/Modal Styles --- */
-.popup-overlay {
-  position: fixed; /* Cover the whole viewport */
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-.popup-content {
-  background-color: #fff;
-  padding: 30px 40px;
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-  width: 90%; /* Use percentage for responsiveness */
-  max-width: 500px; /* Max width for the popup */
-  max-height: 90vh; /* Limit height */
-  overflow-y: auto; /* Scroll if content overflows */
-  z-index: 1001;
-  position: relative;
-  text-align: left;
-}
-.popup-content h2 {
-  margin-top: 0;
-  color: #333;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
-  margin-bottom: 25px; /* More space before form */
-  font-size: 1.4em;
-}
-
-/* --- Styles for Form INSIDE Popup --- */
-.popup-form > div {
-  margin-bottom: 20px;
-}
-.popup-form label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: bold;
-  font-size: 1.05em;
-}
-
-/* --- NEW: Amount Input Group --- */
-.amount-input-group {
-  /* Inherits margin-bottom from .popup-form > div */
-}
-.amount-input-container {
-  display: flex; /* Arrange input and buttons horizontally */
-  align-items: stretch; /* Make items same height */
-  gap: 5px; /* Small gap between input and button group */
-}
-/* --- Style the Amount Input --- */
-/* Style the Amount Input */
-.popup-form .input-amount {
-  /* Allow input to grow but keep button group fixed width */
-  flex-grow: 1;
-
-  /* Keep existing large styles */
-  padding: 15px;
-  box-sizing: border-box;
-  border: 1px solid #aaa;
-  border-radius: 4px;
-  background-color: #fff;
-  color: #333;
-  font-size: 1.8em;
-  font-weight: bold;
-  text-align: right;
-  /* Remove width: 100% as flex handles sizing */
-  /* width: 100%; */
-}
-.popup-form .input-amount::placeholder {
-  font-weight: normal;
-  font-size: 0.7em;
-  color: #999;
-  text-align: left;
-}
-
-/* --- NEW: Quick Add Buttons Styling --- */
-.quick-add-buttons {
-  display: grid; /* Use grid for button layout */
-  grid-template-columns: repeat(3, 1fr); /* Example: 3 buttons per row */
-  gap: 5px; /* Space between buttons */
-  flex-shrink: 0; /* Don't let button container shrink */
-}
-.quick-add-buttons button {
-  padding: 5px; /* Adjust padding */
-  font-size: 0.9em; /* Smaller font for buttons */
-  font-weight: bold;
-  border: 1px solid #ccc;
-  background-color: #f8f9fa;
-  color: #333;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: center;
-  min-width: 40px; /* Ensure minimum width */
-  transition: background-color 0.2s ease;
-}
-.quick-add-buttons button:hover {
-  background-color: #e9ecef;
-  border-color: #bbb;
-}
-.quick-add-buttons button:disabled {
-  background-color: #e9ecef;
-  color: #aaa;
-  cursor: not-allowed;
-  border-color: #ddd;
-}
-
-
-/* --- Style the Description Input --- */
-.popup-form .input-description {
-  width: 100%;
-  padding: 12px; /* Standard padding */
-  box-sizing: border-box;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: #fff;
-  color: #333;
-  font-size: 1em; /* Standard font size */
-}
-.form-category-display {
-  margin-bottom: 20px; /* Consistent spacing */
-}
-.form-category-display label {
-  /* Uses standard label style */
-}
-.form-category-display span {
-  display: block;
-  padding: 12px;
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 4px;
-  font-size: 1em;
-  color: #555; /* Indicate it's display text */
-}
-
-.popup-button-group {
-  margin-top: 30px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-.popup-cancel-btn, .popup-submit-btn {
-  padding: 10px 20px;
-  font-size: 1em;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.popup-cancel-btn {
-  background-color: #6c757d; /* Gray */
-  color: white;
-}
-.popup-cancel-btn:hover {
-  background-color: #5a6268;
-}
-.popup-submit-btn {
-  background-color: #28a745; /* Green */
-  color: white;
-}
-.popup-submit-btn:hover {
-  background-color: #218838;
-}
-.popup-submit-btn:disabled, .popup-cancel-btn:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-
-/* --- History Page Styles --- */
-.history-list-section {
-  padding: 0 30px 30px 30px; /* Consistent padding */
-  max-width: 900px;
-  margin: 0 auto;
-  text-align: left; /* Ensure left alignment */
-}
-.history-list-section h2 { /* Style History H2 */
     font-size: 1.6em;
     margin-top: 0;
     color: #333;
@@ -302,6 +83,170 @@ nav .nav-link.active {
     margin-bottom: 20px;
 }
 
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* Responsive columns */
+    gap: 20px; /* Space between boxes */
+}
+
+.category-select-box {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 20px 15px; /* Adjusted padding */
+    text-align: center;
+    background-color: #fff;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    min-height: 110px; /* Adjusted height */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Subtle shadow */
+}
+.category-select-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.category-select-box h3 {
+    margin: 0;
+    font-size: 1.1em; /* Adjusted size */
+    color: #333;
+    font-weight: 600; /* Slightly less bold */
+}
+
+
+/* --- Popup/Modal Styles --- */
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Container for the two panels */
+.popup-container {
+    display: flex;
+    background-color: #f8f9fa; /* Light background for the container */
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    width: auto; /* Let content determine width */
+    max-width: 90%; /* Limit overall width */
+    max-height: 90vh; /* Limit height */
+    overflow: hidden; /* Hide overflow for the container */
+    z-index: 1001;
+}
+
+/* Panel 1: Main Form Content */
+.popup-content-main {
+    padding: 30px 40px;
+    flex-grow: 1;
+    min-width: 350px;
+    max-width: 550px;
+    overflow-y: auto; /* Allow scrolling for form */
+    background-color: #fff;
+    border-right: 1px solid #dee2e6; /* Separator */
+}
+.popup-content-main h2 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 25px;
+    font-size: 1.4em;
+}
+
+/* Styles for Form INSIDE Main Panel */
+.popup-form > div:not(.popup-button-group) { /* Exclude button group from bottom margin */
+    margin-bottom: 20px;
+}
+.popup-form label {
+    display: block; margin-bottom: 8px; font-weight: bold; font-size: 1.05em;
+}
+
+.popup-form .input-amount {
+    width: 100%;
+    padding: 15px; box-sizing: border-box; border: 1px solid #aaa; border-radius: 4px;
+    background-color: #fff; color: #333; font-size: 1.8em; font-weight: bold; text-align: right;
+}
+.popup-form .input-amount::placeholder {
+    font-weight: normal; font-size: 0.7em; color: #999; text-align: left;
+}
+.popup-form .input-description {
+    width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ccc;
+    border-radius: 4px; background-color: #fff; color: #333; font-size: 1em;
+}
+.form-category-display {
+    margin-bottom: 20px;
+}
+.form-category-display label { /* Uses standard label style */ }
+.form-category-display span {
+    display: block; padding: 12px; background-color: #f8f9fa;
+    border: 1px solid #e9ecef; border-radius: 4px; font-size: 1em; color: #555;
+}
+.popup-button-group {
+    margin-top: 30px; display: flex; justify-content: flex-end; gap: 10px;
+}
+.popup-cancel-btn, .popup-submit-btn {
+    padding: 10px 20px; font-size: 1em; border: none; border-radius: 4px; cursor: pointer;
+}
+.popup-cancel-btn { background-color: #6c757d; color: white; }
+.popup-cancel-btn:hover { background-color: #5a6268; }
+.popup-submit-btn { background-color: #28a745; color: white; }
+.popup-submit-btn:hover { background-color: #218838; }
+.popup-submit-btn:disabled, .popup-cancel-btn:disabled { background-color: #cccccc; cursor: not-allowed; }
+
+
+/* Panel 2: Quick Add Buttons */
+.quick-add-panel {
+    padding: 20px;
+    width: 200px;
+    flex-shrink: 0;
+    background-color: #f8f9fa; /* Match container */
+    overflow-y: auto;
+    box-sizing: border-box;
+    border-left: 1px solid #dee2e6; /* Separator */
+}
+.quick-add-panel h4 {
+    margin-top: 0; margin-bottom: 15px; text-align: center; color: #495057; font-size: 1.1em;
+}
+.quick-add-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns */
+    gap: 10px;
+}
+.quick-add-buttons button {
+    padding: 10px 5px; font-size: 1em; font-weight: 500; border: 1px solid #ced4da;
+    background-color: #fff; color: #495057; border-radius: 4px; cursor: pointer;
+    text-align: center; transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.quick-add-buttons button:hover {
+    background-color: #e9ecef; border-color: #adb5bd;
+}
+.quick-add-buttons button:disabled {
+    background-color: #e9ecef; color: #adb5bd; cursor: not-allowed; border-color: #dee2e6;
+}
+.quick-add-buttons .clear-button { /* Optional: style clear differently */
+    /* background-color: #f1f3f5; */
+}
+
+
+/* --- History Page Styles --- */
+.history-list-section {
+  padding: 0 30px 30px 30px;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: left;
+}
+/* H2 already styled above */
 .history-category-group {
   margin-bottom: 2em;
 }
@@ -310,7 +255,7 @@ nav .nav-link.active {
   padding-bottom: 5px;
   margin-bottom: 10px;
   color: #333;
-  font-size: 1.25em; /* Consistent category title size */
+  font-size: 1.25em;
 }
 .history-category-group ul {
   list-style: none;
@@ -335,13 +280,13 @@ nav .nav-link.active {
     background: none;
     border: 1px solid #ffaaaa;
     color: red;
-    padding: 4px 8px; /* Increased padding slightly */
+    padding: 4px 8px;
     border-radius: 3px;
     cursor: pointer;
     font-size: 0.9em;
     line-height: 1;
     flex-shrink: 0;
-    margin-left: 10px; /* Added margin */
+    margin-left: 10px;
 }
 .delete-button-history:hover {
     background-color: #ffeeee;
@@ -351,3 +296,7 @@ nav .nav-link.active {
   color: #777;
   padding-left: 10px;
 }
+
+/* --- REMOVED / Unused Styles --- */
+/* Ensure any styles for .category-box, .category-header from the accordion are gone */
+/* Ensure styles for .amount-input-container are gone */
