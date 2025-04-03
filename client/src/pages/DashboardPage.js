@@ -7,9 +7,10 @@ import axios from 'axios';
 const safeParseFloat = (value) => {
     if (typeof value === 'number') return value;
     if (typeof value !== 'string') return NaN;
-    // Remove currency symbols, commas etc. before parsing if needed
-    // const cleanedValue = value.replace(/[^0-9.-]+/g,""); // Example cleaning
-    const parsed = parseFloat(value); // Use original value for now
+    // Basic cleaning (remove leading/trailing spaces)
+    const cleanedValue = value.trim();
+    if (cleanedValue === '') return NaN; // Handle empty string after trim
+    const parsed = parseFloat(cleanedValue);
     return isNaN(parsed) ? NaN : parsed;
 };
 
@@ -27,20 +28,27 @@ const formatAmountForDisplay = (value) => {
 // --- Component Definition ---
 function DashboardPage() {
     // --- State Variables ---
-    // Category State
+    // Categories
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
     const [errorCategories, setErrorCategories] = useState(null);
 
-    // Form State (for the popup form)
+    // Popup Transaction Form State
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState(''); // Amount stored as string
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [submitError, setSubmitError] = useState(null);
-    const [submitSuccess, setSubmitSuccess] = useState(null);
+    const [isSubmittingTransaction, setIsSubmittingTransaction] = useState(false); // Renamed for clarity
+    const [submitTransactionError, setSubmitTransactionError] = useState(null);   // Renamed for clarity
+    const [submitTransactionSuccess, setSubmitTransactionSuccess] = useState(null); // Renamed for clarity
 
-    // Popup State
+    // Popup Control State
     const [selectedCategoryForPopup, setSelectedCategoryForPopup] = useState(null); // Stores category object or null
+
+    // Add Category Form State
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [isAddingCategory, setIsAddingCategory] = useState(false);
+    const [addCategoryError, setAddCategoryError] = useState(null);
+    const [addCategorySuccess, setAddCategorySuccess] = useState(null);
+
 
     // --- Fetch Categories Effect ---
     useEffect(() => {
@@ -49,7 +57,8 @@ function DashboardPage() {
             setErrorCategories(null);
             try {
                 const response = await axios.get('http://localhost:5001/api/categories');
-                setCategories(response.data);
+                // Sort categories alphabetically when fetched
+                setCategories(response.data.sort((a, b) => a.name.localeCompare(b.name)));
             } catch (err) {
                 console.error("Error fetching categories:", err);
                 setErrorCategories('Failed to load categories.');
@@ -61,23 +70,23 @@ function DashboardPage() {
     }, []); // Run once on component mount
 
 
-    // --- Utility to clear form fields ---
-    const clearFormFields = () => {
+    // --- Utility to clear Transaction form fields ---
+    const clearTransactionFormFields = () => {
         setDescription('');
-        setAmount(''); // Reset amount string
-        setSubmitError(null);
-        setSubmitSuccess(null);
+        setAmount('');
+        setSubmitTransactionError(null); // Use renamed state
+        setSubmitTransactionSuccess(null); // Use renamed state
     };
 
     // --- Popup Handlers ---
     const handleCategoryBoxClick = (category) => {
         setSelectedCategoryForPopup(category); // Store selected category
-        clearFormFields(); // Clear form when opening
+        clearTransactionFormFields(); // Clear transaction form when opening
     };
 
     const handleClosePopup = () => {
         setSelectedCategoryForPopup(null); // Close popup
-        clearFormFields(); // Also clear form on close
+        clearTransactionFormFields(); // Also clear transaction form on close
     };
 
     // --- Amount Input Calculation Handler (for Enter/Blur) ---
@@ -125,42 +134,39 @@ function DashboardPage() {
         setAmount(formatAmountForDisplay(newNumericAmount)); // Update state with formatted string
     };
 
-    // --- Form Submission Handler ---
+    // --- Transaction Form Submission Handler ---
     const handleTransactionSubmit = async (event) => {
-        event.preventDefault(); // Prevent default form submission
+        event.preventDefault();
         if (!selectedCategoryForPopup) {
-            setSubmitError('No category selected.'); return;
+            setSubmitTransactionError('No category selected.'); return;
         }
 
-        const finalAmount = safeParseFloat(amount); // Parse final amount string from state
-        if (isNaN(finalAmount)) { // Only check if it's a valid number
-            setSubmitError('Please enter a valid amount.');
-            setSubmitSuccess(null);
+        const finalAmount = safeParseFloat(amount);
+        if (isNaN(finalAmount)) {
+            setSubmitTransactionError('Please enter a valid amount.');
+            setSubmitTransactionSuccess(null);
             return;
         }
 
-        // Generate current date for submission
         const currentDate = new Date().toISOString().split('T')[0];
-
         const transactionData = {
             description: description || null,
-            amount: finalAmount, // Use the parsed number
+            amount: finalAmount,
             transaction_date: currentDate,
-            category_id: selectedCategoryForPopup.id, // Use ID from selected category object
+            category_id: selectedCategoryForPopup.id,
         };
 
-        setIsSubmitting(true);
-        setSubmitError(null);
-        setSubmitSuccess(null);
+        setIsSubmittingTransaction(true);
+        setSubmitTransactionError(null);
+        setSubmitTransactionSuccess(null);
 
         try {
             const response = await axios.post('http://localhost:5001/api/transactions', transactionData);
-            setSubmitSuccess(`Transaction for ${selectedCategoryForPopup.name} added!`);
+            setSubmitTransactionSuccess(`Transaction for ${selectedCategoryForPopup.name} added!`);
 
-            // Close popup after a delay
             setTimeout(() => {
                 handleClosePopup();
-                // Note: History page update relies on its own refetch mechanism now
+                // Note: History page update relies on its own refetch mechanism
             }, 1500);
 
         } catch (err) {
@@ -169,11 +175,52 @@ function DashboardPage() {
             if (err.response && err.response.data && err.response.data.message) {
                 errorMessage = err.response.data.message;
             }
-            setSubmitError(errorMessage);
-            setSubmitSuccess(null);
+            setSubmitTransactionError(errorMessage);
+            setSubmitTransactionSuccess(null);
         } finally {
-            // Set submitting false after a short delay to allow state update/rerender
-             setTimeout(() => setIsSubmitting(false), 500);
+             setTimeout(() => setIsSubmittingTransaction(false), 500);
+        }
+    };
+
+
+    // --- Category Add Handler ---
+    const handleAddCategorySubmit = async (event) => {
+        event.preventDefault();
+        const trimmedName = newCategoryName.trim();
+
+        if (!trimmedName) {
+            setAddCategoryError("Category name cannot be empty.");
+            return;
+        }
+
+        setIsAddingCategory(true);
+        setAddCategoryError(null);
+        setAddCategorySuccess(null);
+
+        try {
+            const response = await axios.post('http://localhost:5001/api/categories', { name: trimmedName });
+
+            // Add new category and resort the list
+            setCategories(prevCategories =>
+                [...prevCategories, response.data.newCategory].sort((a, b) =>
+                    a.name.localeCompare(b.name)
+                 )
+            );
+
+            setNewCategoryName(''); // Clear input
+            setAddCategorySuccess(`Category '${response.data.newCategory.name}' added!`);
+            setTimeout(() => setAddCategorySuccess(null), 3000); // Clear success message
+
+        } catch (err) {
+            console.error("Error adding category:", err);
+            let message = "Failed to add category.";
+            if (err.response && err.response.data && err.response.data.message) {
+                message = err.response.data.message; // Show specific error from backend
+            }
+            setAddCategoryError(message);
+            setAddCategorySuccess(null);
+        } finally {
+            setIsAddingCategory(false);
         }
     };
 
@@ -190,78 +237,136 @@ function DashboardPage() {
         <> {/* React Fragment */}
             <div className="main-layout-single-column">
                 <section className="categories-display-section-full">
-                    {/* ... Categories Grid JSX ... */}
                     <h2>Categories</h2>
-                     {categories.length === 0 ? ( <p>No categories defined yet.</p> ) : (
-                         <div className="category-grid">
-                             {categories.map(category => (
-                                 <div key={category.id} className="category-select-box" onClick={() => handleCategoryBoxClick(category)}>
-                                     <h3>{category.name}</h3>
-                                 </div>
-                             ))}
-                         </div>
-                     )}
+
+                    {/* Add Category Form */}
+                    <form onSubmit={handleAddCategorySubmit} className="add-category-form">
+                        <input
+                            type="text"
+                            value={newCategoryName}
+                            onChange={(e) => setNewCategoryName(e.target.value)}
+                            placeholder="New category name..."
+                            disabled={isAddingCategory}
+                            maxLength="100"
+                        />
+                        <button type="submit" disabled={isAddingCategory || !newCategoryName.trim()}>
+                            {isAddingCategory ? 'Adding...' : 'Add Category'}
+                        </button>
+                        {/* Display Add Category Status */}
+                        {addCategoryError && <span className="category-add-status error">{addCategoryError}</span>}
+                        {addCategorySuccess && <span className="category-add-status success">{addCategorySuccess}</span>}
+                    </form>
+
+                    {/* Category Grid */}
+                    {categories.length === 0 && !loadingCategories ? (
+                        <p>No categories defined yet. Add one above!</p>
+                    ) : (
+                        <div className="category-grid">
+                            {categories.map(category => (
+                                <div
+                                    key={category.id}
+                                    className="category-select-box"
+                                    onClick={() => handleCategoryBoxClick(category)} // Open popup on click
+                                >
+                                    <h3>{category.name}</h3>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </section>
             </div> {/* End main-layout-single-column */}
 
 
-            {/* --- Popup/Modal with Updated Quick Add Panel --- */}
+            {/* --- Popup/Modal for Adding Transaction with Side Panel --- */}
             {selectedCategoryForPopup && (
                 <div className="popup-overlay" onClick={handleClosePopup}>
+                    {/* Container stops propagation */}
                     <div className="popup-container" onClick={(e) => e.stopPropagation()}>
 
                         {/* Panel 1: Main Form Content */}
                         <div className="popup-content-main">
-                            {/* ... Popup Title ... */}
-                             <h2>Add Transaction for: {selectedCategoryForPopup.name}</h2>
-                            {/* ... Status Messages ... */}
-                            {submitError && <p style={{ color: 'red', marginTop: '-10px', marginBottom: '15px' }}>Error: {submitError}</p>}
-                            {submitSuccess && <p style={{ color: 'green', marginTop: '-10px', marginBottom: '15px' }}>{submitSuccess}</p>}
-                            {/* Form */}
+                            <h2>Add Transaction for: {selectedCategoryForPopup.name}</h2>
+                            {submitTransactionError && <p style={{ color: 'red', marginTop: '-10px', marginBottom: '15px' }}>Error: {submitTransactionError}</p>}
+                            {submitTransactionSuccess && <p style={{ color: 'green', marginTop: '-10px', marginBottom: '15px' }}>{submitTransactionSuccess}</p>}
+
                             <form onSubmit={handleTransactionSubmit} className="popup-form">
-                                {/* ... Amount Input ... */}
-                                <div> <label htmlFor="amount">Amount:</label> <input type="text" inputMode="decimal" id="amount" className="input-amount" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAmountCalculation(e.target.value); }}} onBlur={(e) => handleAmountCalculation(e.target.value)} placeholder="0.00 or +5, -10 etc." required disabled={isSubmitting} autoFocus /> </div>
-                                {/* ... Description Input ... */}
-                                <div> <label htmlFor="description">Description (Optional):</label> <input type="text" id="description" className="input-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details..." disabled={isSubmitting} /> </div>
-                                {/* ... Category Display ... */}
-                                <div className="form-category-display"> <label>Category:</label> <span>{selectedCategoryForPopup.name}</span> </div>
-                                {/* ... Submit/Cancel Buttons ... */}
-                                <div className="popup-button-group"> <button type="button" onClick={handleClosePopup} className="popup-cancel-btn" disabled={isSubmitting}>Cancel</button> <button type="submit" className="popup-submit-btn" disabled={isSubmitting}>{isSubmitting ? 'Adding...' : 'Add Transaction'}</button> </div>
+                                {/* Amount Input */}
+                                <div>
+                                    <label htmlFor="amount">Amount:</label>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        id="amount"
+                                        className="input-amount"
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAmountCalculation(e.target.value); }}}
+                                        onBlur={(e) => handleAmountCalculation(e.target.value)}
+                                        placeholder="0.00 or +5, -10 etc."
+                                        required
+                                        disabled={isSubmittingTransaction}
+                                        autoFocus
+                                    />
+                                </div>
+
+                                {/* Description Input */}
+                                <div>
+                                    <label htmlFor="description">Description (Optional):</label>
+                                    <input
+                                        type="text"
+                                        id="description"
+                                        className="input-description"
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        placeholder="Details..."
+                                        disabled={isSubmittingTransaction}
+                                    />
+                                </div>
+
+                                {/* Category Display */}
+                                <div className="form-category-display">
+                                    <label>Category:</label>
+                                    <span>{selectedCategoryForPopup.name}</span>
+                                </div>
+
+                                {/* Submit/Cancel Buttons */}
+                                <div className="popup-button-group">
+                                    <button type="button" onClick={handleClosePopup} className="popup-cancel-btn" disabled={isSubmittingTransaction}>Cancel</button>
+                                    <button type="submit" className="popup-submit-btn" disabled={isSubmittingTransaction}>
+                                        {isSubmittingTransaction ? 'Adding...' : 'Add Transaction'}
+                                    </button>
+                                </div>
                             </form> {/* End popup-form */}
                         </div> {/* End popup-content-main */}
 
 
-                        {/* Panel 2: Quick Add Buttons (Restructured) */}
-                        <div className="quick-add-panel"> {/* Panel remains the same */}
+                        {/* Panel 2: Quick Add Buttons */}
+                        <div className="quick-add-panel">
                             <h4>Quick Add</h4>
                             {/* Main grid for +/- and Set buttons */}
                             <div className="quick-add-buttons">
-                                <button type="button" onClick={() => handleQuickAdd(1)} disabled={isSubmitting}>+1</button>
-                                <button type="button" onClick={() => handleQuickAdd(5)} disabled={isSubmitting}>+5</button>
-                                <button type="button" onClick={() => handleQuickAdd(10)} disabled={isSubmitting}>+10</button>
-                                <button type="button" onClick={() => handleQuickAdd(20)} disabled={isSubmitting}>+20</button>
-                                <button type="button" onClick={() => handleQuickAdd(-1)} disabled={isSubmitting}>-1</button>
-                                <button type="button" onClick={() => handleQuickAdd(-5)} disabled={isSubmitting}>-5</button>
-                                <button type="button" onClick={() => handleQuickAdd(-10)} disabled={isSubmitting}>-10</button>
-                                <button type="button" onClick={() => handleQuickAdd(-20)} disabled={isSubmitting}>-20</button>
-                                <button type="button" onClick={() => setAmount(formatAmountForDisplay(5))} disabled={isSubmitting}>Set 5</button>
-                                <button type="button" onClick={() => setAmount(formatAmountForDisplay(10))} disabled={isSubmitting}>Set 10</button>
-                                <button type="button" onClick={() => setAmount(formatAmountForDisplay(20))} disabled={isSubmitting}>Set 20</button>
-                                {/* --- NEW Set 50 / Set 100 Buttons --- */}
-                                <button type="button" onClick={() => setAmount(formatAmountForDisplay(50))} disabled={isSubmitting}>Set 50</button>
-                                <button type="button" onClick={() => setAmount(formatAmountForDisplay(100))} disabled={isSubmitting}>Set 100</button>
-                                <button type="button" onClick={() => setAmount(formatAmountForDisplay(500))} disabled={isSubmitting}>Set 500</button>
-                                {/* Add more if needed */}
+                                <button type="button" onClick={() => handleQuickAdd(1)} disabled={isSubmittingTransaction}>+1</button>
+                                <button type="button" onClick={() => handleQuickAdd(5)} disabled={isSubmittingTransaction}>+5</button>
+                                <button type="button" onClick={() => handleQuickAdd(10)} disabled={isSubmittingTransaction}>+10</button>
+                                <button type="button" onClick={() => handleQuickAdd(20)} disabled={isSubmittingTransaction}>+20</button>
+                                <button type="button" onClick={() => handleQuickAdd(-1)} disabled={isSubmittingTransaction}>-1</button>
+                                <button type="button" onClick={() => handleQuickAdd(-5)} disabled={isSubmittingTransaction}>-5</button>
+                                <button type="button" onClick={() => handleQuickAdd(-10)} disabled={isSubmittingTransaction}>-10</button>
+                                <button type="button" onClick={() => handleQuickAdd(-20)} disabled={isSubmittingTransaction}>-20</button>
+                                <button type="button" onClick={() => setAmount(formatAmountForDisplay(5))} disabled={isSubmittingTransaction}>Set 5</button>
+                                <button type="button" onClick={() => setAmount(formatAmountForDisplay(10))} disabled={isSubmittingTransaction}>Set 10</button>
+                                <button type="button" onClick={() => setAmount(formatAmountForDisplay(20))} disabled={isSubmittingTransaction}>Set 20</button>
+                                <button type="button" onClick={() => setAmount(formatAmountForDisplay(50))} disabled={isSubmittingTransaction}>Set 50</button>
+                                <button type="button" onClick={() => setAmount(formatAmountForDisplay(100))} disabled={isSubmittingTransaction}>Set 100</button>
                             </div>
 
-                            {/* --- Clear Button (Positioned Separately) --- */}
-                            {/* Moved outside the main grid div */}
+                            {/* Clear Button (Positioned Separately via CSS) */}
                             <div className="quick-add-clear-container">
                                 <button
                                     type="button"
                                     className="clear-button"
                                     onClick={() => setAmount('0.00')}
-                                    disabled={isSubmitting}
+                                    disabled={isSubmittingTransaction}
                                 >
                                     Clear (0)
                                 </button>
@@ -274,4 +379,5 @@ function DashboardPage() {
         </> // End React Fragment
     );
 } // End of DashboardPage component
-export default DashboardPage;
+
+export default DashboardPage; // Export the component
