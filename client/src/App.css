@@ -84,37 +84,43 @@ nav .nav-link.active {
 }
 
 .category-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* Responsive columns */
-    gap: 20px; /* Space between boxes */
+  display: grid;
+  /* --- INCREASE the minmax minimum width significantly --- */
+  /* Try a value that forces ~6 columns max on wide screens */
+  /* Example: Target minimum width around 260px */
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); /* INCREASED VALUE */
+  gap: 25px; /* Maybe increase gap slightly too */
 }
 
 .category-select-box {
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 20px 15px; /* Adjusted padding */
-    text-align: center;
-    background-color: #fff;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    min-height: 110px; /* Adjusted height */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Subtle shadow */
+  /* Let's also make the box taller to feel more substantial */
+  min-height: 140px; /* INCREASED VALUE */
+
+  /* Keep other styles */
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 20px 15px;
+  text-align: center;
+  background-color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 .category-select-box:hover {
     transform: translateY(-3px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 .category-select-box h3 {
-    margin: 0;
-    font-size: 1.1em; /* Adjusted size */
-    color: #333;
-    font-weight: 600; /* Slightly less bold */
+  /* Maybe increase font size slightly too */
+  font-size: 1.1em; /* INCREASED VALUE */
+  margin: 0;
+  color: #333;
+  font-weight: 600;
 }
-
 
 /* --- Popup/Modal Styles --- */
 .popup-overlay {
