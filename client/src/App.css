@@ -1,6 +1,6 @@
 body {
   margin: 0;
-  font-family: /* ... same font stack ... */;
+  font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f4f6f8; /* Light gray background */
@@ -165,3 +165,105 @@ a {
 }
 
 
+
+/* client/src/App.css */
+/* ... other styles ... */
+
+nav .nav-link { /* Style for NavLink */
+  color: white;
+  margin-left: 20px;
+  text-decoration: none;
+  font-weight: bold;
+  padding: 5px 0;
+  border-bottom: 2px solid transparent;
+  transition: border-bottom 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+nav .nav-link:hover {
+  color: #b3e5fc; /* Lighter blue on hover */
+  border-bottom: 2px solid #61dafb;
+}
+nav .nav-link.active { /* Style for the active NavLink */
+  color: #61dafb; /* React blue */
+  border-bottom: 2px solid #61dafb;
+}
+
+/* Styles for History Page */
+.history-list-section {
+  padding: 0 20px 20px 20px; /* Add some padding */
+  max-width: 900px; /* Optional: constrain width */
+  margin: 0 auto; /* Center if max-width is used */
+}
+
+.history-category-group {
+  margin-bottom: 2em; /* Space between category groups */
+}
+
+.history-category-group h3 {
+  border-bottom: 2px solid #ccc; /* Underline category title */
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+  color: #333; /* Ensure dark text on light background */
+}
+
+.history-category-group ul {
+  list-style: none;
+  padding-left: 10px; /* Slight indent for list */
+  margin: 0;
+}
+
+.history-category-group li {
+  padding: 8px 5px;
+  border-bottom: 1px solid #eee; /* Separator for transactions */
+  display: flex; /* Use flex for better alignment */
+  justify-content: space-between; /* Push button to the right */
+  align-items: center;
+}
+.history-category-group li:last-child {
+    border-bottom: none;
+}
+
+.history-category-group li span,
+.history-category-group li strong {
+   margin-right: 8px; /* Add spacing between elements */
+}
+
+/* Style delete button specifically for history page */
+.delete-button-history {
+    background: none;
+    border: 1px solid #ffaaaa;
+    color: red;
+    padding: 2px 5px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8em;
+    line-height: 1;
+    flex-shrink: 0; /* Prevent button from shrinking */
+}
+.delete-button-history:hover {
+    background-color: #ffeeee;
+}
+
+.no-transactions-msg {
+  font-style: italic;
+  color: #777;
+  padding-left: 10px;
+}
+
+/* Navigation Link Styling */
+nav {
+    margin-left: auto; /* Push nav to the right */
+}
+
+nav a {
+    color: white;
+    margin-left: 20px; /* Space between nav links */
+    text-decoration: none;
+    font-weight: bold;
+    padding: 5px 0;
+    border-bottom: 2px solid transparent; /* For active state */
+    transition: border-bottom 0.2s ease-in-out;
+}
+nav a:hover {
+    border-bottom: 2px solid #61dafb; /* React blue on hover */
+}
+/* Active link styling would require NavLink component from react-router-dom */
