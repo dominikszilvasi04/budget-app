@@ -119,68 +119,108 @@ a {
 
 
 .category-accordion {
-  /* Styles remain the same */
-   border: none;
-   border-radius: 0;
-}
+  display: grid;
+  /* --- Define EXPLICIT number of columns --- */
+  /* Example: 4 equal columns */
+  grid-template-columns: repeat(4, 1fr);
+  /* Example: 3 equal columns */
+  /* grid-template-columns: repeat(3, 1fr); */
 
+  /* Adjust gap */
+  gap: 20px;
+
+  border: none;
+  border-radius: 0;
+}
 .category-box {
-  margin-bottom: 20px; /* Increase space between boxes */
+  /* --- ADJUST THIS VALUE --- */
+  min-height: 180px; /* Example: Try increasing from 150px */
+  /* Or maybe try: */
+  /* min-height: 200px; */
+
+  /* --- Keep other styles --- */
+  height: auto; /* Allow growing */
   border: 1px solid #ddd;
   border-radius: 5px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
-/* No need to target :last-child for border removal anymore */
 
 
 .category-header {
-  padding: 15px 20px; /* Increase padding */
+  /* --- Ensure these properties are set --- */
+  display: block; /* Make sure it behaves like a block */
+  width: 100%; /* Make sure it takes full width */
+  box-sizing: border-box; /* Include padding/border in width/height */
+
+  /* --- Try slightly more padding --- */
+  padding: 15px 20px; /* Was 12px 15px or 15px 20px - ensure sufficient vertical space */
+
+  /* --- Set line-height explicitly (optional, but can help) --- */
+  /* Adjust based on font-size and padding to vertically center text slightly */
+  line-height: 1.4; /* Example */
+
+  /* --- Keep other styles --- */
   margin: 0;
   background-color: #e9ecef;
   color: #333;
   cursor: pointer;
-  /* --- Increase H3 size --- */
-  font-size: 1.25em; /* Roughly 21px */
+  font-size: 1.15em; /* Or your preferred size */
   font-weight: bold;
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
   border-bottom: 1px solid #ddd;
   position: relative;
+  flex-shrink: 0; /* Keep this from parent flex context */
 }
-/* Remove hover if not needed, or keep for interactivity */
-.category-header:hover {
- background-color: #dee2e6;
-}
-/* Ensure arrow span is still styled correctly */
+
+/* Ensure the arrow span doesn't interfere - floating is usually fine */
 .category-header span {
   float: right;
   transition: transform 0.2s;
-  line-height: inherit; /* Match line height */
+  /* Adjust line-height if the header one was changed */
+  line-height: inherit; /* Inherit from header */
+  margin-left: 10px; /* Ensure some space */
 }
+/* Remove hover if not needed, or keep for interactivity */
+.category-header:hover {
+  background-color: #dee2e6;
+}
+/* Ensure arrow span is still styled correctly */
 
 
-.category-box ul {
+.category-box ul,
+.category-box .no-transactions-msg {
+  /* Allow list to grow and potentially scroll if box has fixed height */
+  flex-grow: 1; /* Take remaining space in flex column */
+  overflow-y: auto; /* Add scroll if content exceeds fixed height */
+
+  /* Keep other styles */
   list-style: none;
-  padding: 10px 20px 20px 30px; /* Adjust padding */
+  padding: 10px 15px 15px 25px; /* Adjust padding */
   margin: 0;
   background-color: #ffffff;
   color: #444;
-  /* Font size inherited from body */
+}
+
+.category-box .no-transactions-msg { /* Style for empty message */
+  padding: 15px 20px;
+  font-style: italic;
+  color: #777;
+  flex-grow: 1; /* Allow message to take space */
+  background-color: #ffffff;
+  margin: 0;
 }
 
 .category-box li {
-  padding: 10px 5px; /* Increase padding */
+  /* Styles remain the same */
+  padding: 8px 5px;
   border-bottom: 1px dashed #eee;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* Font size inherited */
 }
-.category-box li:last-child {
-    border-bottom: none;
-}
+.category-box li:last-child { border-bottom: none; }
 /* Adjust delete button size/padding */
 .category-box li button {
     background: none;
