@@ -36,3 +36,88 @@
     transform: rotate(360deg);
   }
 }
+
+
+/* client/src/App.css */
+
+/* ... (Keep existing styles from create-react-app) ... */
+
+.transactions-section {
+  margin-top: 2em;
+  text-align: left; /* Align content left */
+  max-width: 800px; /* Constrain width */
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 20px; /* Add some horizontal padding */
+}
+
+.category-accordion {
+  border: 1px solid #ddd; /* Optional: border around the whole accordion */
+  border-radius: 5px;
+  margin-top: 1em;
+}
+
+.category-box {
+  border-bottom: 1px solid #eee; /* Separator line */
+}
+.category-box:last-child {
+  border-bottom: none; /* No line for the last box */
+}
+
+
+.category-header {
+  padding: 10px 15px;
+  margin: 0;
+  /* Change background to a slightly darker gray or a subtle color */
+  background-color: #e9ecef; /* A common bootstrap light gray */
+  /* Or try a subtle blue: */
+  /* background-color: #f0f4f8; */
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  font-size: 1.1em;
+  position: relative;
+  color: #333; /* Ensure text color is dark */
+}
+
+.category-header:hover {
+  /* Make hover slightly darker than the base */
+  background-color: #dee2e6; /* Corresponds to #e9ecef */
+  /* Or for the subtle blue: */
+  /* background-color: #e1e8f0; */
+}
+
+.category-box ul {
+  list-style: none;
+  padding: 10px 15px 15px 30px;
+  margin: 0;
+  /* Give the list area a slightly off-white or very light gray background */
+  background-color: #fdfdfd; /* Very subtle off-white */
+  /* Or a slightly more noticeable light gray: */
+  /* background-color: #f9f9f9; */
+  color: #444; /* Ensure list item text is dark enough */
+}
+
+.category-box li {
+  padding: 5px 0;
+  border-bottom: 1px dashed #eee; /* Light separator for list items */
+}
+.category-box li:last-child {
+  border-bottom: none;
+}
+
+/* Style for the delete button for better visibility */
+.category-box li button {
+    background: none;
+    border: 1px solid #ffaaaa;
+    color: red;
+    padding: 2px 5px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8em;
+    line-height: 1;
+    float: right; /* Position button to the right */
+    margin-left: 10px;
+}
+.category-box li button:hover {
+    background-color: #ffeeee;
+}

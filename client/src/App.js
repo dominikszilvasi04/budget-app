@@ -34,6 +34,8 @@ function App() {
   const [loadingTransactions, setLoadingTransactions] = useState(true); // Loading status for transactions
   const [errorTransactions, setErrorTransactions] = useState(null);   // Error status for transactions
 
+  const [expandedCategoryName, setExpandedCategoryName] = useState(null); // null = none expanded
+
 
   // --- Fetch Categories Effect --- (Keep as is, including default category logic)
   useEffect(() => {
@@ -180,6 +182,15 @@ function App() {
     }
   };
 
+  const handleCategoryClick = (categoryName) => {
+    // If the clicked category is already expanded, collapse it (set to null)
+    // Otherwise, expand the clicked category
+    setExpandedCategoryName(prevExpanded =>
+        prevExpanded === categoryName ? null : categoryName
+    );
+  };
+
+
 
   // --- Grouping Transactions Logic (using useMemo for optimization) ---
   const groupedTransactions = useMemo(() => {
@@ -310,7 +321,7 @@ function App() {
 
 
         {/* --- Transactions List Section --- */}
-        <section>
+        <section className="transactions-section"> {/* Added class for potential styling */}
           <h2>Transactions</h2>
           {loadingTransactions && <p>Loading transactions...</p>}
           {errorTransactions && <p style={{ color: 'red' }}>Error: {errorTransactions}</p>}
@@ -319,38 +330,51 @@ function App() {
             transactions.length === 0 ? (
               <p>No transactions recorded yet.</p>
             ) : (
-              Object.entries(groupedTransactions).map(([categoryName, transactionsInCategory]) => (
-                <div key={categoryName} className="category-group">
-                  <h3>{categoryName}</h3>
-                  {transactionsInCategory.length > 0 ? (
-                    <ul>
-                      {transactionsInCategory.map(t => (
-                        <li key={t.id}>
-                          <span>{t.transaction_date}</span> - {' '}
-                          <span>{t.description || <i>(No description)</i>}</span>:{' '}
-                          <strong>{formatCurrency(t.amount)}</strong>
-                          {/* --- Add Delete Button --- */}
-                          <button
-                            onClick={() => handleDeleteTransaction(t.id)} // Call handler with transaction ID
-                            style={{ marginLeft: '10px', color: 'red', cursor: 'pointer' }} // Basic styling
-                            title="Delete Transaction" // Tooltip
-                          >
-                            X
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                     <p>No transactions in this category.</p>
-                  )}
-                </div>
-              ))
+              // Iterate over the grouped transactions object
+              <div className="category-accordion"> {/* Wrapper for all category boxes */}
+                {Object.entries(groupedTransactions).map(([categoryName, transactionsInCategory]) => (
+                  <div key={categoryName} className="category-box">
+                    {/* Clickable Category Header */}
+                    <h3
+                      onClick={() => handleCategoryClick(categoryName)} // Call handler on click
+                      className="category-header" // Add class for styling
+                      style={{ cursor: 'pointer' }} // Indicate it's clickable
+                    >
+                      {categoryName}
+                      {/* Optional: Add an indicator arrow */}
+                      <span style={{ float: 'right', transition: 'transform 0.2s' , transform: expandedCategoryName === categoryName ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
+                    </h3>
+
+                    {/* Conditionally Render Transaction List */}
+                    {expandedCategoryName === categoryName && ( // Only render if this category is expanded
+                      transactionsInCategory.length > 0 ? (
+                        <ul>
+                          {transactionsInCategory.map(t => (
+                            <li key={t.id}>
+                              <span>{t.transaction_date}</span> - {' '}
+                              <span>{t.description || <i>(No description)</i>}</span>:{' '}
+                              <strong>{formatCurrency(t.amount)}</strong>
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => handleDeleteTransaction(t.id)}
+                                style={{ marginLeft: '10px', color: 'red', cursor: 'pointer' }}
+                                title="Delete Transaction"
+                              >
+                                X
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p style={{ paddingLeft: '20px', fontStyle: 'italic' }}>No transactions in this category.</p>
+                      )
+                    )}
+                  </div> // End category-box
+                ))}
+              </div> // End category-accordion
             )
           )}
         </section>
-
-        {/* --- Display Categories List (Optional: Keep or Remove) --- */}
-        {/* ... */}
 
       </header>
     </div>
