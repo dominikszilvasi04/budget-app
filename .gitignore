@@ -1,0 +1,28 @@
+# .gitignore
+
+# Dependencies / Build Artifacts
+node_modules/
+npm-debug.log*
+yarn-error.log
+
+# Build directories
+build/
+dist/
+.cache/
+
+# Environment variables file (VERY IMPORTANT for security)
+.env
+*.env
+.env.*
+!.env.example
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor directories
+.vscode/
+.idea/
+
+# Log files
+*.log
