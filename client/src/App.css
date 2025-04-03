@@ -63,7 +63,7 @@ nav .nav-link.active {
 /* --- Main Layout (Single Column - Dashboard) --- */
 .main-layout-single-column {
   padding: 0 30px 30px 30px;
-  /* Can add max-width and margin:auto here if desired */
+  /* Optional: max-width/margin */
   /* max-width: 1400px; */
   /* margin: 0 auto; */
 }
@@ -85,18 +85,11 @@ nav .nav-link.active {
 
 .category-grid {
   display: grid;
-  /* --- INCREASE the minmax minimum width significantly --- */
-  /* Try a value that forces ~6 columns max on wide screens */
-  /* Example: Target minimum width around 260px */
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); /* INCREASED VALUE */
-  gap: 25px; /* Maybe increase gap slightly too */
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); /* Responsive, max ~6 columns */
+  gap: 25px;
 }
 
 .category-select-box {
-  /* Let's also make the box taller to feel more substantial */
-  min-height: 140px; /* INCREASED VALUE */
-
-  /* Keep other styles */
   border: 1px solid #ccc;
   border-radius: 8px;
   padding: 20px 15px;
@@ -104,310 +97,258 @@ nav .nav-link.active {
   background-color: #fff;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 140px; /* Taller box */
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  position: relative; /* Positioning context */
 }
 .category-select-box:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 .category-select-box h3 {
-  /* Maybe increase font size slightly too */
-  font-size: 1.1em; /* INCREASED VALUE */
+  font-size: 1.2em; /* Larger font */
   margin: 0;
   color: #333;
   font-weight: 600;
+  pointer-events: none;
 }
 
-/* --- Popup/Modal Styles --- */
+/* Options Button on Category Box */
+.category-options-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  padding: 5px;
+  cursor: pointer;
+  font-size: 1.3em;
+  line-height: 1;
+  color: #6c757d;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, color 0.2s ease;
+  z-index: 2;
+}
+.category-options-btn:hover {
+  opacity: 1;
+  color: #343a40;
+}
+.category-options-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* --- Add Category Form Area --- */
+.add-category-container {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  max-width: 500px;
+}
+.add-category-form {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 5px;
+}
+.add-category-form input[type="text"] {
+  flex-grow: 1; padding: 10px 12px; font-size: 1em; border: 1px solid #ccc;
+  border-radius: 4px; box-sizing: border-box;
+}
+.add-category-form input[type="text"]:focus {
+  outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+.add-category-form button[type="submit"] {
+  padding: 10px 15px; font-size: 1em; background-color: #007bff; color: white;
+  border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; transition: background-color 0.2s ease;
+}
+.add-category-form button[type="submit"]:hover { background-color: #0056b3; }
+.add-category-form button[type="submit"]:disabled { background-color: #cccccc; cursor: not-allowed; }
+
+.category-add-status-container { min-height: 1.5em; text-align: left; }
+.category-add-status { display: inline-block; padding: 2px 0; font-size: 0.9em; font-weight: bold; }
+.category-add-status.error { color: #dc3545; }
+.category-add-status.success { color: #28a745; }
+
+
+/* --- Transaction Popup/Modal Styles --- */
 .popup-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    padding: 20px;
-    box-sizing: border-box;
+    display: flex; justify-content: center; align-items: center;
+    z-index: 1000; padding: 20px; box-sizing: border-box;
 }
 
-/* Container for the two panels */
+/* Transaction Popup Container */
 .popup-container {
-    display: flex;
-    background-color: #f8f9fa; /* Light background for the container */
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    width: auto; /* Let content determine width */
-    max-width: 90%; /* Limit overall width */
-    max-height: 90vh; /* Limit height */
-    overflow: hidden; /* Hide overflow for the container */
-    z-index: 1001;
+    display: flex; background-color: #f8f9fa; border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2); width: auto; max-width: 90%;
+    max-height: 90vh; overflow: hidden; z-index: 1001;
 }
-
-/* Panel 1: Main Form Content */
+/* Transaction Popup Content Main Panel */
 .popup-content-main {
-    padding: 30px 40px;
-    flex-grow: 1;
-    min-width: 350px;
-    max-width: 550px;
-    overflow-y: auto; /* Allow scrolling for form */
-    background-color: #fff;
-    border-right: 1px solid #dee2e6; /* Separator */
+    padding: 30px 40px; flex-grow: 1; min-width: 350px; max-width: 550px;
+    overflow-y: auto; background-color: #fff; border-right: 1px solid #dee2e6;
 }
 .popup-content-main h2 {
-    margin-top: 0;
-    color: #333;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-    margin-bottom: 25px;
-    font-size: 1.4em;
+    margin-top: 0; color: #333; border-bottom: 1px solid #eee;
+    padding-bottom: 10px; margin-bottom: 25px; font-size: 1.4em;
 }
-
-/* Styles for Form INSIDE Main Panel */
-.popup-form > div:not(.popup-button-group) { /* Exclude button group from bottom margin */
-    margin-bottom: 20px;
-}
-.popup-form label {
-    display: block; margin-bottom: 8px; font-weight: bold; font-size: 1.05em;
-}
-
+/* Transaction Popup Form Styles */
+.popup-form > div:not(.popup-button-group) { margin-bottom: 20px; }
+.popup-form label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 1.05em; }
 .popup-form .input-amount {
-    width: 100%;
-    padding: 15px; box-sizing: border-box; border: 1px solid #aaa; border-radius: 4px;
+    width: 100%; padding: 15px; box-sizing: border-box; border: 1px solid #aaa; border-radius: 4px;
     background-color: #fff; color: #333; font-size: 1.8em; font-weight: bold; text-align: right;
 }
-.popup-form .input-amount::placeholder {
-    font-weight: normal; font-size: 0.7em; color: #999; text-align: left;
-}
+.popup-form .input-amount::placeholder { font-weight: normal; font-size: 0.7em; color: #999; text-align: left; }
 .popup-form .input-description {
     width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ccc;
     border-radius: 4px; background-color: #fff; color: #333; font-size: 1em;
 }
-.form-category-display {
-    margin-bottom: 20px;
-}
+.form-category-display { margin-bottom: 20px; }
 .form-category-display label { /* Uses standard label style */ }
 .form-category-display span {
     display: block; padding: 12px; background-color: #f8f9fa;
     border: 1px solid #e9ecef; border-radius: 4px; font-size: 1em; color: #555;
 }
-.popup-button-group {
-    margin-top: 30px; display: flex; justify-content: flex-end; gap: 10px;
-}
-.popup-cancel-btn, .popup-submit-btn {
-    padding: 10px 20px; font-size: 1em; border: none; border-radius: 4px; cursor: pointer;
-}
+.popup-button-group { margin-top: 30px; display: flex; justify-content: flex-end; gap: 10px; }
+.popup-cancel-btn, .popup-submit-btn { padding: 10px 20px; font-size: 1em; border: none; border-radius: 4px; cursor: pointer; }
 .popup-cancel-btn { background-color: #6c757d; color: white; }
 .popup-cancel-btn:hover { background-color: #5a6268; }
 .popup-submit-btn { background-color: #28a745; color: white; }
 .popup-submit-btn:hover { background-color: #218838; }
 .popup-submit-btn:disabled, .popup-cancel-btn:disabled { background-color: #cccccc; cursor: not-allowed; }
 
-
-/* Panel 2: Quick Add Buttons */
+/* Transaction Popup Quick Add Panel */
 .quick-add-panel {
-  padding: 20px;
-  /* --- INCREASE THIS VALUE --- */
-  width: 280px; /* Was 200px, adjust as needed */
-  /* --- END INCREASE --- */
-  flex-shrink: 0;
-  background-color: #f8f9fa;
-  overflow-y: auto;
-  box-sizing: border-box;
-  border-left: 1px solid #dee2e6;
-  position: relative;
-  padding-bottom: 60px; /* Keep padding for clear button */
+    padding: 20px; width: 230px; flex-shrink: 0; background-color: #f8f9fa;
+    overflow-y: auto; box-sizing: border-box; border-left: 1px solid #dee2e6;
+    position: relative; padding-bottom: 60px;
 }
-.quick-add-panel h4 {
-  margin-top: 0; margin-bottom: 15px; text-align: center; color: #495057; font-size: 1.1em;
+.quick-add-panel h4 { margin-top: 0; margin-bottom: 15px; text-align: center; color: #495057; font-size: 1.1em; }
+.quick-add-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.quick-add-buttons button {
+    padding: 8px 5px; font-size: 0.95em; font-weight: 500; border: 1px solid #ced4da;
+    background-color: #fff; color: #495057; border-radius: 4px; cursor: pointer;
+    text-align: center; transition: background-color 0.2s ease, border-color 0.2s ease;
+    word-break: keep-all; white-space: nowrap;
+}
+.quick-add-buttons button:hover { background-color: #e9ecef; border-color: #adb5bd; }
+.quick-add-buttons button:disabled { background-color: #e9ecef; color: #adb5bd; cursor: not-allowed; border-color: #dee2e6; }
+.quick-add-clear-container { position: absolute; bottom: 15px; right: 15px; }
+.clear-button {
+    padding: 8px 12px; font-size: 0.9em; font-weight: bold; border: 1px solid #adb5bd;
+    background-color: #f1f3f5; color: #495057; border-radius: 4px; cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.clear-button:hover { background-color: #dee2e6; }
+.clear-button:disabled { background-color: #e9ecef; color: #adb5bd; cursor: not-allowed; border-color: #dee2e6; }
+
+
+/* --- Category Options Popup/Modal Styles --- */
+.options-popup-content {
+    background-color: #fff;
+    padding: 25px 30px; /* Adjusted padding */
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    width: 90%; /* Responsive */
+    max-width: 400px; /* Max width */
+    z-index: 1001;
+    position: relative;
+    text-align: left;
+    border: 1px solid #dee2e6; /* Optional subtle border */
+}
+.options-popup-content h3 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    font-size: 1.3em; /* Adjusted size */
+    font-weight: 600;
+}
+.options-error {
+    color: #dc3545;
+    font-size: 0.9em;
+    margin-bottom: 15px;
+    margin-top: -10px;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    padding: 8px 12px;
 }
 
-/* Button layout grid - might adjust columns if needed, but 3 should still fit */
-.quick-add-buttons {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr); /* Keep 3 columns */
-  gap: 8px;
+/* Rename Form Styles within Options Popup */
+.rename-form { margin-top: 5px; }
+.rename-form label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 1.0em; }
+.rename-form input[type="text"] {
+    width: 100%; padding: 12px; font-size: 1em; border: 1px solid #ccc;
+    border-radius: 4px; box-sizing: border-box; margin-bottom: 15px;
+    background-color: #fff; color: #333;
 }
-.quick-add-buttons button {
-  padding: 8px 5px; /* Adjust padding */
-  font-size: 0.95em; /* Adjust font size */
-  font-weight: 500;
-  border: 1px solid #ced4da;
-  background-color: #fff;
-  color: #495057;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: center;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-  word-break: keep-all; /* Prevent text wrapping */
-  white-space: nowrap;
+.rename-form input[type="text"]:focus {
+     outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
-.quick-add-buttons button:hover {
-  background-color: #e9ecef; border-color: #adb5bd;
+
+/* Options Button Group Styling */
+.options-button-group {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;
 }
-.quick-add-buttons button:disabled {
-  background-color: #e9ecef; color: #adb5bd; cursor: not-allowed; border-color: #dee2e6;
+.options-button-group button {
+    padding: 10px 20px; /* Match main popup button padding */
+    font-size: 1em; /* Match main popup button font size */
+    border-radius: 4px; cursor: pointer; border: none; transition: background-color 0.2s ease;
 }
-.quick-add-buttons .clear-button { /* Optional: style clear differently */
-    /* background-color: #f1f3f5; */
+/* Cancel Button Style */
+.options-button-group button:not([type="submit"]):not(.delete-button) {
+    background-color: #6c757d; color: white;
 }
-.quick-add-clear-container {
-  position: absolute; /* Position relative to panel */
-  bottom: 15px; /* Distance from bottom */
-  right: 15px; /* Distance from right */
+.options-button-group button:not([type="submit"]):not(.delete-button):hover {
+    background-color: #5a6268;
 }
-.clear-button { /* Style the clear button itself */
-  padding: 8px 12px; /* Specific padding */
-  font-size: 0.9em;
-  font-weight: bold;
-  border: 1px solid #adb5bd; /* Subtle border */
-  background-color: #f1f3f5; /* Slightly different background */
-  color: #495057;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+/* Save (Submit) Button Style */
+.options-button-group button[type="submit"] {
+     background-color: #28a745; color: white; /* Green like main submit */
 }
-.clear-button:hover {
-  background-color: #dee2e6;
+.options-button-group button[type="submit"]:hover {
+     background-color: #218838;
 }
-.clear-button:disabled {
-   background-color: #e9ecef; color: #adb5bd; cursor: not-allowed; border-color: #dee2e6;
+/* Delete Button Style */
+.options-button-group .delete-button {
+    background-color: #dc3545; color: white; margin-right: auto; /* Push left */
+}
+.options-button-group .delete-button:hover {
+    background-color: #c82333;
+}
+/* Disabled state */
+.options-button-group button:disabled {
+    background-color: #cccccc; cursor: not-allowed; opacity: 0.65; color: #666;
 }
 
 
 /* --- History Page Styles --- */
 .history-list-section {
-  padding: 0 30px 30px 30px;
-  max-width: 900px;
-  margin: 0 auto;
-  text-align: left;
+  padding: 0 30px 30px 30px; max-width: 900px; margin: 0 auto; text-align: left;
 }
 /* H2 already styled above */
-.history-category-group {
-  margin-bottom: 2em;
-}
+.history-category-group { margin-bottom: 2em; }
 .history-category-group h3 {
-  border-bottom: 2px solid #ccc;
-  padding-bottom: 5px;
-  margin-bottom: 10px;
-  color: #333;
-  font-size: 1.25em;
+  border-bottom: 2px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; color: #333; font-size: 1.25em;
 }
-.history-category-group ul {
-  list-style: none;
-  padding-left: 10px;
-  margin: 0;
-}
+.history-category-group ul { list-style: none; padding-left: 10px; margin: 0; }
 .history-category-group li {
-  padding: 8px 5px;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  padding: 8px 5px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;
 }
-.history-category-group li:last-child {
-    border-bottom: none;
-}
-.history-category-group li span,
-.history-category-group li strong {
-   margin-right: 8px;
-}
+.history-category-group li:last-child { border-bottom: none; }
+.history-category-group li span, .history-category-group li strong { margin-right: 8px; }
 .delete-button-history {
-    background: none;
-    border: 1px solid #ffaaaa;
-    color: red;
-    padding: 4px 8px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.9em;
-    line-height: 1;
-    flex-shrink: 0;
-    margin-left: 10px;
+    background: none; border: 1px solid #ffaaaa; color: red; padding: 4px 8px; border-radius: 3px;
+    cursor: pointer; font-size: 0.9em; line-height: 1; flex-shrink: 0; margin-left: 10px;
 }
-.delete-button-history:hover {
-    background-color: #ffeeee;
-}
-.no-transactions-msg {
-  font-style: italic;
-  color: #777;
-  padding-left: 10px;
-}
-
-/* --- REMOVED / Unused Styles --- */
-/* Ensure any styles for .category-box, .category-header from the accordion are gone */
-/* Ensure styles for .amount-input-container are gone */
-
-/* --- NEW Styles for Add Category Form --- */
-
-.add-category-container {
-  margin-top: 30px; /* Space above the whole add area */
-  padding-top: 20px; /* Padding above the form elements */
-  border-top: 1px solid #eee; /* Separator line */
-  max-width: 500px; /* Limit width of the add area */
-}
-.add-category-form {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start; /* Align items to top */
-  margin-bottom: 5px; /* Small space between form and status message */
-}
-
-.add-category-form input[type="text"] {
-  flex-grow: 1;
-  padding: 10px 12px;
-  font-size: 1em;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-.add-category-form input[type="text"]:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-.add-category-form button[type="submit"] {
-  padding: 10px 15px;
-  font-size: 1em;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background-color 0.2s ease;
-}
-
-.add-category-form button[type="submit"]:hover {
-  background-color: #0056b3;
-}
-.add-category-form button[type="submit"]:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-.category-add-status-container {
-  min-height: 1.5em; /* Reserve space even when empty */
-  text-align: left; /* Align status messages left */
-   /* Adjust alignment if needed based on form width/position */
-}
-.category-add-status {
-  /* Remove margin-left from previous inline style */
-  /* margin-left: 15px; */
-  display: inline-block; /* Allows margin/padding */
-  padding: 2px 0; /* Small vertical padding */
-  font-size: 0.9em;
-  font-weight: bold;
-}
-.category-add-status.error {
-  color: #dc3545; /* Bootstrap red */
-}
-.category-add-status.success {
-  color: #28a745; /* Bootstrap green */
-}
+.delete-button-history:hover { background-color: #ffeeee; }
+.no-transactions-msg { font-style: italic; color: #777; padding-left: 10px; }
