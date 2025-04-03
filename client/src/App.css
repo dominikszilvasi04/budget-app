@@ -151,33 +151,79 @@ nav .nav-link.active {
 
 /* --- Styles for Form INSIDE Popup --- */
 .popup-form > div {
-    margin-bottom: 20px; /* Slightly increase space between rows */
+  margin-bottom: 20px;
 }
 .popup-form label {
   display: block;
-  margin-bottom: 8px; /* Increase space */
+  margin-bottom: 8px;
   font-weight: bold;
   font-size: 1.05em;
 }
+
+/* --- NEW: Amount Input Group --- */
+.amount-input-group {
+  /* Inherits margin-bottom from .popup-form > div */
+}
+.amount-input-container {
+  display: flex; /* Arrange input and buttons horizontally */
+  align-items: stretch; /* Make items same height */
+  gap: 5px; /* Small gap between input and button group */
+}
 /* --- Style the Amount Input --- */
+/* Style the Amount Input */
 .popup-form .input-amount {
-  width: 100%;
-  padding: 15px; /* More padding */
+  /* Allow input to grow but keep button group fixed width */
+  flex-grow: 1;
+
+  /* Keep existing large styles */
+  padding: 15px;
   box-sizing: border-box;
-  border: 1px solid #aaa; /* Slightly darker border? */
+  border: 1px solid #aaa;
   border-radius: 4px;
   background-color: #fff;
   color: #333;
-  /* --- Make it bigger! --- */
-  font-size: 1.8em; /* Significantly larger font */
-  font-weight: bold; /* Make it bold */
-  text-align: right; /* Align currency to the right */
+  font-size: 1.8em;
+  font-weight: bold;
+  text-align: right;
+  /* Remove width: 100% as flex handles sizing */
+  /* width: 100%; */
 }
-/* Style placeholder specifically if needed */
 .popup-form .input-amount::placeholder {
   font-weight: normal;
-  font-size: 0.8em; /* Make placeholder smaller relative to input */
+  font-size: 0.7em;
   color: #999;
+  text-align: left;
+}
+
+/* --- NEW: Quick Add Buttons Styling --- */
+.quick-add-buttons {
+  display: grid; /* Use grid for button layout */
+  grid-template-columns: repeat(3, 1fr); /* Example: 3 buttons per row */
+  gap: 5px; /* Space between buttons */
+  flex-shrink: 0; /* Don't let button container shrink */
+}
+.quick-add-buttons button {
+  padding: 5px; /* Adjust padding */
+  font-size: 0.9em; /* Smaller font for buttons */
+  font-weight: bold;
+  border: 1px solid #ccc;
+  background-color: #f8f9fa;
+  color: #333;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  min-width: 40px; /* Ensure minimum width */
+  transition: background-color 0.2s ease;
+}
+.quick-add-buttons button:hover {
+  background-color: #e9ecef;
+  border-color: #bbb;
+}
+.quick-add-buttons button:disabled {
+  background-color: #e9ecef;
+  color: #aaa;
+  cursor: not-allowed;
+  border-color: #ddd;
 }
 
 
