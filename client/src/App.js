@@ -246,172 +246,175 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Budget Tracker</h1>
-
-        {/* --- Transaction Form Section --- */}
-        <section>
-              <h2>Add New Transaction</h2>
-              {/* Display Submission Status Messages */}
-              {submitError && <p style={{ color: 'red' }}>Error: {submitError}</p>}
-              {submitSuccess && <p style={{ color: 'green' }}>{submitSuccess}</p>}
-
-              {/* The Form */}
-              <form onSubmit={handleTransactionSubmit}>
-                {/* Description Input */}
-                <div>
-                  <label htmlFor="description">Description:</label>
-                  <input
-                    type="text"
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Optional description"
-                    disabled={isSubmitting}
-                  />
-                </div>
-                {/* Amount Input */}
-                <div>
-                  <label htmlFor="amount">Amount:</label>
-                  <input
-                    type="number"
-                    id="amount"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="e.g., 25.50"
-                    step="0.01"
-                    required
-                    disabled={isSubmitting}
-                  />
-                </div>
-                {/* Date Input */}
-                <div>
-                  <label htmlFor="transactionDate">Date:</label>
-                  <input
-                    type="date"
-                    id="transactionDate"
-                    value={transactionDate}
-                    onChange={(e) => setTransactionDate(e.target.value)}
-                    required
-                    disabled={isSubmitting}
-                  />
-                </div>
-                {/* Category Select */}
-                <div>
-                  <label htmlFor="category">Category:</label>
-                  <select
-                    id="category"
-                    value={selectedCategoryId}
-                    onChange={(e) => setSelectedCategoryId(e.target.value)}
-                    required
-                    disabled={isSubmitting || categories.length === 0}
-                  >
-                    <option value="" disabled>-- Select a Category --</option>
-                    {categories.map(category => (
-                      <option key={category.id} value={category.id.toString()}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {/* Submit Button */}
-                <button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Adding...' : 'Add Transaction'}
-                </button>
-              </form>
-            </section> 
-
-
-        {/* --- Transactions List Section --- */}
-                {/* --- Transactions List Section (Modified to show ALL categories) --- */}
-                <section className="transactions-section">
-          <h2>Transactions</h2>
-          {/* Loading/Error for transactions remains the same */}
-          {loadingTransactions && <p>Loading transactions...</p>}
-          {errorTransactions && <p style={{ color: 'red' }}>Error: {errorTransactions}</p>}
-
-          {!loadingTransactions && !errorTransactions && (
-            // Use the categories array to determine which boxes to show
-            categories.length === 0 ? (
-               // This case is less likely now if categories load first, but good fallback
-               <p>No categories found. Add some categories first!</p>
-            ) : (
-              <div className="category-accordion">
-                {/* Iterate over the main categories list */}
-                {categories.map(category => {
-                  // Find the transactions for this specific category from our grouped data
-                  // Use category.name as the key. Handle potential undefined if no transactions exist.
-                  const transactionsInCategory = groupedTransactions[category.name] || []; // Default to empty array
-
-                  return (
-                    <div key={category.id} className="category-box"> {/* Use category.id for the key */}
-                      {/* Clickable Category Header */}
-                      <h3
-                        onClick={() => handleCategoryClick(category.name)} // Use category.name for click handler
-                        className="category-header"
-                        style={{ cursor: 'pointer' }}
-                      >
-                        {category.name} {/* Display category name */}
-                        {/* Optional: Add indicator arrow */}
-                        <span style={{ float: 'right', transition: 'transform 0.2s' , transform: expandedCategoryName === category.name ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
-                      </h3>
-
-                      {/* Conditionally Render Transaction List */}
-                      {/* Check if THIS category is the expanded one */}
-                      {expandedCategoryName === category.name && (
-                        // Now check if there are transactions *within this specific category*
-                        transactionsInCategory.length > 0 ? (
-                          <ul>
-                            {transactionsInCategory.map(t => (
-                              <li key={t.id}>
-                                <span>{t.transaction_date}</span> - {' '}
-                                <span>{t.description || <i>(No description)</i>}</span>:{' '}
-                                <strong>{formatCurrency(t.amount)}</strong>
-                                {/* Delete Button */}
-                                <button
-                                  onClick={() => handleDeleteTransaction(t.id)}
-                                  style={{ marginLeft: '10px', color: 'red', cursor: 'pointer' }}
-                                  title="Delete Transaction"
-                                >
-                                  X
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          // Display message if category is expanded but has no transactions
-                          <p style={{ paddingLeft: '20px', fontStyle: 'italic' }}>No transactions in this category yet.</p>
-                        )
-                      )}
-                    </div> // End category-box
-                  );
-                })}
-                {/* Handle the 'Uncategorized' group separately if necessary */}
-                {groupedTransactions['Uncategorized'] && groupedTransactions['Uncategorized'].length > 0 && (
-                     <div key="uncategorized" className="category-box">
-                         <h3 onClick={() => handleCategoryClick('Uncategorized')} className="category-header" style={{ cursor: 'pointer' }}>
-                             Uncategorized
-                             <span style={{ float: 'right', transition: 'transform 0.2s' , transform: expandedCategoryName === 'Uncategorized' ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
-                         </h3>
-                         {expandedCategoryName === 'Uncategorized' && (
-                             <ul>
-                                 {groupedTransactions['Uncategorized'].map(t => (
-                                     <li key={t.id}>
-                                         {/* ... transaction details + delete button ... */}
-                                         <span>{t.transaction_date}</span> - {' '}
-                                         <span>{t.description || <i>(No description)</i>}</span>:{' '}
-                                         <strong>{formatCurrency(t.amount)}</strong>
-                                         <button onClick={() => handleDeleteTransaction(t.id)} style={{ marginLeft: '10px', color: 'red', cursor: 'pointer' }} title="Delete Transaction">X</button>
-                                     </li>
-                                 ))}
-                             </ul>
-                         )}
-                     </div>
-                )}
-              </div> // End category-accordion
-            )
-          )}
-        </section>
-
       </header>
+
+        <div className="main-layout">
+
+          {/* --- Transaction Form Section --- */}
+          <section>
+                <h2>Add New Transaction</h2>
+                {/* Display Submission Status Messages */}
+                {submitError && <p style={{ color: 'red' }}>Error: {submitError}</p>}
+                {submitSuccess && <p style={{ color: 'green' }}>{submitSuccess}</p>}
+
+                {/* The Form */}
+                <form onSubmit={handleTransactionSubmit}>
+                  {/* Description Input */}
+                  <div>
+                    <label htmlFor="description">Description:</label>
+                    <input
+                      type="text"
+                      id="description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Optional description"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  {/* Amount Input */}
+                  <div>
+                    <label htmlFor="amount">Amount:</label>
+                    <input
+                      type="number"
+                      id="amount"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="e.g., 25.50"
+                      step="0.01"
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  {/* Date Input */}
+                  <div>
+                    <label htmlFor="transactionDate">Date:</label>
+                    <input
+                      type="date"
+                      id="transactionDate"
+                      value={transactionDate}
+                      onChange={(e) => setTransactionDate(e.target.value)}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  {/* Category Select */}
+                  <div>
+                    <label htmlFor="category">Category:</label>
+                    <select
+                      id="category"
+                      value={selectedCategoryId}
+                      onChange={(e) => setSelectedCategoryId(e.target.value)}
+                      required
+                      disabled={isSubmitting || categories.length === 0}
+                    >
+                      <option value="" disabled>-- Select a Category --</option>
+                      {categories.map(category => (
+                        <option key={category.id} value={category.id.toString()}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Submit Button */}
+                  <button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Adding...' : 'Add Transaction'}
+                  </button>
+                </form>
+              </section> 
+
+
+          {/* --- Transactions List Section --- */}
+                  {/* --- Transactions List Section (Modified to show ALL categories) --- */}
+                  <section className="transactions-section">
+            <h2>Transactions</h2>
+            {/* Loading/Error for transactions remains the same */}
+            {loadingTransactions && <p>Loading transactions...</p>}
+            {errorTransactions && <p style={{ color: 'red' }}>Error: {errorTransactions}</p>}
+
+            {!loadingTransactions && !errorTransactions && (
+              // Use the categories array to determine which boxes to show
+              categories.length === 0 ? (
+                // This case is less likely now if categories load first, but good fallback
+                <p>No categories found. Add some categories first!</p>
+              ) : (
+                <div className="category-accordion">
+                  {/* Iterate over the main categories list */}
+                  {categories.map(category => {
+                    // Find the transactions for this specific category from our grouped data
+                    // Use category.name as the key. Handle potential undefined if no transactions exist.
+                    const transactionsInCategory = groupedTransactions[category.name] || []; // Default to empty array
+
+                    return (
+                      <div key={category.id} className="category-box"> {/* Use category.id for the key */}
+                        {/* Clickable Category Header */}
+                        <h3
+                          onClick={() => handleCategoryClick(category.name)} // Use category.name for click handler
+                          className="category-header"
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {category.name} {/* Display category name */}
+                          {/* Optional: Add indicator arrow */}
+                          <span style={{ float: 'right', transition: 'transform 0.2s' , transform: expandedCategoryName === category.name ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
+                        </h3>
+
+                        {/* Conditionally Render Transaction List */}
+                        {/* Check if THIS category is the expanded one */}
+                        {expandedCategoryName === category.name && (
+                          // Now check if there are transactions *within this specific category*
+                          transactionsInCategory.length > 0 ? (
+                            <ul>
+                              {transactionsInCategory.map(t => (
+                                <li key={t.id}>
+                                  <span>{t.transaction_date}</span> - {' '}
+                                  <span>{t.description || <i>(No description)</i>}</span>:{' '}
+                                  <strong>{formatCurrency(t.amount)}</strong>
+                                  {/* Delete Button */}
+                                  <button
+                                    onClick={() => handleDeleteTransaction(t.id)}
+                                    style={{ marginLeft: '10px', color: 'red', cursor: 'pointer' }}
+                                    title="Delete Transaction"
+                                  >
+                                    X
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            // Display message if category is expanded but has no transactions
+                            <p style={{ paddingLeft: '20px', fontStyle: 'italic' }}>No transactions in this category yet.</p>
+                          )
+                        )}
+                      </div> // End category-box
+                    );
+                  })}
+                  {/* Handle the 'Uncategorized' group separately if necessary */}
+                  {groupedTransactions['Uncategorized'] && groupedTransactions['Uncategorized'].length > 0 && (
+                      <div key="uncategorized" className="category-box">
+                          <h3 onClick={() => handleCategoryClick('Uncategorized')} className="category-header" style={{ cursor: 'pointer' }}>
+                              Uncategorized
+                              <span style={{ float: 'right', transition: 'transform 0.2s' , transform: expandedCategoryName === 'Uncategorized' ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
+                          </h3>
+                          {expandedCategoryName === 'Uncategorized' && (
+                              <ul>
+                                  {groupedTransactions['Uncategorized'].map(t => (
+                                      <li key={t.id}>
+                                          {/* ... transaction details + delete button ... */}
+                                          <span>{t.transaction_date}</span> - {' '}
+                                          <span>{t.description || <i>(No description)</i>}</span>:{' '}
+                                          <strong>{formatCurrency(t.amount)}</strong>
+                                          <button onClick={() => handleDeleteTransaction(t.id)} style={{ marginLeft: '10px', color: 'red', cursor: 'pointer' }} title="Delete Transaction">X</button>
+                                      </li>
+                                  ))}
+                              </ul>
+                          )}
+                      </div>
+                  )}
+                </div> // End category-accordion
+              )
+            )}
+          </section>
+
+        </div>
     </div>
   );
 }

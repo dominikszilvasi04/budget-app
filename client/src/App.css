@@ -1,3 +1,14 @@
+body {
+  margin: 0;
+  font-family: /* ... same font stack ... */;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f4f6f8; /* Light gray background */
+  color: #333; /* Default dark text color */
+}
+a {
+  color: #007bff; /* Standard blue link color */
+}
 .App {
   text-align: center;
 }
@@ -6,77 +17,109 @@
   height: 40vmin;
   pointer-events: none;
 }
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
 .App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  min-height: auto;
+  display: block;
+  background-color: #282c34; /* Keep header dark */
+  padding: 15px 30px;
+  color: white; /* Header text white */
+  text-align: center;
+  margin-bottom: 20px;
 }
-
+.App-header h1 {
+  margin: 0;
+  font-size: 1.8em;
+}
 .App-link {
   color: #61dafb;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+
+.main-layout {
+  display: flex;
+  align-items: flex-start;
+  padding: 20px;
+  gap: 30px;
+  /* Background inherited from body */
 }
 
-
-/* client/src/App.css */
-
-/* ... (Keep existing styles from create-react-app) ... */
+.form-section {
+  flex-basis: 35%;
+  flex-shrink: 0;
+  padding: 20px;
+  border: 1px solid #ddd; /* Lighter border */
+  border-radius: 5px;
+  background-color: #ffffff; /* White background for form */
+}
+/* Add some spacing below form elements */
+.form-section > form > div {
+  margin-bottom: 15px;
+}
+.form-section label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #333; /* Ensure dark label color */
+}
+.form-section input[type="text"],
+.form-section input[type="number"],
+.form-section input[type="date"],
+.form-section select {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #ccc; /* Standard input border */
+    border-radius: 4px;
+    background-color: #fff; /* White input background */
+    color: #333; /* Dark text in inputs */
+}
+.form-section button[type="submit"] {
+  padding: 10px 20px;
+  background-color: #28a745; /* Green */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  font-size: 1em;
+}
+.form-section button[type="submit"]:hover {
+  background-color: #218838;
+}
+.form-section button[type="submit"]:disabled {
+  background-color: #cccccc; /* Light gray disabled */
+  cursor: not-allowed;
+}
 
 .transactions-section {
-  margin-top: 2em;
-  text-align: left; /* Align content left */
-  max-width: 800px; /* Constrain width */
-  margin-left: auto;
-  margin-right: auto;
-  padding: 0 20px; /* Add some horizontal padding */
+  flex-grow: 1;
+  margin-top: 0;
+  padding: 0;
+  text-align: left;
+  /* Background inherited from body */
 }
 
+
 .category-accordion {
-  border: 1px solid #ddd; /* Optional: border around the whole accordion */
+  border: 1px solid #ddd; /* Light border */
   border-radius: 5px;
-  margin-top: 1em;
 }
 
 .category-box {
-  border-bottom: 1px solid #eee; /* Separator line */
+   border-bottom: 1px solid #eee; /* Lighter separator */
 }
 .category-box:last-child {
-  border-bottom: none; /* No line for the last box */
+  border-bottom: none;
 }
-
 
 .category-header {
   padding: 10px 15px;
   margin: 0;
-  /* Change background to a slightly darker gray or a subtle color */
-  background-color: #e9ecef; /* A common bootstrap light gray */
-  /* Or try a subtle blue: */
-  /* background-color: #f0f4f8; */
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+  background-color: #e9ecef; /* Use the light gray from before */
+  color: #333; /* Dark text */
+  /* cursor: pointer; */
   font-size: 1.1em;
-  position: relative;
-  color: #333; /* Ensure text color is dark */
+  font-weight: bold;
 }
 
 .category-header:hover {
@@ -90,34 +133,35 @@
   list-style: none;
   padding: 10px 15px 15px 30px;
   margin: 0;
-  /* Give the list area a slightly off-white or very light gray background */
-  background-color: #fdfdfd; /* Very subtle off-white */
-  /* Or a slightly more noticeable light gray: */
-  /* background-color: #f9f9f9; */
-  color: #444; /* Ensure list item text is dark enough */
+  background-color: #ffffff; /* White list background */
+  color: #444; /* Dark text */
 }
 
 .category-box li {
   padding: 5px 0;
-  border-bottom: 1px dashed #eee; /* Light separator for list items */
+  border-bottom: 1px dashed #eee; /* Light dashed line */
 }
 .category-box li:last-child {
   border-bottom: none;
 }
 
+
 /* Style for the delete button for better visibility */
 .category-box li button {
-    background: none;
-    border: 1px solid #ffaaaa;
-    color: red;
-    padding: 2px 5px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.8em;
-    line-height: 1;
-    float: right; /* Position button to the right */
-    margin-left: 10px;
+  /* Adjust delete button for light mode */
+  background: none;
+  border: 1px solid #ffaaaa;
+  color: red; /* Standard red */
+  padding: 2px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8em;
+  line-height: 1;
+  float: right;
+  margin-left: 10px;
 }
 .category-box li button:hover {
-    background-color: #ffeeee;
+  background-color: #ffeeee; /* Light red background on hover */
 }
+
+
