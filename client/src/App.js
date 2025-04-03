@@ -1,24 +1,23 @@
 // client/src/App.js
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom'; // Import Router components, including NavLink
-import './App.css'; // Keep global styles
+// Import NavLink if you aren't already
+import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import './App.css';
 
 // Import page components
 import DashboardPage from './pages/DashboardPage';
 import HistoryPage from './pages/HistoryPage';
-// Optional Navigation component could be used instead of inline nav
-// import Navigation from './components/Navigation';
+import BudgetPage from './pages/BudgetPage'; // <-- Import the new page component
 
 function App() {
   return (
-    <Router> {/* Wrap everything in BrowserRouter */}
+    <Router>
       <div className="App">
         {/* Shared Header */}
         <header className="App-header">
           <h1>Budget Tracker</h1>
-          {/* Navigation Links - Using NavLink for active styling */}
+          {/* Navigation Links */}
           <nav>
-            {/* NavLink adds an 'active' class automatically */}
             <NavLink
               to="/"
               className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
@@ -31,20 +30,25 @@ function App() {
             >
                 Transaction History
             </NavLink>
+            {/* --- NEW Budget Link --- */}
+            <NavLink
+              to="/budget"
+              className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+            >
+                Budget
+            </NavLink>
+            {/* --- End NEW Budget Link --- */}
           </nav>
         </header>
 
         {/* Define Routes */}
-        <main> {/* Wrap Routes in a main tag for semantics */}
+        <main>
           <Routes>
-            {/* Route for the dashboard view */}
-            {/* The exact prop ensures this only matches '/' */}
             <Route path="/" element={<DashboardPage />} />
-
-            {/* Route for the transaction history view */}
             <Route path="/history" element={<HistoryPage />} />
-
-            {/* Optional: Add a catch-all 404 route later */}
+            {/* --- NEW Budget Route --- */}
+            <Route path="/budget" element={<BudgetPage />} />
+            {/* --- End NEW Budget Route --- */}
             {/* <Route path="*" element={<div>Page Not Found</div>} /> */}
           </Routes>
         </main>

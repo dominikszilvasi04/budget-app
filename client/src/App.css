@@ -372,3 +372,19 @@ nav .nav-link.active {
 }
 .delete-button-history:hover { background-color: #ffeeee; }
 .no-transactions-msg { font-style: italic; color: #777; padding-left: 10px; }
+
+.budget-page-container {
+  padding: 0 30px 30px 30px;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: left;
+}
+.budget-page-container h2 {
+  /* Use existing H2 styles */
+  font-size: 1.6em;
+  margin-top: 0;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
