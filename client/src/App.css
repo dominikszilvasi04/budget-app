@@ -207,35 +207,72 @@ nav .nav-link.active {
 
 /* Panel 2: Quick Add Buttons */
 .quick-add-panel {
-    padding: 20px;
-    width: 200px;
-    flex-shrink: 0;
-    background-color: #f8f9fa; /* Match container */
-    overflow-y: auto;
-    box-sizing: border-box;
-    border-left: 1px solid #dee2e6; /* Separator */
+  padding: 20px;
+  /* --- INCREASE THIS VALUE --- */
+  width: 280px; /* Was 200px, adjust as needed */
+  /* --- END INCREASE --- */
+  flex-shrink: 0;
+  background-color: #f8f9fa;
+  overflow-y: auto;
+  box-sizing: border-box;
+  border-left: 1px solid #dee2e6;
+  position: relative;
+  padding-bottom: 60px; /* Keep padding for clear button */
 }
 .quick-add-panel h4 {
-    margin-top: 0; margin-bottom: 15px; text-align: center; color: #495057; font-size: 1.1em;
+  margin-top: 0; margin-bottom: 15px; text-align: center; color: #495057; font-size: 1.1em;
 }
+
+/* Button layout grid - might adjust columns if needed, but 3 should still fit */
 .quick-add-buttons {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr); /* 2 columns */
-    gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* Keep 3 columns */
+  gap: 8px;
 }
 .quick-add-buttons button {
-    padding: 10px 5px; font-size: 1em; font-weight: 500; border: 1px solid #ced4da;
-    background-color: #fff; color: #495057; border-radius: 4px; cursor: pointer;
-    text-align: center; transition: background-color 0.2s ease, border-color 0.2s ease;
+  padding: 8px 5px; /* Adjust padding */
+  font-size: 0.95em; /* Adjust font size */
+  font-weight: 500;
+  border: 1px solid #ced4da;
+  background-color: #fff;
+  color: #495057;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  word-break: keep-all; /* Prevent text wrapping */
+  white-space: nowrap;
 }
 .quick-add-buttons button:hover {
-    background-color: #e9ecef; border-color: #adb5bd;
+  background-color: #e9ecef; border-color: #adb5bd;
 }
 .quick-add-buttons button:disabled {
-    background-color: #e9ecef; color: #adb5bd; cursor: not-allowed; border-color: #dee2e6;
+  background-color: #e9ecef; color: #adb5bd; cursor: not-allowed; border-color: #dee2e6;
 }
 .quick-add-buttons .clear-button { /* Optional: style clear differently */
     /* background-color: #f1f3f5; */
+}
+.quick-add-clear-container {
+  position: absolute; /* Position relative to panel */
+  bottom: 15px; /* Distance from bottom */
+  right: 15px; /* Distance from right */
+}
+.clear-button { /* Style the clear button itself */
+  padding: 8px 12px; /* Specific padding */
+  font-size: 0.9em;
+  font-weight: bold;
+  border: 1px solid #adb5bd; /* Subtle border */
+  background-color: #f1f3f5; /* Slightly different background */
+  color: #495057;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.clear-button:hover {
+  background-color: #dee2e6;
+}
+.clear-button:disabled {
+   background-color: #e9ecef; color: #adb5bd; cursor: not-allowed; border-color: #dee2e6;
 }
 
 
