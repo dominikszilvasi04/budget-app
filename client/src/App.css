@@ -1,3 +1,6 @@
+/* client/src/App.css */
+
+/* --- Global Styles --- */
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -7,314 +10,282 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f4f6f8; /* Light gray background */
   color: #333;
-  /* --- Increase base font size --- */
-  font-size: 17px; /* Or 16px, 18px - adjust as needed */
-  line-height: 1.5; /* Improve readability with more line spacing */
+  font-size: 17px;
+  line-height: 1.5;
 }
+
 a {
   color: #007bff; /* Standard blue link color */
 }
+
 .App {
-  text-align: center;
+  /* text-align: center; /* Removed global centering */
 }
 
+/* --- Header & Navigation --- */
 .App-header {
   min-height: auto;
-  display: block;
+  display: flex; /* Use flex for title and nav alignment */
+  align-items: center; /* Vertically center items */
   background-color: #282c34;
-  padding: 20px 30px; /* Increase vertical padding slightly */
+  padding: 15px 30px; /* Adjusted padding */
   color: white;
-  text-align: center;
-  margin-bottom: 25px; /* Increase space below header */
+  /* text-align: left; /* Removed, flex handles alignment */
+  margin-bottom: 25px;
 }
 .App-header h1 {
   margin: 0;
-  /* --- Increase H1 size --- */
-  font-size: 2em; /* Roughly 34px if body is 17px */
+  font-size: 2em;
+  flex-grow: 1; /* Allow title to take space */
 }
 
-.main-layout {
-  display: flex;
-  align-items: flex-start;
-  padding: 0 30px 30px 30px; /* Adjust padding */
-  gap: 40px; /* Increase gap between columns */
+nav {
+  /* margin-left: auto; /* Removed, flex alignment handles */
 }
-.form-section {
-  flex-basis: 40%; /* Adjust basis if needed */
-  /* Or fixed width: flex-basis: 450px; */
-  flex-shrink: 0;
-  padding: 25px; /* Increase padding */
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  background-color: #ffffff;
-  text-align: left; /* Add this line */
+nav .nav-link {
+    color: white;
+    margin-left: 25px;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 5px 0;
+    border-bottom: 2px solid transparent;
+    transition: border-bottom 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+nav .nav-link:hover {
+    color: #b3e5fc;
+    border-bottom: 2px solid #61dafb;
+}
+nav .nav-link.active {
+    color: #61dafb;
+    border-bottom: 2px solid #61dafb;
 }
 
-.form-section h2, .transactions-section h2 {
-  /* --- Increase H2 size --- */
-  font-size: 1.6em; /* Roughly 27px */
-  margin-top: 0; /* Remove default top margin */
+/* --- Main Layout (2 Columns) --- */
+.main-layout-single-column { /* Updated class name */
+  padding: 0 30px 30px 30px;
+  /* No flex needed if only one child */
+}
+
+
+/* --- Categories Display Section (Takes full width or centered) --- */
+.categories-display-section-full { /* Updated class name */
+  max-width: 1200px;  /* Optional: Limit overall width */
+  margin: 0 auto;  /* Optional: Center if max-width is set */
+  text-align: left;
+}
+/* General H2 style */
+.categories-display-section-full h2, .history-list-section h2 {
+  font-size: 1.6em;
+  margin-top: 0;
   color: #333;
   border-bottom: 1px solid #eee;
   padding-bottom: 10px;
   margin-bottom: 20px;
 }
-/* Add some spacing below form elements */
-.form-section > form > div {
-  margin-bottom: 15px;
+
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* Adjusted minmax for potentially more boxes */
+  gap: 20px;
 }
-.form-section label {
+
+.category-select-box {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 20px 15px; /* Adjusted padding */
+  text-align: center;
+  background-color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 110px; /* Adjusted height */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.category-select-box:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.category-select-box h3 {
+  margin: 0;
+  font-size: 1.1em; /* Adjusted size */
+  color: #333;
+}
+
+/* --- Popup/Modal Styles --- */
+.popup-overlay {
+  position: fixed; /* Cover the whole viewport */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.popup-content {
+  background-color: #fff;
+  padding: 30px 40px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  width: 90%; /* Use percentage for responsiveness */
+  max-width: 500px; /* Max width for the popup */
+  max-height: 90vh; /* Limit height */
+  overflow-y: auto; /* Scroll if content overflows */
+  z-index: 1001;
+  position: relative;
+  text-align: left;
+}
+.popup-content h2 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 25px; /* More space before form */
+  font-size: 1.4em;
+}
+
+/* --- Styles for Form INSIDE Popup --- */
+.popup-form > div { /* Target divs directly inside form */
+  margin-bottom: 18px;
+}
+.popup-form label {
   display: block;
-  margin-bottom: 6px; /* Increase space below label */
+  margin-bottom: 6px;
   font-weight: bold;
-  /* --- Increase label font size slightly if desired --- */
-  font-size: 1.05em; /* Slightly larger than body text */
+  font-size: 1.05em;
 }
-.form-section input[type="text"],
-.form-section input[type="number"],
-.form-section input[type="date"],
-.form-section select {
-    width: 100%;
-    padding: 12px; /* Increase padding */
-    box-sizing: border-box;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: #fff;
-    color: #333;
-    /* --- Increase input font size --- */
-    font-size: 1em; /* Match body font size */
+.popup-form input[type="text"],
+.popup-form input[type="number"],
+.popup-form input[type="date"] { /* Select specifically */
+  width: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #333;
+  font-size: 1em;
 }
-.form-section button[type="submit"] {
-  padding: 12px 20px; /* Increase padding */
-  /* Styles remain okay */
-  /* --- Increase button font size --- */
-  font-size: 1.1em;
+.form-category-display {
+  margin-bottom: 18px;
 }
-.form-section button[type="submit"]:hover {
-  background-color: #218838;
+.form-category-display label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 1.05em;
+}
+.form-category-display span {
+  display: block;
+  padding: 12px;
+  background-color: #f8f9fa; /* Light background to show it's display only */
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+.popup-button-group {
+  margin-top: 30px;
+  display: flex;
+  justify-content: flex-end; /* Align buttons to the right */
+  gap: 10px; /* Space between buttons */
+}
+.popup-cancel-btn, .popup-submit-btn {
+  padding: 10px 20px;
+  font-size: 1em;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
 }
-.form-section button[type="submit"]:disabled {
-  background-color: #cccccc; /* Light gray disabled */
+.popup-cancel-btn {
+  background-color: #6c757d; /* Gray */
+  color: white;
+}
+.popup-cancel-btn:hover {
+  background-color: #5a6268;
+}
+.popup-submit-btn {
+  background-color: #28a745; /* Green */
+  color: white;
+}
+.popup-submit-btn:hover {
+  background-color: #218838;
+}
+.popup-submit-btn:disabled, .popup-cancel-btn:disabled {
+  background-color: #cccccc;
   cursor: not-allowed;
 }
 
-.transactions-section {
-  /* Keep allowing it to fill space or set a max-width if desired */
-  flex-grow: 1;
-  /* max-width: 1000px; */ /* Example: Limit if needed */
-  flex-shrink: 1; /* Allow shrinking */
-  margin-top: 0;
-  padding: 0;
-  text-align: left;
-}
-.transactions-section h2 { /* Keep H2 styles */
- font-size: 1.6em;
- margin-top: 0;
- color: #333;
- border-bottom: 1px solid #eee;
- padding-bottom: 10px;
- margin-bottom: 20px;
-}
-
-
-.category-accordion {
-  display: grid;
-  /* --- Define EXPLICIT number of columns --- */
-  /* Example: 4 equal columns */
-  grid-template-columns: repeat(4, 1fr);
-  /* Example: 3 equal columns */
-  /* grid-template-columns: repeat(3, 1fr); */
-
-  /* Adjust gap */
-  gap: 20px;
-
-  border: none;
-  border-radius: 0;
-}
-.category-box {
-  /* --- ADJUST THIS VALUE --- */
-  min-height: 180px; /* Example: Try increasing from 150px */
-  /* Or maybe try: */
-  /* min-height: 200px; */
-
-  /* --- Keep other styles --- */
-  height: auto; /* Allow growing */
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-
-.category-header {
-  /* --- Ensure these properties are set --- */
-  display: block; /* Make sure it behaves like a block */
-  width: 100%; /* Make sure it takes full width */
-  box-sizing: border-box; /* Include padding/border in width/height */
-
-  /* --- Try slightly more padding --- */
-  padding: 15px 20px; /* Was 12px 15px or 15px 20px - ensure sufficient vertical space */
-
-  /* --- Set line-height explicitly (optional, but can help) --- */
-  /* Adjust based on font-size and padding to vertically center text slightly */
-  line-height: 1.4; /* Example */
-
-  /* --- Keep other styles --- */
-  margin: 0;
-  background-color: #e9ecef;
-  color: #333;
-  cursor: pointer;
-  font-size: 1.15em; /* Or your preferred size */
-  font-weight: bold;
-  border-bottom: 1px solid #ddd;
-  position: relative;
-  flex-shrink: 0; /* Keep this from parent flex context */
-}
-
-/* Ensure the arrow span doesn't interfere - floating is usually fine */
-.category-header span {
-  float: right;
-  transition: transform 0.2s;
-  /* Adjust line-height if the header one was changed */
-  line-height: inherit; /* Inherit from header */
-  margin-left: 10px; /* Ensure some space */
-}
-/* Remove hover if not needed, or keep for interactivity */
-.category-header:hover {
-  background-color: #dee2e6;
-}
-/* Ensure arrow span is still styled correctly */
-
-
-.category-box ul,
-.category-box .no-transactions-msg {
-  /* Allow list to grow and potentially scroll if box has fixed height */
-  flex-grow: 1; /* Take remaining space in flex column */
-  overflow-y: auto; /* Add scroll if content exceeds fixed height */
-
-  /* Keep other styles */
-  list-style: none;
-  padding: 10px 15px 15px 25px; /* Adjust padding */
-  margin: 0;
-  background-color: #ffffff;
-  color: #444;
-}
-
-.category-box .no-transactions-msg { /* Style for empty message */
-  padding: 15px 20px;
-  font-style: italic;
-  color: #777;
-  flex-grow: 1; /* Allow message to take space */
-  background-color: #ffffff;
-  margin: 0;
-}
-
-.category-box li {
-  /* Styles remain the same */
-  padding: 8px 5px;
-  border-bottom: 1px dashed #eee;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.category-box li:last-child { border-bottom: none; }
-/* Adjust delete button size/padding */
-.category-box li button {
-    background: none;
-    border: 1px solid #ffaaaa;
-    color: red;
-    padding: 4px 8px; /* Increase padding */
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.9em; /* Slightly larger button font */
-    line-height: 1;
-    margin-left: 15px; /* Increase spacing */
-    flex-shrink: 0;
-}
-
-/* client/src/App.css */
-/* ... other styles ... */
-nav .nav-link {
-  color: white;
-  margin-left: 25px; /* Increase spacing */
-  text-decoration: none;
-  font-weight: bold;
-  padding: 5px 0;
-  border-bottom: 2px solid transparent;
-  transition: border-bottom 0.2s ease-in-out, color 0.2s ease-in-out;
-  /* Font size inherited from body */
-}
-nav .nav-link:hover {
-  color: #b3e5fc; /* Lighter blue on hover */
-  border-bottom: 2px solid #61dafb;
-}
-nav .nav-link.active { /* Style for the active NavLink */
-  color: #61dafb; /* React blue */
-  border-bottom: 2px solid #61dafb;
-}
-
-/* Styles for History Page */
+/* --- History Page Styles --- */
 .history-list-section {
-  padding: 0 20px 20px 20px; /* Add some padding */
-  max-width: 900px; /* Optional: constrain width */
-  margin: 0 auto; /* Center if max-width is used */
+  padding: 0 30px 30px 30px; /* Consistent padding */
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: left; /* Ensure left alignment */
+}
+.history-list-section h2 { /* Style History H2 */
+    font-size: 1.6em;
+    margin-top: 0;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
 }
 
 .history-category-group {
-  margin-bottom: 2em; /* Space between category groups */
+  margin-bottom: 2em;
 }
-
 .history-category-group h3 {
   border-bottom: 2px solid #ccc;
   padding-bottom: 5px;
   margin-bottom: 10px;
   color: #333;
-  font-size: 1.25em; /* Add this - same as .category-header */
+  font-size: 1.25em; /* Consistent category title size */
 }
-
 .history-category-group ul {
   list-style: none;
-  padding-left: 10px; /* Slight indent for list */
+  padding-left: 10px;
   margin: 0;
 }
-
 .history-category-group li {
   padding: 8px 5px;
-  border-bottom: 1px solid #eee; /* Separator for transactions */
-  display: flex; /* Use flex for better alignment */
-  justify-content: space-between; /* Push button to the right */
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
 }
 .history-category-group li:last-child {
     border-bottom: none;
 }
-
 .history-category-group li span,
 .history-category-group li strong {
-   margin-right: 8px; /* Add spacing between elements */
+   margin-right: 8px;
 }
-
-/* Style delete button specifically for history page */
 .delete-button-history {
     background: none;
     border: 1px solid #ffaaaa;
     color: red;
-    padding: 2px 5px;
+    padding: 4px 8px; /* Increased padding slightly */
     border-radius: 3px;
     cursor: pointer;
-    font-size: 0.8em;
+    font-size: 0.9em;
     line-height: 1;
-    flex-shrink: 0; /* Prevent button from shrinking */
+    flex-shrink: 0;
+    margin-left: 10px; /* Added margin */
 }
 .delete-button-history:hover {
     background-color: #ffeeee;
 }
-
 .no-transactions-msg {
   font-style: italic;
   color: #777;
   padding-left: 10px;
 }
+
+/* --- REMOVED/COMMENTED OUT STYLES (Old Accordion etc.) --- */
+/* Make sure styles like .category-box, .category-header (from accordion) are removed */
