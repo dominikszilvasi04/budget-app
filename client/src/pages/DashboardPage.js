@@ -2,9 +2,6 @@
 import React, { useState, useEffect } from 'react'; // useMemo no longer needed here
 import axios from 'axios';
 
-// Helper functions can stay if needed elsewhere, otherwise remove
-const getTodayDate = () => { /* ... */ };
-// const formatCurrency = (num) => { /* ... */ }; // Not used on this page anymore
 
 function DashboardPage() {
     // --- State Variables ---
@@ -16,7 +13,6 @@ function DashboardPage() {
     // Form State - Now relates to the popup form
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
-    const [transactionDate, setTransactionDate] = useState(getTodayDate());
     // We don't need a separate state for the *form's* selected ID anymore
     // const [selectedCategoryId, setSelectedCategoryId] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,7 +47,6 @@ function DashboardPage() {
     const clearFormFields = () => {
         setDescription('');
         setAmount('');
-        setTransactionDate(getTodayDate());
         setSubmitError(null);
         setSubmitSuccess(null);
         // No selectedCategoryId state to clear
@@ -59,38 +54,37 @@ function DashboardPage() {
 
     // --- Popup Handlers ---
     const handleCategoryBoxClick = (category) => {
-        setSelectedCategoryForPopup(category); // Set the category for the popup
-        clearFormFields(); // Clear fields when opening a new popup
+        setSelectedCategoryForPopup(category);
+        clearFormFields();
     };
-
     const handleClosePopup = () => {
-        setSelectedCategoryForPopup(null); // Close popup
-        clearFormFields(); // Also clear fields on close
+        setSelectedCategoryForPopup(null);
+        clearFormFields();
     };
 
 
-    // --- Form Submission Handler (Modified for Popup) ---
+    // --- Form Submission Handler (Modified) ---
     const handleTransactionSubmit = async (event) => {
         event.preventDefault();
-
-        // Check if a category is selected (should always be true if form is visible)
         if (!selectedCategoryForPopup) {
-            setSubmitError('No category selected. Please close and reopen the popup.');
-            return;
+            setSubmitError('No category selected.'); return;
         }
 
-        // Basic validation
-        if (!amount || isNaN(parseFloat(amount)) || !transactionDate) {
-            setSubmitError('Please fill in amount and date.');
+        // Modify Validation: Remove date check
+        if (!amount || isNaN(parseFloat(amount))) {
+            setSubmitError('Please enter a valid amount.');
             setSubmitSuccess(null);
             return;
         }
 
+        // Generate current date HERE in 'YYYY-MM-DD' format
+        const currentDate = new Date().toISOString().split('T')[0];
+
         const transactionData = {
             description: description || null,
             amount: parseFloat(amount),
-            transaction_date: transactionDate,
-            // Get category_id directly from the category object stored in popup state
+            // Use the generated current date
+            transaction_date: currentDate,
             category_id: selectedCategoryForPopup.id,
         };
 
@@ -100,29 +94,22 @@ function DashboardPage() {
 
         try {
             const response = await axios.post('http://localhost:5001/api/transactions', transactionData);
-
-            // Show success message IN the popup briefly
             setSubmitSuccess(`Transaction for ${selectedCategoryForPopup.name} added!`);
-
-            // Clear fields after a short delay, then close popup
             setTimeout(() => {
-                clearFormFields();
-                handleClosePopup(); // Close the popup automatically on success
-                // NOTE: If the History page needs to update, we might need a global state
-                // or callback mechanism here instead of relying on submitSuccess in this component.
-            }, 1500); // Close after 1.5 seconds
-
+                // clearFormFields(); // Clear fields AFTER success message shows
+                handleClosePopup(); // Close popup on success
+            }, 1500);
         } catch (err) {
-            console.error('Error submitting transaction:', err);
-            let errorMessage = 'Failed to add transaction. Please try again.';
-            if (err.response && err.response.data && err.response.data.message) {
-                errorMessage = err.response.data.message;
-            }
-            setSubmitError(errorMessage); // Show error IN the popup
-            setSubmitSuccess(null);
+            // ... error handling ...
+             console.error('Error submitting transaction:', err);
+             let errorMessage = 'Failed to add transaction. Please try again.';
+             if (err.response && err.response.data && err.response.data.message) {
+                 errorMessage = err.response.data.message;
+             }
+             setSubmitError(errorMessage);
+             setSubmitSuccess(null);
         } finally {
-            // Still set submitting false after try/catch completes,
-            // even though popup might close soon after.
+             // Set submitting false slightly after logic to prevent flickering
              setTimeout(() => setIsSubmitting(false), 500);
         }
     };
@@ -139,64 +126,70 @@ function DashboardPage() {
     return (
         <>
             {/* Main layout now only contains the categories display */}
-            <div className="main-layout-single-column"> {/* Renamed class? Or adjust main-layout */}
-                {/* --- Categories Section --- */}
-                <section className="categories-display-section-full"> {/* Renamed class? Or adjust categories-display-section */}
-                    <h2>Categories</h2>
-                    {categories.length === 0 ? (
-                        <p>No categories found.</p>
-                    ) : (
-                        <div className="category-grid">
-                            {categories.map(category => (
-                                <div
-                                    key={category.id}
-                                    className="category-select-box"
-                                    onClick={() => handleCategoryBoxClick(category)}
-                                >
-                                    <h3>{category.name}</h3>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+            <div className="main-layout-single-column">
+                <section className="categories-display-section-full">
+                    {/* ... Categories Grid JSX ... */}
+                     <h2>Categories</h2>
+                     {categories.length === 0 ? ( <p>No categories found.</p> ) : (
+                         <div className="category-grid">
+                             {categories.map(category => (
+                                 <div key={category.id} className="category-select-box" onClick={() => handleCategoryBoxClick(category)}>
+                                     <h3>{category.name}</h3>
+                                 </div>
+                             ))}
+                         </div>
+                     )}
                 </section>
-            </div> {/* End main-layout-single-column */}
+            </div>
 
-            {/* --- Popup/Modal with embedded Form --- */}
+            {/* --- Popup/Modal with Modified Form --- */}
             {selectedCategoryForPopup && (
                 <div className="popup-overlay" onClick={handleClosePopup}>
                     <div className="popup-content" onClick={(e) => e.stopPropagation()}>
-                        {/* Pass category name to title */}
                         <h2>Add Transaction for: {selectedCategoryForPopup.name}</h2>
-
-                        {/* Status Messages FOR THE FORM (inside popup) */}
                         {submitError && <p style={{ color: 'red' }}>Error: {submitError}</p>}
                         {submitSuccess && <p style={{ color: 'green' }}>{submitSuccess}</p>}
 
-                        {/* The Form (moved inside popup) */}
-                        <form onSubmit={handleTransactionSubmit} className="popup-form"> {/* Added class */}
-                            {/* Description Input */}
-                            <div>
-                                <label htmlFor="description">Description:</label>
-                                <input type="text" id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" disabled={isSubmitting} />
-                            </div>
-                            {/* Amount Input */}
+                        {/* MODIFIED FORM LAYOUT */}
+                        <form onSubmit={handleTransactionSubmit} className="popup-form">
+                            {/* Amount Input (Moved to Top) */}
                             <div>
                                 <label htmlFor="amount">Amount:</label>
-                                <input type="number" id="amount" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g., 25.50" step="0.01" required disabled={isSubmitting} />
-                            </div>
-                            {/* Date Input */}
-                            <div>
-                                <label htmlFor="transactionDate">Date:</label>
-                                <input type="date" id="transactionDate" value={transactionDate} onChange={(e) => setTransactionDate(e.target.value)} required disabled={isSubmitting} />
+                                {/* Added className="input-amount" */}
+                                <input
+                                    type="number"
+                                    id="amount"
+                                    className="input-amount"
+                                    value={amount}
+                                    onChange={(e) => setAmount(e.target.value)}
+                                    placeholder="0.00"
+                                    step="0.01" required disabled={isSubmitting} />
                             </div>
 
-                            {/* Category Display (replaces dropdown) */}
+                            {/* Description Input (Moved Below Amount) */}
+                            <div>
+                                <label htmlFor="description">Description (Optional):</label>
+                                {/* Added className="input-description" */}
+                                <input
+                                    type="text"
+                                    id="description"
+                                    className="input-description"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="Details..."
+                                    disabled={isSubmitting} />
+                            </div>
+
+                            {/* DATE INPUT REMOVED */}
+                            {/* <div> ... Date Input JSX Removed ... </div> */}
+
+                            {/* Category Display (Remains the same) */}
                             <div className="form-category-display">
                                 <label>Category:</label>
                                 <span>{selectedCategoryForPopup.name}</span>
                             </div>
 
-                            {/* Submit and Close Buttons */}
+                            {/* Submit and Close Buttons (Remains the same) */}
                             <div className="popup-button-group">
                                 <button type="button" onClick={handleClosePopup} className="popup-cancel-btn" disabled={isSubmitting}>Cancel</button>
                                 <button type="submit" className="popup-submit-btn" disabled={isSubmitting}>
@@ -204,9 +197,6 @@ function DashboardPage() {
                                 </button>
                             </div>
                         </form>
-
-                        {/* Original close button removed, handled by form buttons now */}
-                        {/* <button onClick={handleClosePopup} className="popup-close-btn">Close</button> */}
                     </div>
                 </div>
             )}

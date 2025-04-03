@@ -19,7 +19,7 @@ a {
 }
 
 .App {
-  /* text-align: center; /* Removed global centering */
+
 }
 
 /* --- Header & Navigation --- */
@@ -150,50 +150,69 @@ nav .nav-link.active {
 }
 
 /* --- Styles for Form INSIDE Popup --- */
-.popup-form > div { /* Target divs directly inside form */
-  margin-bottom: 18px;
+.popup-form > div {
+    margin-bottom: 20px; /* Slightly increase space between rows */
 }
 .popup-form label {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 8px; /* Increase space */
   font-weight: bold;
   font-size: 1.05em;
 }
-.popup-form input[type="text"],
-.popup-form input[type="number"],
-.popup-form input[type="date"] { /* Select specifically */
+/* --- Style the Amount Input --- */
+.popup-form .input-amount {
   width: 100%;
-  padding: 12px;
+  padding: 15px; /* More padding */
+  box-sizing: border-box;
+  border: 1px solid #aaa; /* Slightly darker border? */
+  border-radius: 4px;
+  background-color: #fff;
+  color: #333;
+  /* --- Make it bigger! --- */
+  font-size: 1.8em; /* Significantly larger font */
+  font-weight: bold; /* Make it bold */
+  text-align: right; /* Align currency to the right */
+}
+/* Style placeholder specifically if needed */
+.popup-form .input-amount::placeholder {
+  font-weight: normal;
+  font-size: 0.8em; /* Make placeholder smaller relative to input */
+  color: #999;
+}
+
+
+/* --- Style the Description Input --- */
+.popup-form .input-description {
+  width: 100%;
+  padding: 12px; /* Standard padding */
   box-sizing: border-box;
   border: 1px solid #ccc;
   border-radius: 4px;
   background-color: #fff;
   color: #333;
-  font-size: 1em;
+  font-size: 1em; /* Standard font size */
 }
 .form-category-display {
-  margin-bottom: 18px;
+  margin-bottom: 20px; /* Consistent spacing */
 }
 .form-category-display label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: bold;
-  font-size: 1.05em;
+  /* Uses standard label style */
 }
 .form-category-display span {
   display: block;
   padding: 12px;
-  background-color: #f8f9fa; /* Light background to show it's display only */
+  background-color: #f8f9fa;
   border: 1px solid #e9ecef;
   border-radius: 4px;
   font-size: 1em;
+  color: #555; /* Indicate it's display text */
 }
 
 .popup-button-group {
   margin-top: 30px;
   display: flex;
-  justify-content: flex-end; /* Align buttons to the right */
-  gap: 10px; /* Space between buttons */
+  justify-content: flex-end;
+  gap: 10px;
 }
 .popup-cancel-btn, .popup-submit-btn {
   padding: 10px 20px;
@@ -286,6 +305,3 @@ nav .nav-link.active {
   color: #777;
   padding-left: 10px;
 }
-
-/* --- REMOVED/COMMENTED OUT STYLES (Old Accordion etc.) --- */
-/* Make sure styles like .category-box, .category-header (from accordion) are removed */
