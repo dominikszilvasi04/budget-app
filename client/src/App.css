@@ -373,9 +373,10 @@ nav .nav-link.active {
 .delete-button-history:hover { background-color: #ffeeee; }
 .no-transactions-msg { font-style: italic; color: #777; padding-left: 10px; }
 
+/* --- NEW Styles for Budget Page --- */
 .budget-page-container {
   padding: 0 30px 30px 30px;
-  max-width: 900px;
+  max-width: 700px;
   margin: 0 auto;
   text-align: left;
 }
@@ -387,4 +388,112 @@ nav .nav-link.active {
   border-bottom: 1px solid #eee;
   padding-bottom: 10px;
   margin-bottom: 20px;
+}
+.budget-page-container > p { /* Style the intro paragraph */
+  margin-bottom: 25px;
+  color: #555;
+  font-size: 1em;
+}
+
+.budget-list {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.budget-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+}
+.budget-item:last-child {
+  border-bottom: none;
+}
+
+.budget-item-label {
+  font-weight: 500; /* Semi-bold */
+  font-size: 1.1em;
+  color: #333;
+  margin-right: 20px; /* Space between label and input */
+  flex-basis: 40%; /* Give label some width */
+  flex-shrink: 0;
+}
+
+.budget-item-input-group {
+  display: flex;
+  align-items: stretch; /* Make items full height of the group */
+  flex-grow: 1;
+  max-width: 250px; /* Keep max width */
+  position: relative; /* Keep for status */
+}
+.currency-symbol {
+  /* Keep background, border-radius */
+  background-color: #f8f9fa;
+  border-radius: 4px 0 0 4px;
+  border: 1px solid #ccc;
+  border-right: none;
+
+  /* Adjust padding and ensure alignment */
+  padding: 0 10px; /* Vertical padding to 0, let align-items handle height */
+  display: inline-flex; /* Use flex to center content */
+  align-items: center; /* Vertically center the $ sign */
+
+  font-size: 1.1em; /* Keep size */
+  color: #888;
+  flex-shrink: 0; /* Prevent symbol box from shrinking */
+}
+
+.budget-item-input {
+  /* Keep most styles */
+  padding: 10px;
+  font-size: 1.1em;
+  font-weight: 500;
+  border: 1px solid #ccc;
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  text-align: right;
+  box-sizing: border-box;
+
+  /* --- Ensure it grows and has a base width --- */
+  flex-grow: 1; /* Allow input to take remaining space */
+  min-width: 60px; /* Prevent input from becoming too small */
+  /* Remove fixed width if it was causing issues */
+  /* width: 100px; */
+}
+
+.budget-item-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.25); /* Focus ring inside */
+  position: relative; /* Ensure focus ring is on top */
+  z-index: 2;
+}
+
+.budget-item-status {
+  font-size: 0.8em;
+  font-weight: bold;
+  margin-left: 10px;
+  min-width: 60px;
+  text-align: left;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  /* Added flex alignment */
+  display: flex;
+  align-items: center;
+  flex-shrink: 0; /* Prevent status from shrinking */
+}
+.budget-item-status.status-saving {
+  color: #007bff; /* Blue */
+  opacity: 1;
+}
+.budget-item-status.status-saved {
+  color: #28a745; /* Green */
+  opacity: 1;
+}
+.budget-item-status.status-error {
+  color: #dc3545; /* Red */
+  opacity: 1;
 }
