@@ -187,20 +187,21 @@ function DashboardPage() {
     const handleAddCategorySubmit = async (event) => {
         event.preventDefault();
         const trimmedName = newCategoryName.trim();
-
         if (!trimmedName) {
             setAddCategoryError("Category name cannot be empty.");
             return;
         }
 
         setIsAddingCategory(true);
-        setAddCategoryError(null);
+        setAddCategoryError(null); // Clear previous error before trying
         setAddCategorySuccess(null);
 
         try {
             const response = await axios.post('http://localhost:5001/api/categories', { name: trimmedName });
 
-            // Add new category and resort the list
+            // Clear error on success before setting success message
+            setAddCategoryError(null);
+
             setCategories(prevCategories =>
                 [...prevCategories, response.data.newCategory].sort((a, b) =>
                     a.name.localeCompare(b.name)
@@ -209,16 +210,16 @@ function DashboardPage() {
 
             setNewCategoryName(''); // Clear input
             setAddCategorySuccess(`Category '${response.data.newCategory.name}' added!`);
-            setTimeout(() => setAddCategorySuccess(null), 3000); // Clear success message
+            setTimeout(() => setAddCategorySuccess(null), 3000);
 
         } catch (err) {
             console.error("Error adding category:", err);
             let message = "Failed to add category.";
             if (err.response && err.response.data && err.response.data.message) {
-                message = err.response.data.message; // Show specific error from backend
+                message = err.response.data.message;
             }
-            setAddCategoryError(message);
-            setAddCategorySuccess(null);
+            setAddCategoryError(message); // Set error
+            setAddCategorySuccess(null); // Ensure success message is clear on error
         } finally {
             setIsAddingCategory(false);
         }
@@ -233,62 +234,85 @@ function DashboardPage() {
         return <div style={{ color: 'red', padding: '20px' }}>Error loading categories: {errorCategories}. Cannot display dashboard.</div>;
     }
 
+    // --- Render Logic ---
+    if (loadingCategories) {
+        return <div>Loading dashboard data...</div>;
+    }
+    if (errorCategories && categories.length === 0) {
+        return <div style={{ color: 'red', padding: '20px' }}>Error loading categories: {errorCategories}. Cannot display dashboard.</div>;
+    }
+
+    // --- Main Return Statement ---
     return (
         <> {/* React Fragment */}
             <div className="main-layout-single-column">
                 <section className="categories-display-section-full">
                     <h2>Categories</h2>
 
-                    {/* Add Category Form */}
-                    <form onSubmit={handleAddCategorySubmit} className="add-category-form">
-                        <input
-                            type="text"
-                            value={newCategoryName}
-                            onChange={(e) => setNewCategoryName(e.target.value)}
-                            placeholder="New category name..."
-                            disabled={isAddingCategory}
-                            maxLength="100"
-                        />
-                        <button type="submit" disabled={isAddingCategory || !newCategoryName.trim()}>
-                            {isAddingCategory ? 'Adding...' : 'Add Category'}
-                        </button>
-                        {/* Display Add Category Status */}
-                        {addCategoryError && <span className="category-add-status error">{addCategoryError}</span>}
-                        {addCategorySuccess && <span className="category-add-status success">{addCategorySuccess}</span>}
-                    </form>
-
-                    {/* Category Grid */}
+                    {/* Category Grid Display */}
                     {categories.length === 0 && !loadingCategories ? (
-                        <p>No categories defined yet. Add one above!</p>
+                        <p>No categories defined yet. Add one below!</p>
                     ) : (
                         <div className="category-grid">
                             {categories.map(category => (
                                 <div
                                     key={category.id}
                                     className="category-select-box"
-                                    onClick={() => handleCategoryBoxClick(category)} // Open popup on click
+                                    onClick={() => handleCategoryBoxClick(category)}
                                 >
                                     <h3>{category.name}</h3>
                                 </div>
                             ))}
                         </div>
                     )}
-                </section>
+
+                    {/* --- Add Category Area --- */}
+                    <div className="add-category-container">
+                        <form onSubmit={handleAddCategorySubmit} className="add-category-form">
+                            <input
+                                type="text"
+                                value={newCategoryName}
+                                // Clear error when user types
+                                onChange={(e) => {
+                                    setNewCategoryName(e.target.value);
+                                    if (addCategoryError) { // Only clear if error exists
+                                        setAddCategoryError(null);
+                                    }
+                                }}
+                                placeholder="New category name..."
+                                disabled={isAddingCategory}
+                                maxLength="100"
+                                aria-describedby="category-add-status" // Link input to status message for accessibility
+                            />
+                            <button type="submit" disabled={isAddingCategory || !newCategoryName.trim()}>
+                                {isAddingCategory ? 'Adding...' : 'Add Category'}
+                            </button>
+                        </form>
+                        {/* Display Add Category Status (Moved below form, inside container) */}
+                        <div id="category-add-status" className="category-add-status-container">
+                            {addCategoryError && <span className="category-add-status error">{addCategoryError}</span>}
+                            {addCategorySuccess && <span className="category-add-status success">{addCategorySuccess}</span>}
+                        </div>
+                    </div>
+                    {/* --- End Add Category Area --- */}
+
+                </section> {/* End categories-display-section-full */}
             </div> {/* End main-layout-single-column */}
 
 
-            {/* --- Popup/Modal for Adding Transaction with Side Panel --- */}
+            {/* --- Popup/Modal for Adding Transaction --- */}
             {selectedCategoryForPopup && (
                 <div className="popup-overlay" onClick={handleClosePopup}>
-                    {/* Container stops propagation */}
                     <div className="popup-container" onClick={(e) => e.stopPropagation()}>
 
                         {/* Panel 1: Main Form Content */}
                         <div className="popup-content-main">
                             <h2>Add Transaction for: {selectedCategoryForPopup.name}</h2>
+                            {/* Transaction Status Messages */}
                             {submitTransactionError && <p style={{ color: 'red', marginTop: '-10px', marginBottom: '15px' }}>Error: {submitTransactionError}</p>}
                             {submitTransactionSuccess && <p style={{ color: 'green', marginTop: '-10px', marginBottom: '15px' }}>{submitTransactionSuccess}</p>}
 
+                            {/* Transaction Form */}
                             <form onSubmit={handleTransactionSubmit} className="popup-form">
                                 {/* Amount Input */}
                                 <div>
@@ -308,7 +332,6 @@ function DashboardPage() {
                                         autoFocus
                                     />
                                 </div>
-
                                 {/* Description Input */}
                                 <div>
                                     <label htmlFor="description">Description (Optional):</label>
@@ -322,28 +345,24 @@ function DashboardPage() {
                                         disabled={isSubmittingTransaction}
                                     />
                                 </div>
-
                                 {/* Category Display */}
                                 <div className="form-category-display">
                                     <label>Category:</label>
                                     <span>{selectedCategoryForPopup.name}</span>
                                 </div>
-
-                                {/* Submit/Cancel Buttons */}
+                                {/* Button Group */}
                                 <div className="popup-button-group">
                                     <button type="button" onClick={handleClosePopup} className="popup-cancel-btn" disabled={isSubmittingTransaction}>Cancel</button>
                                     <button type="submit" className="popup-submit-btn" disabled={isSubmittingTransaction}>
                                         {isSubmittingTransaction ? 'Adding...' : 'Add Transaction'}
                                     </button>
                                 </div>
-                            </form> {/* End popup-form */}
+                            </form>
                         </div> {/* End popup-content-main */}
-
 
                         {/* Panel 2: Quick Add Buttons */}
                         <div className="quick-add-panel">
                             <h4>Quick Add</h4>
-                            {/* Main grid for +/- and Set buttons */}
                             <div className="quick-add-buttons">
                                 <button type="button" onClick={() => handleQuickAdd(1)} disabled={isSubmittingTransaction}>+1</button>
                                 <button type="button" onClick={() => handleQuickAdd(5)} disabled={isSubmittingTransaction}>+5</button>
@@ -359,8 +378,6 @@ function DashboardPage() {
                                 <button type="button" onClick={() => setAmount(formatAmountForDisplay(50))} disabled={isSubmittingTransaction}>Set 50</button>
                                 <button type="button" onClick={() => setAmount(formatAmountForDisplay(100))} disabled={isSubmittingTransaction}>Set 100</button>
                             </div>
-
-                            {/* Clear Button (Positioned Separately via CSS) */}
                             <div className="quick-add-clear-container">
                                 <button
                                     type="button"
@@ -378,6 +395,6 @@ function DashboardPage() {
             )} {/* End conditional rendering of popup */}
         </> // End React Fragment
     );
-} // End of DashboardPage component
+} 
 
 export default DashboardPage; // Export the component

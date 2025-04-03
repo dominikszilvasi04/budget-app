@@ -345,53 +345,69 @@ nav .nav-link.active {
 /* Ensure styles for .amount-input-container are gone */
 
 /* --- NEW Styles for Add Category Form --- */
+
+.add-category-container {
+  margin-top: 30px; /* Space above the whole add area */
+  padding-top: 20px; /* Padding above the form elements */
+  border-top: 1px solid #eee; /* Separator line */
+  max-width: 500px; /* Limit width of the add area */
+}
 .add-category-form {
-  display: flex; /* Arrange input and button side-by-side */
-  gap: 10px; /* Space between input and button */
-  margin-bottom: 25px; /* Space below the form */
-  margin-top: -10px; /* Adjust top spacing if needed below H2 */
-  align-items: center; /* Vertically align items */
-  max-width: 450px; /* Limit width of the add form */
+  display: flex;
+  gap: 10px;
+  align-items: flex-start; /* Align items to top */
+  margin-bottom: 5px; /* Small space between form and status message */
 }
 
 .add-category-form input[type="text"] {
-  flex-grow: 1; /* Allow input to take available space */
-  padding: 10px 12px; /* Adjust padding */
+  flex-grow: 1;
+  padding: 10px 12px;
   font-size: 1em;
   border: 1px solid #ccc;
   border-radius: 4px;
   box-sizing: border-box;
 }
+.add-category-form input[type="text"]:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
 
 .add-category-form button[type="submit"] {
   padding: 10px 15px;
   font-size: 1em;
-  background-color: #007bff; /* Blue */
+  background-color: #007bff;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  flex-shrink: 0; /* Prevent button from shrinking */
+  flex-shrink: 0;
   transition: background-color 0.2s ease;
 }
 
 .add-category-form button[type="submit"]:hover {
   background-color: #0056b3;
 }
-
 .add-category-form button[type="submit"]:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
 }
-
+.category-add-status-container {
+  min-height: 1.5em; /* Reserve space even when empty */
+  text-align: left; /* Align status messages left */
+   /* Adjust alignment if needed based on form width/position */
+}
 .category-add-status {
-  margin-left: 15px;
+  /* Remove margin-left from previous inline style */
+  /* margin-left: 15px; */
+  display: inline-block; /* Allows margin/padding */
+  padding: 2px 0; /* Small vertical padding */
   font-size: 0.9em;
   font-weight: bold;
 }
 .category-add-status.error {
-  color: red;
+  color: #dc3545; /* Bootstrap red */
 }
 .category-add-status.success {
-  color: green;
+  color: #28a745; /* Bootstrap green */
 }
