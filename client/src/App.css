@@ -97,24 +97,28 @@ nav .nav-link.active {
   background-color: #fff;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  min-height: 140px; /* Taller box */
+  min-height: 140px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  justify-content: center; 
+  align-items: center; 
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  position: relative; /* Positioning context */
+  position: relative;
 }
 .category-select-box:hover {
   transform: translateY(-3px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 .category-select-box h3 {
-  font-size: 1.2em; /* Larger font */
-  margin: 0;
+  font-size: 1.2em;
+  margin: 0 0 0px 0; /* Add margin below h3 */
   color: #333;
-  font-weight: 600;
+  font-weight: 800;
   pointer-events: none;
+  flex-grow: 1; /* Allow h3 to push total down */
+  display: flex; /* Center text vertically if needed */
+  align-items: center;
+  justify-content: center;
 }
 
 /* Options Button on Category Box */
@@ -133,6 +137,22 @@ nav .nav-link.active {
   transition: opacity 0.2s ease, color 0.2s ease;
   z-index: 2;
 }
+/* --- NEW Style for Category Total --- */
+.category-total {
+  font-size: 1.3em; /* Make total prominent */
+  font-weight: bold;
+  color: #28a745; /* Green for positive? */
+  margin: 10px 0 0 0; /* Space above total */
+  padding-top: 10px; /* Space */
+  border-top: 1px dashed #eee; /* Separator line */
+  width: 100%; /* Take full width */
+}
+.category-total:empty::before {
+  content: '$0.00'; /* Or your currency */
+  color: #aaa; /* Gray out zero */
+  font-weight: normal;
+}
+
 .category-options-btn:hover {
   opacity: 1;
   color: #343a40;

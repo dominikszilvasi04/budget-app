@@ -24,6 +24,14 @@ const formatAmountForDisplay = (value) => {
     return num.toFixed(2);
 };
 
+// Added from previous step - needed for category totals
+const formatCurrency = (num) => {
+    return new Intl.NumberFormat('en-US', { // Adjust locale/currency
+      style: 'currency',
+      currency: 'USD',
+    }).format(num);
+};
+
 
 // --- Component Definition ---
 function DashboardPage() {
@@ -56,44 +64,77 @@ function DashboardPage() {
     const [isProcessingCategoryAction, setIsProcessingCategoryAction] = useState(false); // Loading state for rename/delete
     const [categoryActionError, setCategoryActionError] = useState(null); // Error for rename/delete
 
+    // Transactions Data State (for category totals)
+    const [transactions, setTransactions] = useState([]);
+    const [loadingTransactions, setLoadingTransactions] = useState(true); // Initially loading
+    const [errorTransactions, setErrorTransactions] = useState(null);
+    const [transactionRefetchTrigger, setTransactionRefetchTrigger] = useState(0); // Trigger for refetching transactions
 
     // --- Fetch Categories Effect ---
     useEffect(() => {
-        // AbortController for cleanup
         const controller = new AbortController();
-
         const fetchCategories = async () => {
             setLoadingCategories(true);
             setErrorCategories(null);
             try {
-                const response = await axios.get('http://localhost:5001/api/categories', {
-                     signal: controller.signal // Pass signal for cancellation
-                });
-                // Sort categories alphabetically when fetched
+                const response = await axios.get('http://localhost:5001/api/categories', { signal: controller.signal });
                 setCategories(response.data.sort((a, b) => a.name.localeCompare(b.name)));
             } catch (err) {
-                // Check if error is due to abort signal
-                if (axios.isCancel(err) || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
-                     console.log('Fetch categories request cancelled:', err.message);
-                 } else {
-                    console.error("Error fetching categories:", err);
-                    setErrorCategories('Failed to load categories.');
-                 }
+                if (!axios.isCancel(err)) { console.error("Error fetching categories:", err); setErrorCategories('Failed to load categories.');}
             } finally {
-                 // Only update state if the request wasn't aborted
-                 if (!controller.signal.aborted) {
-                     setLoadingCategories(false);
-                 }
+                 if (!controller.signal.aborted) setLoadingCategories(false);
             }
         };
         fetchCategories();
+        return () => controller.abort(); // Cleanup
+    }, []);
 
-        // Cleanup function to abort request on unmount or re-run
-        return () => {
-            console.log("Cleaning up fetchCategories effect, aborting request...");
-            controller.abort();
+
+    // --- Fetch Transactions Effect ---
+    useEffect(() => {
+        const controller = new AbortController();
+        const fetchTransactions = async () => {
+            setLoadingTransactions(true);
+            setErrorTransactions(null);
+            try {
+                const response = await axios.get('http://localhost:5001/api/transactions', {
+                    signal: controller.signal
+                });
+                setTransactions(response.data);
+            } catch (err) {
+                 if (axios.isCancel(err) || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+                     console.log('Fetch transactions request cancelled:', err.message);
+                 } else {
+                    console.error("Error fetching transactions:", err);
+                    setErrorTransactions('Failed to load transactions.');
+                 }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setLoadingTransactions(false);
+                }
+            }
         };
-    }, []); // Run once on component mount
+        fetchTransactions();
+        return () => { controller.abort(); };
+    }, [transactionRefetchTrigger]); // Re-run when the trigger value changes
+
+
+    // --- Calculate Category Totals using useMemo ---
+    const categoryTotals = React.useMemo(() => { // Explicitly use React.useMemo if needed
+        if (loadingTransactions || !transactions) {
+            return {}; // Return empty object while loading
+        }
+        const totals = {};
+        transactions.forEach(transaction => {
+            const transactionAmount = safeParseFloat(transaction.amount);
+            if (isNaN(transactionAmount)) return;
+            const categoryId = transaction.category_id;
+            if (categoryId !== null && categoryId !== undefined) {
+                totals[categoryId] = (totals[categoryId] || 0) + transactionAmount;
+            }
+        });
+        return totals;
+    }, [transactions, loadingTransactions]);
 
 
     // --- Utility to clear Transaction form fields ---
@@ -106,8 +147,7 @@ function DashboardPage() {
 
     // --- Transaction Popup Handlers ---
     const handleCategoryBoxClick = (category) => {
-        // Prevent opening transaction popup if options are open for THIS category
-         if (optionsPopupCategory?.id === category.id) return;
+         if (optionsPopupCategory?.id === category.id) return; // Don't open if options popup is open for this one
         setSelectedCategoryForPopup(category);
         clearTransactionFormFields();
     };
@@ -117,45 +157,37 @@ function DashboardPage() {
         clearTransactionFormFields();
     };
 
-    // --- Amount Input Calculation Handler (for Enter/Blur) ---
+    // --- Amount Handlers ---
     const handleAmountCalculation = (inputValue) => {
         const currentNumericAmount = safeParseFloat(amount) || 0;
         const trimmedInput = inputValue.trim();
         let newNumericAmount = currentNumericAmount;
 
-        if (trimmedInput === '') {
-            newNumericAmount = 0;
-        } else if (['+', '-', '*', '/'].includes(trimmedInput[0])) {
+        if (trimmedInput === '') { newNumericAmount = 0; }
+        else if (['+', '-', '*', '/'].includes(trimmedInput[0])) {
             const operator = trimmedInput[0];
             const valueStr = trimmedInput.substring(1);
             const operand = safeParseFloat(valueStr);
-
             if (!isNaN(operand)) {
                 switch (operator) {
                     case '+': newNumericAmount = currentNumericAmount + operand; break;
                     case '-': newNumericAmount = currentNumericAmount - operand; break;
                     case '*': newNumericAmount = currentNumericAmount * operand; break;
                     case '/':
-                        if (operand !== 0) {
-                            newNumericAmount = currentNumericAmount / operand;
-                        } else {
-                            console.error("Division by zero attempted");
-                            newNumericAmount = currentNumericAmount;
-                        }
+                        if (operand !== 0) { newNumericAmount = currentNumericAmount / operand; }
+                        else { console.error("Division by zero attempted"); newNumericAmount = currentNumericAmount; }
                         break;
                     default: newNumericAmount = currentNumericAmount;
                 }
             } else { newNumericAmount = currentNumericAmount; }
         } else {
             const directValue = safeParseFloat(trimmedInput);
-            if (!isNaN(directValue)) {
-                newNumericAmount = directValue;
-            } else { newNumericAmount = currentNumericAmount; }
+            if (!isNaN(directValue)) { newNumericAmount = directValue; }
+            else { newNumericAmount = currentNumericAmount; }
         }
         setAmount(formatAmountForDisplay(newNumericAmount));
     };
 
-    // --- Quick Add Button Handler ---
     const handleQuickAdd = (addValue) => {
         const currentNumericAmount = safeParseFloat(amount) || 0;
         const newNumericAmount = currentNumericAmount + addValue;
@@ -165,44 +197,25 @@ function DashboardPage() {
     // --- Transaction Form Submission Handler ---
     const handleTransactionSubmit = async (event) => {
         event.preventDefault();
-        if (!selectedCategoryForPopup) {
-            setSubmitTransactionError('No category selected.'); return;
-        }
-
+        if (!selectedCategoryForPopup) { setSubmitTransactionError('No category selected.'); return; }
         const finalAmount = safeParseFloat(amount);
-        if (isNaN(finalAmount)) {
-            setSubmitTransactionError('Please enter a valid amount.');
-            setSubmitTransactionSuccess(null);
-            return;
-        }
+        if (isNaN(finalAmount)) { setSubmitTransactionError('Please enter a valid amount.'); setSubmitTransactionSuccess(null); return; }
 
         const currentDate = new Date().toISOString().split('T')[0];
-        const transactionData = {
-            description: description || null,
-            amount: finalAmount,
-            transaction_date: currentDate,
-            category_id: selectedCategoryForPopup.id,
-        };
+        const transactionData = { description: description || null, amount: finalAmount, transaction_date: currentDate, category_id: selectedCategoryForPopup.id };
 
         setIsSubmittingTransaction(true);
         setSubmitTransactionError(null);
         setSubmitTransactionSuccess(null);
-
         try {
-            const response = await axios.post('http://localhost:5001/api/transactions', transactionData);
+            await axios.post('http://localhost:5001/api/transactions', transactionData);
             setSubmitTransactionSuccess(`Transaction for ${selectedCategoryForPopup.name} added!`);
-
-            setTimeout(() => {
-                handleClosePopup();
-                // Future: Consider updating History page state if needed
-            }, 1500);
-
+            setTransactionRefetchTrigger(prev => prev + 1); // Trigger transaction refetch for totals
+            setTimeout(() => { handleClosePopup(); }, 1500);
         } catch (err) {
             console.error('Error submitting transaction:', err);
-            let errorMessage = 'Failed to add transaction. Please try again.';
-            if (err.response && err.response.data && err.response.data.message) {
-                errorMessage = err.response.data.message;
-            }
+            let errorMessage = 'Failed to add transaction.';
+            if (err.response?.data?.message) { errorMessage = err.response.data.message; }
             setSubmitTransactionError(errorMessage);
             setSubmitTransactionSuccess(null);
         } finally {
@@ -215,35 +228,23 @@ function DashboardPage() {
     const handleAddCategorySubmit = async (event) => {
         event.preventDefault();
         const trimmedName = newCategoryName.trim();
-        if (!trimmedName) {
-            setAddCategoryError("Category name cannot be empty.");
-            return;
-        }
+        if (!trimmedName) { setAddCategoryError("Category name cannot be empty."); return; }
 
         setIsAddingCategory(true);
         setAddCategoryError(null);
         setAddCategorySuccess(null);
-
         try {
             const response = await axios.post('http://localhost:5001/api/categories', { name: trimmedName });
-            setAddCategoryError(null); // Clear error on success
-
-            setCategories(prevCategories =>
-                [...prevCategories, response.data.newCategory].sort((a, b) =>
-                    a.name.localeCompare(b.name)
-                 )
-            );
-
+            setAddCategoryError(null);
+            setCategories(prevCategories => [...prevCategories, response.data.newCategory].sort((a, b) => a.name.localeCompare(b.name)));
             setNewCategoryName('');
             setAddCategorySuccess(`Category '${response.data.newCategory.name}' added!`);
+            setTransactionRefetchTrigger(prev => prev + 1); // Refetch transactions in case totals need updating (e.g., for uncategorized if it exists)
             setTimeout(() => setAddCategorySuccess(null), 3000);
-
         } catch (err) {
             console.error("Error adding category:", err);
             let message = "Failed to add category.";
-            if (err.response && err.response.data && err.response.data.message) {
-                message = err.response.data.message;
-            }
+            if (err.response?.data?.message) { message = err.response.data.message; }
             setAddCategoryError(message);
             setAddCategorySuccess(null);
         } finally {
@@ -253,7 +254,7 @@ function DashboardPage() {
 
     // --- Category Options Popup Handlers ---
     const handleOptionsIconClick = (event, category) => {
-        event.stopPropagation(); // Prevent category box click from opening transaction popup
+        event.stopPropagation();
         setOptionsPopupCategory(category);
         setRenameCategoryName(category.name);
         setIsRenameMode(false);
@@ -267,50 +268,29 @@ function DashboardPage() {
         setCategoryActionError(null);
     };
 
-    const handleTriggerRename = () => {
-         setIsRenameMode(true);
-         setCategoryActionError(null);
-    };
-
-    const handleCancelRename = () => {
-         setIsRenameMode(false);
-         setRenameCategoryName(optionsPopupCategory ? optionsPopupCategory.name : '');
-         setCategoryActionError(null);
-    };
+    const handleTriggerRename = () => { setIsRenameMode(true); setCategoryActionError(null); };
+    const handleCancelRename = () => { setIsRenameMode(false); setRenameCategoryName(optionsPopupCategory ? optionsPopupCategory.name : ''); setCategoryActionError(null); };
 
     // --- Rename Category Submit Handler ---
     const handleRenameCategorySubmit = async (event) => {
         event.preventDefault();
         if (!optionsPopupCategory) return;
-
         const categoryId = optionsPopupCategory.id;
         const newName = renameCategoryName.trim();
-
-        if (!newName) {
-            setCategoryActionError("New name cannot be empty."); return;
-        }
-        if (newName === optionsPopupCategory.name) {
-            handleCancelRename(); return; // No change needed
-        }
+        if (!newName) { setCategoryActionError("New name cannot be empty."); return; }
+        if (newName === optionsPopupCategory.name) { handleCancelRename(); return; }
 
         setIsProcessingCategoryAction(true);
         setCategoryActionError(null);
-
         try {
             const response = await axios.put(`http://localhost:5001/api/categories/${categoryId}`, { name: newName });
-            setCategories(prevCategories =>
-                prevCategories.map(cat =>
-                    cat.id === categoryId ? response.data.updatedCategory : cat
-                ).sort((a, b) => a.name.localeCompare(b.name))
-            );
+            setCategories(prevCategories => prevCategories.map(cat => cat.id === categoryId ? response.data.updatedCategory : cat).sort((a, b) => a.name.localeCompare(b.name)));
+            setTransactionRefetchTrigger(prev => prev + 1); // Refetch transactions
             handleCloseOptionsPopup();
-
         } catch (err) {
             console.error("Error renaming category:", err);
             let message = "Failed to rename category.";
-            if (err.response && err.response.data && err.response.data.message) {
-                message = err.response.data.message;
-            }
+            if (err.response?.data?.message) { message = err.response.data.message; }
             setCategoryActionError(message);
         } finally {
             setIsProcessingCategoryAction(false);
@@ -319,26 +299,19 @@ function DashboardPage() {
 
     // --- Delete Category Handler ---
     const handleDeleteCategory = async (categoryId, categoryName) => {
-        if (!window.confirm(`Are you sure you want to delete the category "${categoryName}"? Transactions using this category will be unlinked.`)) {
-            return;
-        }
+        if (!window.confirm(`Are you sure you want to delete the category "${categoryName}"? Transactions using this category will be unlinked.`)) return;
 
         setIsProcessingCategoryAction(true);
         setCategoryActionError(null);
-
         try {
             await axios.delete(`http://localhost:5001/api/categories/${categoryId}`);
-            setCategories(prevCategories =>
-                prevCategories.filter(cat => cat.id !== categoryId)
-            );
+            setCategories(prevCategories => prevCategories.filter(cat => cat.id !== categoryId));
+            setTransactionRefetchTrigger(prev => prev + 1); // Refetch transactions
             handleCloseOptionsPopup();
-
         } catch (err) {
             console.error("Error deleting category:", err);
              let message = "Failed to delete category.";
-            if (err.response && err.response.data && err.response.data.message) {
-                message = err.response.data.message;
-            }
+            if (err.response?.data?.message) { message = err.response.data.message; }
             setCategoryActionError(message);
         } finally {
              setIsProcessingCategoryAction(false);
@@ -347,7 +320,10 @@ function DashboardPage() {
 
 
     // --- Render Logic ---
-    if (loadingCategories) {
+    const isLoading = loadingCategories; // Base loading on categories for now
+    // Can refine loading state later if needed
+
+    if (isLoading) {
         return <div>Loading dashboard data...</div>;
     }
     if (errorCategories && categories.length === 0) {
@@ -360,32 +336,42 @@ function DashboardPage() {
             <div className="main-layout-single-column">
                 <section className="categories-display-section-full">
                     <h2>Categories</h2>
+                    {/* Optional: Display Transaction Loading Errors Here */}
+                    {errorTransactions && !loadingTransactions && <p style={{ color: 'orange', marginBottom: '15px' }}>Warning: Could not load transaction data. Totals may be inaccurate.</p>}
 
                     {/* Category Grid Display */}
                     {categories.length === 0 && !loadingCategories ? (
                          <p>No categories defined yet. Add one below!</p>
                     ) : (
                         <div className="category-grid">
-                            {categories.map(category => (
-                                <div
-                                    key={category.id}
-                                    className="category-select-box"
-                                    onClick={() => handleCategoryBoxClick(category)} // Main click opens transaction popup
-                                >
-                                    {/* Options Icon */}
-                                    <button
-                                        className="category-options-btn"
-                                        onClick={(e) => handleOptionsIconClick(e, category)} // Opens options popup
-                                        title="Category Options"
-                                        // Disable button if processing THIS category's action in the options popup
-                                        disabled={isProcessingCategoryAction && optionsPopupCategory?.id === category.id}
+                            {categories.map(category => {
+                                // Get total for this category, default to 0
+                                const total = categoryTotals[category.id] || 0;
+                                return (
+                                    <div
+                                        key={category.id}
+                                        className="category-select-box"
+                                        onClick={() => handleCategoryBoxClick(category)}
                                     >
-                                        ⚙️ {/* Replace with actual icon if desired */}
-                                    </button>
-                                    {/* Category Name */}
-                                    <h3>{category.name}</h3>
-                                </div>
-                            ))}
+                                        {/* Options Icon */}
+                                        <button
+                                            className="category-options-btn"
+                                            onClick={(e) => handleOptionsIconClick(e, category)}
+                                            title="Category Options"
+                                            disabled={isProcessingCategoryAction && optionsPopupCategory?.id === category.id}
+                                        >
+                                            ⚙️
+                                        </button>
+                                        {/* Category Name */}
+                                        <h3>{category.name}</h3>
+                                        {/* Display Category Total */}
+                                        <p className="category-total">
+                                            {/* Show loading dots for total only if transactions are loading */}
+                                            {loadingTransactions ? '...' : formatCurrency(total)}
+                                        </p>
+                                    </div>
+                                );
+                             })}
                         </div>
                     )}
 
@@ -397,7 +383,7 @@ function DashboardPage() {
                                 value={newCategoryName}
                                 onChange={(e) => {
                                     setNewCategoryName(e.target.value);
-                                    if (addCategoryError) setAddCategoryError(null); // Clear error on type
+                                    if (addCategoryError) setAddCategoryError(null);
                                 }}
                                 placeholder="New category name..."
                                 disabled={isAddingCategory}
@@ -413,11 +399,8 @@ function DashboardPage() {
                             {addCategorySuccess && <span className="category-add-status success">{addCategorySuccess}</span>}
                         </div>
                     </div>
-                    {/* End Add Category Container */}
-
-                </section> {/* End categories-display-section-full */}
-            </div> {/* End main-layout-single-column */}
-
+                </section>
+            </div>
 
             {/* --- Popup/Modal for Adding Transaction --- */}
             {selectedCategoryForPopup && (
@@ -426,35 +409,19 @@ function DashboardPage() {
                         {/* Panel 1: Main Form Content */}
                         <div className="popup-content-main">
                             <h2>Add Transaction for: {selectedCategoryForPopup.name}</h2>
-                            {/* Transaction Status Messages */}
                             {submitTransactionError && <p style={{ color: 'red', marginTop: '-10px', marginBottom: '15px' }}>Error: {submitTransactionError}</p>}
                             {submitTransactionSuccess && <p style={{ color: 'green', marginTop: '-10px', marginBottom: '15px' }}>{submitTransactionSuccess}</p>}
-
-                            {/* Transaction Form */}
                             <form onSubmit={handleTransactionSubmit} className="popup-form">
                                 {/* Amount Input */}
-                                <div>
-                                    <label htmlFor="amount">Amount:</label>
-                                    <input type="text" inputMode="decimal" id="amount" className="input-amount" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAmountCalculation(e.target.value); }}} onBlur={(e) => handleAmountCalculation(e.target.value)} placeholder="0.00 or +5, -10 etc." required disabled={isSubmittingTransaction} autoFocus />
-                                </div>
+                                <div><label htmlFor="amount">Amount:</label><input type="text" inputMode="decimal" id="amount" className="input-amount" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAmountCalculation(e.target.value); }}} onBlur={(e) => handleAmountCalculation(e.target.value)} placeholder="0.00 or +5, -10 etc." required disabled={isSubmittingTransaction} autoFocus /></div>
                                 {/* Description Input */}
-                                <div>
-                                    <label htmlFor="description">Description (Optional):</label>
-                                    <input type="text" id="description" className="input-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details..." disabled={isSubmittingTransaction} />
-                                </div>
+                                <div><label htmlFor="description">Description (Optional):</label><input type="text" id="description" className="input-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details..." disabled={isSubmittingTransaction} /></div>
                                 {/* Category Display */}
-                                <div className="form-category-display">
-                                    <label>Category:</label>
-                                    <span>{selectedCategoryForPopup.name}</span>
-                                </div>
+                                <div className="form-category-display"><label>Category:</label><span>{selectedCategoryForPopup.name}</span></div>
                                 {/* Button Group */}
-                                <div className="popup-button-group">
-                                    <button type="button" onClick={handleClosePopup} className="popup-cancel-btn" disabled={isSubmittingTransaction}>Cancel</button>
-                                    <button type="submit" className="popup-submit-btn" disabled={isSubmittingTransaction}>{isSubmittingTransaction ? 'Adding...' : 'Add Transaction'}</button>
-                                </div>
+                                <div className="popup-button-group"><button type="button" onClick={handleClosePopup} className="popup-cancel-btn" disabled={isSubmittingTransaction}>Cancel</button><button type="submit" className="popup-submit-btn" disabled={isSubmittingTransaction}>{isSubmittingTransaction ? 'Adding...' : 'Add Transaction'}</button></div>
                             </form>
-                        </div> {/* End popup-content-main */}
-
+                        </div>
                         {/* Panel 2: Quick Add Buttons */}
                         <div className="quick-add-panel">
                             <h4>Quick Add</h4>
@@ -476,68 +443,36 @@ function DashboardPage() {
                             <div className="quick-add-clear-container">
                                 <button type="button" className="clear-button" onClick={() => setAmount('0.00')} disabled={isSubmittingTransaction}> Clear (0) </button>
                             </div>
-                        </div> {/* End quick-add-panel */}
-                    </div> {/* End popup-container */}
-                </div> // End popup-overlay
-            )} {/* End conditional rendering of transaction popup */}
-
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* --- Category Options Popup/Modal --- */}
             {optionsPopupCategory && (
                 <div className="popup-overlay options-overlay" onClick={handleCloseOptionsPopup}>
                     <div className="options-popup-content" onClick={(e) => e.stopPropagation()}>
                         <h3>Options for: {optionsPopupCategory.name}</h3>
-
-                        {/* Display Action Errors */}
                         {categoryActionError && <p className="options-error">{categoryActionError}</p>}
-
-                        {/* Rename Mode */}
                         {isRenameMode ? (
                             <form onSubmit={handleRenameCategorySubmit} className="rename-form">
                                 <label htmlFor="rename-category">New Name:</label>
-                                <input
-                                    id="rename-category"
-                                    type="text"
-                                    value={renameCategoryName}
-                                    onChange={(e) => {
-                                        setRenameCategoryName(e.target.value);
-                                        // Clear error message when user starts typing new name
-                                        if (categoryActionError) setCategoryActionError(null);
-                                    }}
-                                    disabled={isProcessingCategoryAction} // Disable input while processing
-                                    maxLength="100"
-                                    autoFocus // Focus input when rename mode activates
-                                />
+                                <input id="rename-category" type="text" value={renameCategoryName} onChange={(e) => { setRenameCategoryName(e.target.value); if (categoryActionError) setCategoryActionError(null); }} disabled={isProcessingCategoryAction} maxLength="100" autoFocus />
                                 <div className="options-button-group">
                                     <button type="button" onClick={handleCancelRename} disabled={isProcessingCategoryAction}>Cancel</button>
-                                    <button
-                                        type="submit"
-                                        // Disable if processing, no name typed, or name is unchanged
-                                        disabled={isProcessingCategoryAction || !renameCategoryName.trim() || renameCategoryName.trim() === optionsPopupCategory.name}
-                                    >
-                                        {isProcessingCategoryAction ? 'Saving...' : 'Save'}
-                                    </button>
+                                    <button type="submit" disabled={isProcessingCategoryAction || !renameCategoryName.trim() || renameCategoryName.trim() === optionsPopupCategory.name}> {isProcessingCategoryAction ? 'Saving...' : 'Save'} </button>
                                 </div>
                             </form>
                         ) : (
-                        /* Default Options View */
                             <div className="options-button-group">
-                                <button
-                                    className="delete-button"
-                                    onClick={() => handleDeleteCategory(optionsPopupCategory.id, optionsPopupCategory.name)}
-                                    disabled={isProcessingCategoryAction} // Disable while processing ANY action
-                                >
-                                    Delete
-                                </button>
-                                {/* Other buttons align right */}
+                                <button className="delete-button" onClick={() => handleDeleteCategory(optionsPopupCategory.id, optionsPopupCategory.name)} disabled={isProcessingCategoryAction}> Delete </button>
                                 <button onClick={handleTriggerRename} disabled={isProcessingCategoryAction}>Rename</button>
                                 <button onClick={handleCloseOptionsPopup} disabled={isProcessingCategoryAction}>Cancel</button>
                             </div>
                         )}
-                    </div> {/* End options-popup-content */}
-                </div> // End options-overlay
-            )} {/* End conditional rendering of options popup */}
-
+                    </div>
+                </div>
+            )}
         </> // End React Fragment
     );
 } // End of DashboardPage component
