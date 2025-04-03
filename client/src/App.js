@@ -321,56 +321,91 @@ function App() {
 
 
         {/* --- Transactions List Section --- */}
-        <section className="transactions-section"> {/* Added class for potential styling */}
+                {/* --- Transactions List Section (Modified to show ALL categories) --- */}
+                <section className="transactions-section">
           <h2>Transactions</h2>
+          {/* Loading/Error for transactions remains the same */}
           {loadingTransactions && <p>Loading transactions...</p>}
           {errorTransactions && <p style={{ color: 'red' }}>Error: {errorTransactions}</p>}
 
           {!loadingTransactions && !errorTransactions && (
-            transactions.length === 0 ? (
-              <p>No transactions recorded yet.</p>
+            // Use the categories array to determine which boxes to show
+            categories.length === 0 ? (
+               // This case is less likely now if categories load first, but good fallback
+               <p>No categories found. Add some categories first!</p>
             ) : (
-              // Iterate over the grouped transactions object
-              <div className="category-accordion"> {/* Wrapper for all category boxes */}
-                {Object.entries(groupedTransactions).map(([categoryName, transactionsInCategory]) => (
-                  <div key={categoryName} className="category-box">
-                    {/* Clickable Category Header */}
-                    <h3
-                      onClick={() => handleCategoryClick(categoryName)} // Call handler on click
-                      className="category-header" // Add class for styling
-                      style={{ cursor: 'pointer' }} // Indicate it's clickable
-                    >
-                      {categoryName}
-                      {/* Optional: Add an indicator arrow */}
-                      <span style={{ float: 'right', transition: 'transform 0.2s' , transform: expandedCategoryName === categoryName ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
-                    </h3>
+              <div className="category-accordion">
+                {/* Iterate over the main categories list */}
+                {categories.map(category => {
+                  // Find the transactions for this specific category from our grouped data
+                  // Use category.name as the key. Handle potential undefined if no transactions exist.
+                  const transactionsInCategory = groupedTransactions[category.name] || []; // Default to empty array
 
-                    {/* Conditionally Render Transaction List */}
-                    {expandedCategoryName === categoryName && ( // Only render if this category is expanded
-                      transactionsInCategory.length > 0 ? (
-                        <ul>
-                          {transactionsInCategory.map(t => (
-                            <li key={t.id}>
-                              <span>{t.transaction_date}</span> - {' '}
-                              <span>{t.description || <i>(No description)</i>}</span>:{' '}
-                              <strong>{formatCurrency(t.amount)}</strong>
-                              {/* Delete Button */}
-                              <button
-                                onClick={() => handleDeleteTransaction(t.id)}
-                                style={{ marginLeft: '10px', color: 'red', cursor: 'pointer' }}
-                                title="Delete Transaction"
-                              >
-                                X
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p style={{ paddingLeft: '20px', fontStyle: 'italic' }}>No transactions in this category.</p>
-                      )
-                    )}
-                  </div> // End category-box
-                ))}
+                  return (
+                    <div key={category.id} className="category-box"> {/* Use category.id for the key */}
+                      {/* Clickable Category Header */}
+                      <h3
+                        onClick={() => handleCategoryClick(category.name)} // Use category.name for click handler
+                        className="category-header"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {category.name} {/* Display category name */}
+                        {/* Optional: Add indicator arrow */}
+                        <span style={{ float: 'right', transition: 'transform 0.2s' , transform: expandedCategoryName === category.name ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
+                      </h3>
+
+                      {/* Conditionally Render Transaction List */}
+                      {/* Check if THIS category is the expanded one */}
+                      {expandedCategoryName === category.name && (
+                        // Now check if there are transactions *within this specific category*
+                        transactionsInCategory.length > 0 ? (
+                          <ul>
+                            {transactionsInCategory.map(t => (
+                              <li key={t.id}>
+                                <span>{t.transaction_date}</span> - {' '}
+                                <span>{t.description || <i>(No description)</i>}</span>:{' '}
+                                <strong>{formatCurrency(t.amount)}</strong>
+                                {/* Delete Button */}
+                                <button
+                                  onClick={() => handleDeleteTransaction(t.id)}
+                                  style={{ marginLeft: '10px', color: 'red', cursor: 'pointer' }}
+                                  title="Delete Transaction"
+                                >
+                                  X
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          // Display message if category is expanded but has no transactions
+                          <p style={{ paddingLeft: '20px', fontStyle: 'italic' }}>No transactions in this category yet.</p>
+                        )
+                      )}
+                    </div> // End category-box
+                  );
+                })}
+                {/* Handle the 'Uncategorized' group separately if necessary */}
+                {groupedTransactions['Uncategorized'] && groupedTransactions['Uncategorized'].length > 0 && (
+                     <div key="uncategorized" className="category-box">
+                         <h3 onClick={() => handleCategoryClick('Uncategorized')} className="category-header" style={{ cursor: 'pointer' }}>
+                             Uncategorized
+                             <span style={{ float: 'right', transition: 'transform 0.2s' , transform: expandedCategoryName === 'Uncategorized' ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
+                         </h3>
+                         {expandedCategoryName === 'Uncategorized' && (
+                             <ul>
+                                 {groupedTransactions['Uncategorized'].map(t => (
+                                     <li key={t.id}>
+                                         {/* ... transaction details + delete button ... */}
+                                         <span>{t.transaction_date}</span> - {' '}
+                                         <span>{t.description || <i>(No description)</i>}</span>:{' '}
+                                         <strong>{formatCurrency(t.amount)}</strong>
+                                         <button onClick={() => handleDeleteTransaction(t.id)} style={{ marginLeft: '10px', color: 'red', cursor: 'pointer' }} title="Delete Transaction">X</button>
+                                     </li>
+                                 ))}
+                             </ul>
+                         )}
+                     </div>
+                )}
               </div> // End category-accordion
             )
           )}
