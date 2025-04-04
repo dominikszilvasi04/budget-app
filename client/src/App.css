@@ -451,7 +451,7 @@ nav .nav-link.active {
 /* --- NEW Styles for Budget Page --- */
 .budget-page-container {
   padding: 0 30px 30px 30px;
-  max-width: 900px; /* Slightly wider to accommodate chart better maybe */
+  max-width: 1200px; /* Allow page container to be wider */
   margin: 0 auto;
   text-align: left;
 }
@@ -470,22 +470,59 @@ nav .nav-link.active {
   font-size: 1em;
 }
 
-/* --- NEW: Styles for Budget Chart --- */
+/* --- NEW: Budget Page 2-Column Layout --- */
+.budget-content-layout {
+  display: flex;
+  align-items: flex-start; /* Align tops */
+  gap: 30px; /* Space between columns */
+  margin-top: 20px; /* Space below intro paragraph */
+}
+/* Left Column: Chart */
+.budget-chart-column {
+  flex-basis: 45%; /* Assign percentage width */
+  /* Or use fixed width: */
+  /* flex-basis: 500px; */
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
 .budget-chart-container {
-  max-width: 500px; /* Max width of chart */
-  height: 400px; /* Explicit height for chart canvas */
-  margin: 20px auto 40px auto; /* Center chart, add space below */
-  padding: 10px;
-  background-color: #fff; /* Optional white background */
+  /* Remove centering margin */
+  /* margin: 20px auto 40px auto; */
+  margin: 0; /* Reset margin */
+  /* Use width: 100% to fill column, keep height/max-width */
+  width: 100%;
+  max-width: 550px; /* Optional: Limit chart size within column */
+  height: 450px; /* Adjust height as needed */
+  padding: 15px; /* Adjust padding */
+  background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-sizing: border-box;
+}
+
+.budget-chart-container p { /* Style for 'No budget' message */
+  text-align: center;
+  padding-top: 50px;
+  color: #777;
+  font-style: italic;
+}
+/* Right Column: Budget List */
+.budget-list-column {
+  flex-grow: 1; /* Allow list to take remaining space */
+  min-width: 300px; /* Prevent list from becoming too narrow */
 }
 
 .budget-list {
+  /* Remove centering margin if present */
+  /* margin: 0 auto; */
+  /* Keep border, background etc */
   border: 1px solid #ddd;
   border-radius: 5px;
   background-color: #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  /* Add max-height and scroll if list can be long */
+  max-height: 70vh; /* Example: limit height */
+  overflow-y: auto; /* Add scrollbar if needed */
 }
 
 .budget-item {

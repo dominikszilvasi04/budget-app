@@ -180,59 +180,92 @@ function BudgetPage() {
 
 
     // --- Render Logic ---
-    if (loading) { return <div>Loading budget data...</div>; }
-    if (error) { return <div style={{ color: 'red', padding: '20px' }}>Error: {error}</div>; }
+    if (loading) { // Check the combined or primary loading state
+        return <div>Loading budget data...</div>;
+    }
+    if (error) { // Check for critical errors loading initial data
+        return <div style={{ color: 'red', padding: '20px' }}>Error: {error}</div>;
+    }
+    // If no critical error, proceed to render the main content
+    // Individual errors (like saving errors) are handled inline
 
     // --- Main Return Statement ---
     return (
-        <div className="budget-page-container">
+        <div className="budget-page-container"> {/* Overall page container */}
             <h2>Monthly Budget Allocation</h2>
             <p>Enter the budget amount for each category for the current month. Changes save automatically when you click away.</p>
 
-            {/* --- Chart Section --- */}
-            <div className="budget-chart-container">
-                {/* Use the pieChartData variable calculated via useMemo */}
-                {pieChartData ? (
-                    <Pie data={pieChartData} options={chartOptions} />
-                ) : (
-                    !loading && <p>No budget amounts set to display in chart.</p>
-                )}
-            </div>
+            {/* --- Layout Wrapper for Chart and List --- */}
+            <div className="budget-content-layout">
 
-            {/* --- Budget Input List --- */}
-            <div className="budget-list">
-                {budgetData.length === 0 ? (
-                    <p style={{ padding: '20px', fontStyle: 'italic', color: '#555' }}>
-                        No categories found. Add categories on the Dashboard first.
-                    </p>
-                ) : (
-                    budgetData.map((item) => {
-                         const displayValue = item.budget_amount_input !== undefined
-                            ? item.budget_amount_input
-                            : (item.budget_amount !== null ? item.budget_amount.toFixed(2) : '0.00');
-                        return (
-                            <div key={item.id} className="budget-item">
-                                <label htmlFor={`budget-${item.id}`} className="budget-item-label"> {item.name} </label>
-                                <div className="budget-item-input-group">
-                                    <span className="currency-symbol">$</span>
-                                    <input
-                                        type="text" inputMode="decimal" id={`budget-${item.id}`} className="budget-item-input"
-                                        value={displayValue} onChange={(e) => handleBudgetChange(item.id, e.target.value)}
-                                        onBlur={() => handleBudgetSave(item.id)} placeholder="0.00"
-                                    />
-                                    <span className={`budget-item-status status-${savingStatus[item.id]?.status}`}>
-                                        {savingStatus[item.id]?.status === 'saving' && 'Saving...'}
-                                        {savingStatus[item.id]?.status === 'saved' && 'Saved!'}
-                                        {savingStatus[item.id]?.status === 'error' && `Error: ${savingStatus[item.id]?.message || 'Failed'}`}
-                                    </span>
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
-            </div>
-        </div>
+                {/* --- Chart Section (Left Column) --- */}
+                <div className="budget-chart-column">
+                    <div className="budget-chart-container">
+                        {/* Conditionally render chart or 'no data' message */}
+                        {pieChartData ? (
+                            <Pie data={pieChartData} options={chartOptions} />
+                        ) : (
+                            // Show message only if not loading (loading checked above)
+                            <p>No budget amounts set to display in chart.</p>
+                        )}
+                    </div>
+                </div>
+                {/* --- End Chart Section --- */}
+
+
+                {/* --- Budget Input List Section (Right Column) --- */}
+                <div className="budget-list-column">
+                    <div className="budget-list">
+                        {/* Check if budgetData array is empty */}
+                        {budgetData.length === 0 ? (
+                            <p style={{ padding: '20px', fontStyle: 'italic', color: '#555' }}>
+                                No categories found. Add categories on the Dashboard first.
+                            </p>
+                        ) : (
+                            // Map over budgetData to render each category's input row
+                            budgetData.map((item) => {
+                                 // Determine the input value to display
+                                 const displayValue = item.budget_amount_input !== undefined
+                                    ? item.budget_amount_input
+                                    : (item.budget_amount !== null ? item.budget_amount.toFixed(2) : '0.00');
+
+                                return (
+                                    <div key={item.id} className="budget-item">
+                                        {/* Category Label */}
+                                        <label htmlFor={`budget-${item.id}`} className="budget-item-label">
+                                            {item.name}
+                                        </label>
+                                        {/* Input Group (Symbol + Input + Status) */}
+                                        <div className="budget-item-input-group">
+                                            <span className="currency-symbol">$</span>
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                id={`budget-${item.id}`}
+                                                className="budget-item-input"
+                                                value={displayValue}
+                                                onChange={(e) => handleBudgetChange(item.id, e.target.value)}
+                                                onBlur={() => handleBudgetSave(item.id)} // Save on blur
+                                                placeholder="0.00"
+                                            />
+                                            {/* Saving Status Indicator */}
+                                            <span className={`budget-item-status status-${savingStatus[item.id]?.status}`}>
+                                                {savingStatus[item.id]?.status === 'saving' && 'Saving...'}
+                                                {savingStatus[item.id]?.status === 'saved' && 'Saved!'}
+                                                {savingStatus[item.id]?.status === 'error' && `Error: ${savingStatus[item.id]?.message || 'Failed'}`}
+                                            </span>
+                                        </div> {/* End input group */}
+                                    </div> // End budget item
+                                );
+                            }) // End map
+                        )}
+                    </div> {/* End budget-list */}
+                </div>
+                {/* --- End Budget Input List Section --- */}
+
+            </div> {/* --- End budget-content-layout --- */}
+        </div> // End budget-page-container
     );
-} // End of BudgetPage component
+} 
 
 export default BudgetPage;
