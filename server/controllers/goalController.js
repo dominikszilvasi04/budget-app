@@ -83,8 +83,93 @@ const addGoal = async (req, res) => {
     }
 };
 
-module.exports = {
-    getAllGoals,
-    addGoal,
-    // Add updateGoal, deleteGoal, addContribution later
-};
+// --- NEW Function: Add Contribution to a Goal ---
+const addContribution = async (req, res) => {
+    const { goalId } = req.params; // Get goal ID from URL parameter
+    const { amount, notes = null } = req.body; // Get amount and optional notes from body
+
+    // --- Validation ---
+    const contributionAmount = parseFloat(amount); // Use parseFloat for amount validation
+    if (isNaN(contributionAmount) || contributionAmount <= 0) {
+        return res.status(400).json({ message: 'Valid positive contribution amount is required.' });
+    }
+    if (isNaN(parseInt(goalId, 10))) {
+         return res.status(400).json({ message: 'Invalid goal ID.' });
+    }
+    const parsedGoalId = parseInt(goalId, 10);
+    const contributionDate = new Date().toISOString().split('T')[0]; // Use current date on server
+
+    let connection; // Declare connection outside try for use in finally
+    try {
+        // --- Start Database Transaction ---
+        connection = await dbPool.getConnection();
+        await connection.beginTransaction();
+        console.log("DB Transaction Started for contribution");
+
+        // 1. Insert the contribution record
+        const insertSql = `
+            INSERT INTO goal_contributions (goal_id, amount, contribution_date, notes)
+            VALUES (?, ?, ?, ?);
+        `;
+        const [insertResult] = await connection.query(insertSql, [parsedGoalId, contributionAmount, contributionDate, notes]);
+        console.log("Contribution inserted, ID:", insertResult.insertId);
+
+        // 2. Update the goal's current_amount
+        const updateSql = `
+            UPDATE goals
+            SET current_amount = current_amount + ?
+            WHERE id = ?;
+        `;
+        const [updateResult] = await connection.query(updateSql, [contributionAmount, parsedGoalId]);
+        console.log("Goal current_amount updated, affected rows:", updateResult.affectedRows);
+
+        // Check if the goal update actually happened (goal might not exist)
+        if (updateResult.affectedRows === 0) {
+             // If goal wasn't found to update, rollback transaction and send error
+             await connection.rollback();
+             console.log("Goal not found during update, rolling back transaction.");
+             return res.status(404).json({ message: `Goal with ID ${parsedGoalId} not found.` });
+        }
+
+        // --- Commit Transaction ---
+        await connection.commit();
+        console.log("DB Transaction Committed");
+
+        // Optionally fetch the updated goal data to return
+        const [updatedGoalRows] = await connection.query('SELECT id, name, target_amount, current_amount, target_date, notes, created_at FROM goals WHERE id = ?', [parsedGoalId]);
+
+         // Format before sending back
+         const formattedGoal = updatedGoalRows[0] ? {
+            ...updatedGoalRows[0],
+            target_amount: parseFloat(updatedGoalRows[0].target_amount),
+            current_amount: parseFloat(updatedGoalRows[0].current_amount),
+            target_date: updatedGoalRows[0].target_date ? new Date(updatedGoalRows[0].target_date).toISOString().split('T')[0] : null
+         } : null;
+
+
+        res.status(201).json({ message: 'Contribution added successfully!', updatedGoal: formattedGoal }); // Send back updated goal
+
+    } catch (error) {
+        console.error("Error adding contribution:", error);
+        // If an error occurred, rollback the transaction
+        if (connection) {
+            console.log("Error occurred, rolling back transaction.");
+            await connection.rollback();
+        }
+        // Handle specific errors like foreign key violation if needed, though update check handles missing goal
+        res.status(500).json({ message: 'Failed to add contribution due to server error.' });
+    } finally {
+        // Always release the connection back to the pool
+        if (connection) {
+            console.log("Releasing DB connection.");
+            connection.release();
+        }
+    }
+
+}
+    module.exports = {
+        getAllGoals,
+        addGoal,
+        addContribution,
+        // Add updateGoal, deleteGoal exports here later when implemented
+    }; // <<< Make sure this closing brace is present

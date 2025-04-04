@@ -24,11 +24,10 @@ const safeParseGoalFloat = (value) => {
 // --- Component Definition ---
 function GoalsPage() {
     // --- State ---
+    // --- Existing State ---
     const [goals, setGoals] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    // Add Goal Form State
     const [goalName, setGoalName] = useState('');
     const [goalTargetAmount, setGoalTargetAmount] = useState('');
     const [goalTargetDate, setGoalTargetDate] = useState('');
@@ -37,6 +36,13 @@ function GoalsPage() {
     const [addGoalError, setAddGoalError] = useState(null);
     const [addGoalSuccess, setAddGoalSuccess] = useState(null);
 
+    // --- NEW State for Contribution Popup ---
+    const [contributionPopupGoal, setContributionPopupGoal] = useState(null); // Goal object or null
+    const [contributionAmount, setContributionAmount] = useState('');
+    const [contributionNotes, setContributionNotes] = useState('');
+    const [isAddingContribution, setIsAddingContribution] = useState(false);
+    const [addContributionError, setAddContributionError] = useState(null);
+    const [addContributionSuccess, setAddContributionSuccess] = useState(null);
     // --- Fetch Goals ---
     const fetchGoals = useCallback(async (controller) => {
         setLoading(true);
@@ -112,12 +118,76 @@ function GoalsPage() {
         }
     };
 
+    // --- NEW Contribution Popup Handlers ---
+    const handleOpenContributionPopup = (goal) => {
+        setContributionPopupGoal(goal); // Set the goal for the popup
+        setContributionAmount(''); // Clear fields
+        setContributionNotes('');
+        setAddContributionError(null); // Clear previous status
+        setAddContributionSuccess(null);
+    };
+
+    const handleCloseContributionPopup = () => {
+        setContributionPopupGoal(null); // Close the popup
+        // Don't clear fields here necessarily, maybe on open?
+    };
+
+    // --- NEW Add Contribution Submit Handler ---
+    const handleAddContributionSubmit = async (event) => {
+        event.preventDefault();
+        if (!contributionPopupGoal) return; // Should not happen
+
+        const parsedAmount = safeParseGoalFloat(contributionAmount); // Use goal parser (allows > 0)
+
+        if (isNaN(parsedAmount)) {
+            setAddContributionError("Valid positive contribution amount is required.");
+            return;
+        }
+
+        setIsAddingContribution(true);
+        setAddContributionError(null);
+        setAddContributionSuccess(null);
+
+        const payload = {
+            amount: parsedAmount,
+            notes: contributionNotes || null,
+        };
+        const goalId = contributionPopupGoal.id;
+
+        try {
+            const response = await axios.post(`http://localhost:5001/api/goals/${goalId}/contributions`, payload);
+
+            // Update the specific goal in the local 'goals' state with the updated goal from the response
+            setGoals(prevGoals => prevGoals.map(g =>
+                g.id === goalId ? response.data.updatedGoal : g
+            ));
+
+            setAddContributionSuccess(`Contribution added to '${contributionPopupGoal.name}'!`);
+            // Clear form inside popup
+            setContributionAmount('');
+            setContributionNotes('');
+
+             // Close popup after delay
+            setTimeout(() => {
+                handleCloseContributionPopup();
+            }, 1500);
+
+        } catch (err) {
+            console.error("Error adding contribution:", err);
+            let message = "Failed to add contribution.";
+            if (err.response?.data?.message) { message = err.response.data.message; }
+            setAddContributionError(message);
+            setAddContributionSuccess(null);
+        } finally {
+            setIsAddingContribution(false);
+        }
+    };
+
 
     // --- Render Logic ---
     if (loading) { return <div>Loading goals...</div>; }
     if (error) { return <div style={{ color: 'red', padding: '20px' }}>Error: {error}</div>; }
 
-    // --- Main Return Statement ---
     return (
         <div className="goals-page-container"> {/* Use specific class */}
             <h2>Savings Goals</h2>
@@ -140,7 +210,7 @@ function GoalsPage() {
                         <div className="form-group">
                             <label htmlFor="goal-target-amount">Target Amount ($):</label>
                             <input
-                                type="number" // Use number for easier input, but parse carefully
+                                type="number"
                                 id="goal-target-amount"
                                 value={goalTargetAmount}
                                 onChange={(e) => { setGoalTargetAmount(e.target.value); if (addGoalError) setAddGoalError(null); }}
@@ -176,7 +246,7 @@ function GoalsPage() {
                             {isAddingGoal ? 'Adding...' : 'Add Goal'}
                         </button>
                         {/* Status Messages */}
-                        <div className="goal-add-status-container" style={{marginLeft: '15px'}}> {/* Inline style for spacing */}
+                        <div className="goal-add-status-container" style={{marginLeft: '15px'}}>
                              {addGoalError && <span className="goal-add-status error">{addGoalError}</span>}
                              {addGoalSuccess && <span className="goal-add-status success">{addGoalSuccess}</span>}
                         </div>
@@ -186,7 +256,7 @@ function GoalsPage() {
             {/* --- End Add Goal Form --- */}
 
 
-            {/* --- Display Goals List Section --- */}
+            {/* --- Display Goals List Section (With Add Contribution Button) --- */}
             <div className="goals-list-container">
                 <h3>Current Goals</h3>
                 {goals.length === 0 ? (
@@ -197,19 +267,78 @@ function GoalsPage() {
                             <div key={goal.id} className="goal-item-card">
                                 <h4>{goal.name}</h4>
                                 <p>Target: {formatCurrency(goal.target_amount)}</p>
-                                {/* Display current amount and progress bar in later phase */}
-                                <p>Saved: {formatCurrency(goal.current_amount)} (0%)</p> {/* Placeholder % */}
+                                <p>Saved: {formatCurrency(goal.current_amount)}</p> {/* Simplified for now */}
+                                {/* We'll add the progress bar in the next phase */}
                                 {goal.target_date && <p>Target Date: {goal.target_date}</p>}
                                 {goal.notes && <p className="goal-notes">Notes: {goal.notes}</p>}
-                                {/* Add Contribution / Edit / Delete buttons later */}
+                                {/* --- Add Contribution Button --- */}
+                                <div className="goal-card-actions">
+                                    <button
+                                        onClick={() => handleOpenContributionPopup(goal)} // Pass the goal object
+                                        className="btn-add-contribution"
+                                        // Optional: Disable if goal is already met?
+                                        // disabled={goal.current_amount >= goal.target_amount}
+                                    >
+                                        Add Contribution
+                                    </button>
+                                    {/* Placeholder for Edit/Delete Goal buttons */}
+                                </div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
             {/* --- End Display Goals --- */}
+
+
+            {/* --- Contribution Popup/Modal --- */}
+            {/* Conditionally render based on contributionPopupGoal state */}
+            {contributionPopupGoal && (
+                <div className="popup-overlay contribution-overlay" onClick={handleCloseContributionPopup}>
+                    {/* Stop propagation prevents closing when clicking inside */}
+                    <div className="popup-content contribution-popup-content" onClick={(e) => e.stopPropagation()}>
+                        <h3>Add Contribution to: {contributionPopupGoal.name}</h3>
+                        {/* Status Messages for Contribution */}
+                         {addContributionError && <p className="options-error">{addContributionError}</p>} {/* Reuse error style */}
+                         {addContributionSuccess && <p className="options-success">{addContributionSuccess}</p>} {/* Reuse success style */}
+
+                        {/* Contribution Form */}
+                        <form onSubmit={handleAddContributionSubmit} className="contribution-form">
+                            <div className="form-group">
+                                <label htmlFor="contribution-amount">Amount ($):</label>
+                                <input
+                                    type="number" // Use number type for better input control
+                                    id="contribution-amount"
+                                    value={contributionAmount}
+                                    onChange={(e) => { setContributionAmount(e.target.value); if (addContributionError) setAddContributionError(null); }}
+                                    step="0.01" min="0.01" placeholder="e.g., 50.00" required disabled={isAddingContribution} autoFocus
+                                />
+                            </div>
+                             <div className="form-group">
+                                <label htmlFor="contribution-notes">Notes (Optional):</label>
+                                <textarea
+                                    id="contribution-notes"
+                                    value={contributionNotes}
+                                    onChange={(e) => setContributionNotes(e.target.value)}
+                                    rows="2" disabled={isAddingContribution}
+                                ></textarea>
+                             </div>
+                             {/* Reusing options button group style for consistency */}
+                             <div className="options-button-group">
+                                 <button type="button" onClick={handleCloseContributionPopup} disabled={isAddingContribution}>Cancel</button>
+                                 <button type="submit" disabled={isAddingContribution || !contributionAmount}>
+                                     {isAddingContribution ? 'Adding...' : 'Add Contribution'}
+                                 </button>
+                             </div>
+                        </form>
+                    </div> {/* End popup-content */}
+                </div> // End popup-overlay
+            )}
+            {/* --- End Contribution Popup --- */}
+
+
         </div> // End goals-page-container
     );
-} // End of GoalsPage component
+} // End of GoalsPage component needs to be outside this block
 
-export default GoalsPage; // Export the component
+export default GoalsPage;

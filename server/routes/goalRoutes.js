@@ -9,6 +9,8 @@ router.get('/', goalController.getAllGoals);
 
 // POST /api/goals/
 router.post('/', goalController.addGoal);
+// POST /api/goals/:goalId/contributions
+router.post('/:goalId/contributions', goalController.addContribution);
 
 // Future routes: PUT /:id, DELETE /:id, POST /:id/contributions
 
