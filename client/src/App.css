@@ -451,7 +451,7 @@ nav .nav-link.active {
 /* --- NEW Styles for Budget Page --- */
 .budget-page-container {
   padding: 0 30px 30px 30px;
-  max-width: 700px;
+  max-width: 900px; /* Slightly wider to accommodate chart better maybe */
   margin: 0 auto;
   text-align: left;
 }
@@ -468,6 +468,17 @@ nav .nav-link.active {
   margin-bottom: 25px;
   color: #555;
   font-size: 1em;
+}
+
+/* --- NEW: Styles for Budget Chart --- */
+.budget-chart-container {
+  max-width: 500px; /* Max width of chart */
+  height: 400px; /* Explicit height for chart canvas */
+  margin: 20px auto 40px auto; /* Center chart, add space below */
+  padding: 10px;
+  background-color: #fff; /* Optional white background */
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 .budget-list {

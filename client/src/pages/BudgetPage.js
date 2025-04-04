@@ -1,228 +1,238 @@
 // client/src/pages/BudgetPage.js
-import React, { useState, useEffect, useCallback } from 'react'; // Added useCallback
+import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Ensure useMemo and useCallback are imported
 import axios from 'axios';
+// --- Chart.js Imports ---
+import { Pie } from 'react-chartjs-2';
+import {
+    Chart as ChartJS,
+    ArcElement,
+    Tooltip,
+    Legend,
+    Title
+} from 'chart.js';
 
-// Add helper if needed, or ensure it's globally available
-const formatCurrency = (num) => {
-    // Handle null/undefined/non-numbers gracefully
-    const parsedNum = parseFloat(num);
-    if (isNaN(parsedNum)) {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(0);
-    }
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(parsedNum);
+// --- Register Chart.js components ---
+ChartJS.register(ArcElement, Tooltip, Legend, Title);
+
+// --- Helper Functions ---
+const safeParseFloat = (value) => {
+    if (typeof value === 'number') return value;
+    if (typeof value !== 'string') return NaN;
+    const cleanedValue = value.trim();
+    if (cleanedValue === '') return NaN;
+    const parsed = parseFloat(cleanedValue);
+    return isNaN(parsed) ? NaN : parsed;
 };
 
-// Helper to safely parse input for budget amount
+const formatCurrency = (num) => {
+    const parsedNum = typeof num === 'number' ? num : safeParseFloat(num);
+    if (isNaN(parsedNum)) { num = 0; } else { num = parsedNum; }
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+};
+
 const safeParseBudgetFloat = (value) => {
      if (typeof value === 'number') return value;
      if (typeof value !== 'string') return NaN;
-     // Allow empty string to represent clearing the budget (or setting to 0)
-     if (value.trim() === '') return 0.00; // Treat empty as 0
-     // Basic cleaning - remove common currency symbols, commas, maybe spaces?
+     if (value.trim() === '') return 0.00;
      const cleanedValue = value.replace(/[\$,]/g, '').trim();
      if (cleanedValue === '') return 0.00;
      const parsed = parseFloat(cleanedValue);
-     // Ensure it's not negative for budget
      return isNaN(parsed) || parsed < 0 ? NaN : parsed;
 };
 
+const generateChartColors = (numColors) => {
+    const colors = []; const baseHue = 200;
+    for (let i = 0; i < numColors; i++) {
+        const hue = (baseHue + (i * 40)) % 360; const saturation = 70 + (i % 3) * 10;
+        const lightness = 60 + (i % 2) * 5; colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+    }
+    return colors;
+};
 
+// --- Chart Options ---
+const chartOptions = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+        legend: { position: 'top' },
+        title: { display: true, text: 'Budget Allocation by Category (Current Month)', font: { size: 16 } },
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    let label = context.label || ''; if (label) { label += ': '; }
+                    // Use context.raw for original value
+                    if (context.raw !== null && context.raw !== undefined) { label += formatCurrency(context.raw); }
+                    return label;
+                }
+            }
+        }
+    },
+};
+
+// --- Component Definition ---
 function BudgetPage() {
-    // State for budget data (array of {id, name, budget_amount})
+    // --- State Variables ---
     const [budgetData, setBudgetData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    // State to track saving status for individual items (optional but good UX)
-    const [savingStatus, setSavingStatus] = useState({}); // e.g., { categoryId: 'saving' | 'saved' | 'error', message: '' }
+    const [savingStatus, setSavingStatus] = useState({});
 
-    // --- Fetch Budget Data ---
+    // --- Fetch Budget Data Effect ---
     const fetchBudgetData = useCallback(async (controller) => {
-        setLoading(true);
-        setError(null);
+        setLoading(true); setError(null);
         try {
-            const response = await axios.get('http://localhost:5001/api/budgets/current', {
-                signal: controller?.signal // Use optional chaining for signal
-            });
-            // Initialize budget_amount to 0.00 if it's null from backend
-            const initializedData = response.data.map(item => ({
-                 ...item,
-                 budget_amount: item.budget_amount === null ? 0.00 : item.budget_amount
-            }));
+            const response = await axios.get('http://localhost:5001/api/budgets/current', { signal: controller?.signal });
+            const initializedData = response.data.map(item => ({ ...item, budget_amount: item.budget_amount ?? 0.00 })); // Use nullish coalescing
             setBudgetData(initializedData);
         } catch (err) {
-            if (!axios.isCancel(err)) {
-                console.error("Error fetching budget data:", err);
-                setError('Failed to load budget data.');
-            }
-        } finally {
-            // Check signal if controller was passed
-            if (!controller?.signal?.aborted) {
-                setLoading(false);
-            }
-        }
-    }, []); // useCallback dependency array is empty
+            if (!axios.isCancel(err)) { console.error("Error fetching budget data:", err); setError('Failed to load budget data.'); }
+        } finally { if (!controller?.signal?.aborted) setLoading(false); }
+    }, []); // Empty dependency array for useCallback
 
     useEffect(() => {
         const controller = new AbortController();
         fetchBudgetData(controller);
-        // Cleanup function
-        return () => {
-            controller.abort();
+        return () => { controller.abort(); };
+    }, [fetchBudgetData]); // Depend only on the memoized fetch function
+
+    // --- *** MOVED pieChartData calculation HERE (Top Level of Component) *** ---
+    const pieChartData = useMemo(() => {
+        // Filter out categories with 0 or null/undefined budget amount
+        const filteredData = budgetData.filter(item => item.budget_amount && item.budget_amount > 0);
+
+        if (filteredData.length === 0) {
+            return null; // Return null if no data to display
+        }
+
+        const labels = filteredData.map(item => item.name);
+        const dataValues = filteredData.map(item => item.budget_amount);
+        const backgroundColors = generateChartColors(filteredData.length);
+
+        return {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Budget Amount',
+                    data: dataValues, // Pass the raw numeric values
+                    backgroundColor: backgroundColors,
+                    borderColor: backgroundColors.map(color => color.replace('60%', '50%').replace('70%', '60%')),
+                    borderWidth: 1,
+                },
+            ],
         };
-    }, [fetchBudgetData]); // Depend on the memoized fetch function
+    }, [budgetData]); // Recalculate only when budgetData changes
 
 
-    // --- Handle Input Change (Update local state immediately) ---
+    // --- Handle Input Change ---
     const handleBudgetChange = (categoryId, value) => {
-        // Update the local state first for immediate feedback
         setBudgetData(currentData =>
             currentData.map(item =>
                 item.id === categoryId ? { ...item, budget_amount_input: value } : item
-                // Use a temporary 'budget_amount_input' field to store raw input
             )
         );
-        // Clear saving status for this item when user types again
-        if (savingStatus[categoryId]) {
-            setSavingStatus(prev => ({ ...prev, [categoryId]: null }));
-        }
+        if (savingStatus[categoryId]) { setSavingStatus(prev => ({ ...prev, [categoryId]: null })); }
     };
-
 
     // --- Handle Saving Budget (onBlur) ---
     const handleBudgetSave = async (categoryId) => {
         const budgetItem = budgetData.find(item => item.id === categoryId);
-        if (!budgetItem) return; // Should not happen
+        if (!budgetItem) return;
 
-        // Use the temporary input value if it exists, otherwise the stored amount
-        const valueToSave = budgetItem.budget_amount_input !== undefined
-            ? budgetItem.budget_amount_input
-            : budgetItem.budget_amount;
-
-        // Validate and parse the input value
+        const valueToSave = budgetItem.budget_amount_input !== undefined ? budgetItem.budget_amount_input : budgetItem.budget_amount;
         const parsedAmount = safeParseBudgetFloat(valueToSave);
 
         if (isNaN(parsedAmount)) {
-            // Invalid input, potentially revert or show error
              console.error("Invalid budget amount entered:", valueToSave);
              setSavingStatus(prev => ({ ...prev, [categoryId]: { status: 'error', message: 'Invalid number' } }));
-             // Optionally revert the input field after a delay
              setTimeout(() => {
-                 setBudgetData(currentData =>
-                     currentData.map(item =>
-                         item.id === categoryId ? { ...item, budget_amount_input: item.budget_amount.toFixed(2) } : item
-                     )
-                 );
-                  setSavingStatus(prev => ({ ...prev, [categoryId]: null }));
+                 setBudgetData(currentData => currentData.map(item => item.id === categoryId ? { ...item, budget_amount_input: item.budget_amount?.toFixed(2) ?? '0.00' } : item ));
+                 setSavingStatus(prev => ({ ...prev, [categoryId]: null }));
              }, 2000);
              return;
         }
 
-        // Check if the parsed amount is different from the currently stored *numeric* amount
         const storedAmount = budgetItem.budget_amount;
         if (parsedAmount === storedAmount) {
-            // No change, just clear the temporary input state if it exists
-             setBudgetData(currentData =>
-                 currentData.map(item =>
-                     item.id === categoryId ? { ...item, budget_amount_input: undefined } : item
-                 )
-             );
-            console.log(`No change for category ${categoryId}`);
-            return; // Exit if no actual change
+             if (budgetItem.budget_amount_input !== undefined) {
+                 setBudgetData(currentData => currentData.map(item => item.id === categoryId ? { ...item, budget_amount_input: undefined } : item ));
+             }
+            console.log(`No change for category ${categoryId}`); return;
         }
 
-
-        // Update saving status
         setSavingStatus(prev => ({ ...prev, [categoryId]: { status: 'saving' } }));
-
         try {
-            // Call the backend API
-            const response = await axios.put('http://localhost:5001/api/budgets/set', {
-                categoryId: categoryId,
-                amount: parsedAmount // Send the parsed numeric value
-            });
-
-            // Update the main budget_amount in state with the saved value
-            // and clear the temporary input state
+            const response = await axios.put('http://localhost:5001/api/budgets/set', { categoryId: categoryId, amount: parsedAmount });
             setBudgetData(currentData =>
                 currentData.map(item =>
-                    item.id === categoryId
-                        ? { ...item, budget_amount: response.data.budget.budget_amount, budget_amount_input: undefined }
-                        : item
+                    item.id === categoryId ? { ...item, budget_amount: response.data.budget.budget_amount, budget_amount_input: undefined } : item
                 )
             );
-
-            // Update status to 'saved' briefly
             setSavingStatus(prev => ({ ...prev, [categoryId]: { status: 'saved' } }));
-            setTimeout(() => setSavingStatus(prev => ({ ...prev, [categoryId]: null })), 2000); // Clear status after 2s
-
+            setTimeout(() => setSavingStatus(prev => ({ ...prev, [categoryId]: null })), 2000);
         } catch (err) {
             console.error("Error saving budget:", err);
-            let message = "Save failed";
-            if (err.response?.data?.message) message = err.response.data.message;
-            // Update status to 'error'
+            let message = "Save failed"; if (err.response?.data?.message) message = err.response.data.message;
             setSavingStatus(prev => ({ ...prev, [categoryId]: { status: 'error', message } }));
-             // Optionally revert the input field after a delay on error
-             setTimeout(() => {
-                 setBudgetData(currentData =>
-                     currentData.map(item =>
-                         item.id === categoryId ? { ...item, budget_amount_input: item.budget_amount.toFixed(2) } : item
-                     )
-                 );
-                 // Maybe don't clear error status immediately? Let user see it.
-                 // setTimeout(() => setSavingStatus(prev => ({ ...prev, [categoryId]: null })), 5000);
+            setTimeout(() => {
+                 setBudgetData(currentData => currentData.map(item => item.id === categoryId ? { ...item, budget_amount_input: item.budget_amount?.toFixed(2) ?? '0.00' } : item ));
              }, 2000);
         }
-    };
+    }; // End of handleBudgetSave
 
 
     // --- Render Logic ---
-    if (loading) {
-        return <div>Loading budget data...</div>;
-    }
-    if (error) {
-        return <div style={{ color: 'red', padding: '20px' }}>Error: {error}</div>;
-    }
+    if (loading) { return <div>Loading budget data...</div>; }
+    if (error) { return <div style={{ color: 'red', padding: '20px' }}>Error: {error}</div>; }
 
+    // --- Main Return Statement ---
     return (
         <div className="budget-page-container">
             <h2>Monthly Budget Allocation</h2>
             <p>Enter the budget amount for each category for the current month. Changes save automatically when you click away.</p>
 
+            {/* --- Chart Section --- */}
+            <div className="budget-chart-container">
+                {/* Use the pieChartData variable calculated via useMemo */}
+                {pieChartData ? (
+                    <Pie data={pieChartData} options={chartOptions} />
+                ) : (
+                    !loading && <p>No budget amounts set to display in chart.</p>
+                )}
+            </div>
+
+            {/* --- Budget Input List --- */}
             <div className="budget-list">
                 {budgetData.length === 0 ? (
-                    <p>No categories found. Add categories on the Dashboard first.</p>
+                    <p style={{ padding: '20px', fontStyle: 'italic', color: '#555' }}>
+                        No categories found. Add categories on the Dashboard first.
+                    </p>
                 ) : (
-                    budgetData.map((item) => (
-                        <div key={item.id} className="budget-item">
-                            <label htmlFor={`budget-${item.id}`} className="budget-item-label">
-                                {item.name}
-                            </label>
-                            <div className="budget-item-input-group">
-                                <span className="currency-symbol">$</span> {/* Or your currency */}
-                                <input
-                                    type="text" // Use text to allow flexible input
-                                    inputMode="decimal" // Hint for keyboard
-                                    id={`budget-${item.id}`}
-                                    className="budget-item-input"
-                                    // Display temporary input value if it exists, otherwise formatted stored value
-                                    value={item.budget_amount_input !== undefined ? item.budget_amount_input : item.budget_amount.toFixed(2)}
-                                    onChange={(e) => handleBudgetChange(item.id, e.target.value)}
-                                    onBlur={() => handleBudgetSave(item.id)} // Save on blur
-                                    placeholder="0.00"
-                                />
-                                {/* Display Saving Status */}
-                                <span className={`budget-item-status status-${savingStatus[item.id]?.status}`}>
-                                    {savingStatus[item.id]?.status === 'saving' && 'Saving...'}
-                                    {savingStatus[item.id]?.status === 'saved' && 'Saved!'}
-                                    {savingStatus[item.id]?.status === 'error' && `Error: ${savingStatus[item.id]?.message || 'Failed'}`}
-                                </span>
+                    budgetData.map((item) => {
+                         const displayValue = item.budget_amount_input !== undefined
+                            ? item.budget_amount_input
+                            : (item.budget_amount !== null ? item.budget_amount.toFixed(2) : '0.00');
+                        return (
+                            <div key={item.id} className="budget-item">
+                                <label htmlFor={`budget-${item.id}`} className="budget-item-label"> {item.name} </label>
+                                <div className="budget-item-input-group">
+                                    <span className="currency-symbol">$</span>
+                                    <input
+                                        type="text" inputMode="decimal" id={`budget-${item.id}`} className="budget-item-input"
+                                        value={displayValue} onChange={(e) => handleBudgetChange(item.id, e.target.value)}
+                                        onBlur={() => handleBudgetSave(item.id)} placeholder="0.00"
+                                    />
+                                    <span className={`budget-item-status status-${savingStatus[item.id]?.status}`}>
+                                        {savingStatus[item.id]?.status === 'saving' && 'Saving...'}
+                                        {savingStatus[item.id]?.status === 'saved' && 'Saved!'}
+                                        {savingStatus[item.id]?.status === 'error' && `Error: ${savingStatus[item.id]?.message || 'Failed'}`}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
         </div>
     );
-}
+} // End of BudgetPage component
 
 export default BudgetPage;
