@@ -73,7 +73,6 @@ nav .nav-link.active {
 }
 
 /* --- General H2 Style --- */
-.categories-display-section-full h2,
 .history-list-section h2,
 .goals-page-container h2,
 .budget-page-container h2 {
@@ -83,6 +82,10 @@ nav .nav-link.active {
     border-bottom: 1px solid #eee;
     padding-bottom: 10px;
     margin-bottom: 20px;
+}
+.categories-display-section-full h2 {
+  font-size: 1.6em; margin-top: 0; color: #333; border-bottom: 1px solid #eee;
+  padding-bottom: 10px; margin-bottom: 20px; text-align: center; /* Center the main title */
 }
 
 /* --- Categories Display Section (Dashboard) --- */
@@ -101,6 +104,26 @@ nav .nav-link.active {
 }
 .section-header-controls h2 { /* Override general H2 margin/border */
   margin: 0; padding: 0; border: none;
+}
+/* NEW: View Toggle Container */
+.view-toggle-container {
+    display: flex;          /* Use flexbox */
+    justify-content: center; /* Center the toggle horizontally */
+    margin-bottom: 30px;    /* Space below toggle */
+}
+
+.add-category-container {
+    margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; max-width: 500px;
+    /* Center the add form container */
+    margin-left: auto;
+    margin-right: auto;
+}
+.add-category-container h3 { /* Style for the 'Add New...' title */
+    font-size: 1.2em;
+    text-align: center;
+    margin-bottom: 15px;
+    color: #555;
+    font-weight: 500;
 }
 
 /* View Toggle Styles */

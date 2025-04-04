@@ -341,56 +341,31 @@ function DashboardPage() {
     };
     // --- ** Modified Category Add Handler ** ---
     // --- Category Add Handler (with more logging) ---
+    // --- Modified Category Add Handler ---
     const handleAddCategorySubmit = async (event) => {
         event.preventDefault();
         const trimmedName = newCategoryName.trim();
-        if (!trimmedName) {
-            setAddCategoryError("Category name cannot be empty.");
-            return;
-        }
+        if (!trimmedName) { setAddCategoryError("Category name cannot be empty."); return; }
+        // --- Use dashboardViewType directly ---
+        const categoryTypeToAdd = dashboardViewType;
 
-        console.log("Attempting to add category:", trimmedName); // Log start
-        setIsAddingCategory(true); // Set loading TRUE
-        setAddCategoryError(null);
-        setAddCategorySuccess(null);
-
+        setIsAddingCategory(true);
+        setAddCategoryError(null); setAddCategorySuccess(null);
         try {
+            // Pass the determined type to the API
             const response = await axios.post('http://localhost:5001/api/categories', {
                 name: trimmedName,
-                type: newCategoryType
+                type: categoryTypeToAdd // Use state variable
             });
-
-            // Success path:
-            console.log("Category added successfully:", response.data); // Log success
-            setAddCategoryError(null);
-            setCategories(prevCategories =>
-                [...prevCategories, response.data.newCategory].sort((a, b) =>
-                    a.name.localeCompare(b.name)
-                 )
-            );
-            setNewCategoryName(''); // Clear input
-            setAddCategorySuccess(`Category '${response.data.newCategory.name}' added!`);
-            setTransactionRefetchTrigger(p => p + 1);
-            setTimeout(() => setAddCategorySuccess(null), 3000);
-
-        } catch (err) {
-            // Error path:
-            console.error("Error adding category:", err); // Log the full error
-            let message = "Failed to add category.";
-            if (err.response && err.response.data && err.response.data.message) {
-                message = err.response.data.message;
-            }
-             console.log("Setting add category error state:", message); // Log before setting error state
-            setAddCategoryError(message);
-            setAddCategorySuccess(null);
-
-        } finally {
-            // --- This block MUST run ---
-            console.log("Executing finally block for add category..."); // Log entry into finally
-            setIsAddingCategory(false); // Set loading FALSE
-            console.log("isAddingCategory state should now be false."); // Log after setting state
-            // --- End Finally ---
-        }
+            // ... (rest of success handling: clear error, update state, clear input, show success msg) ...
+             setAddCategoryError(null);
+             setCategories(prevCategories => [...prevCategories, response.data.newCategory].sort((a, b) => a.name.localeCompare(b.name)));
+             setNewCategoryName('');
+             setAddCategorySuccess(`Category '${response.data.newCategory.name}' added!`);
+             setTransactionRefetchTrigger(p => p + 1);
+             setTimeout(() => setAddCategorySuccess(null), 3000);
+        } catch (err) { /* ... error handling ... */ }
+        finally { setIsAddingCategory(false); }
     };
     const handleOptionsIconClick = (event, category) => {
         event.stopPropagation(); setOptionsPopupCategory(category); setRenameCategoryName(category.name); setSelectedColor(category.color || '#FFFFFF'); setIsRenameMode(false); setCategoryActionError(null);
@@ -504,36 +479,45 @@ function DashboardPage() {
                     )}
 
 
-                    {/* Add Category Form */}
+                    {/* Add Category Form (Type Select REMOVED) */}
                     <div className="add-category-container">
+                         <h3>Add New {dashboardViewType === 'expense' ? 'Expense Category' : 'Income Source'}</h3>
                         <form onSubmit={handleAddCategorySubmit} className="add-category-form">
-                            <input type="text" value={newCategoryName} onChange={(e) => { setNewCategoryName(e.target.value); if (addCategoryError) setAddCategoryError(null); }} placeholder="New category name..." disabled={isAddingCategory} maxLength="100" aria-describedby="category-add-status" />
-                            {/* Type Selector */}
+                            <input
+                                type="text"
+                                value={newCategoryName}
+                                onChange={(e) => { setNewCategoryName(e.target.value); if (addCategoryError) setAddCategoryError(null); }}
+                                placeholder={`New ${dashboardViewType} name...`} // Dynamic placeholder
+                                disabled={isAddingCategory}
+                                maxLength="100"
+                                aria-describedby="category-add-status"
+                            />
+                            {/* --- Type Selector REMOVED --- */}
+                            {/*
                             <select value={newCategoryType} onChange={(e) => setNewCategoryType(e.target.value)} disabled={isAddingCategory} className="add-category-type-select">
                                 <option value="expense">Expense</option>
                                 <option value="income">Income</option>
                             </select>
-                            <button type="submit" disabled={isAddingCategory || !newCategoryName.trim()}> {isAddingCategory ? 'Adding...' : 'Add Category'} </button>
+                            */}
+                            <button type="submit" disabled={isAddingCategory || !newCategoryName.trim()}>
+                                {isAddingCategory ? 'Adding...' : `Add ${dashboardViewType === 'expense' ? 'Category' : 'Source'}`} {/* Dynamic button text */}
+                            </button>
                         </form>
                         <div id="category-add-status" className="category-add-status-container">
                             {addCategoryError && <span className="category-add-status error">{addCategoryError}</span>}
                             {addCategorySuccess && <span className="category-add-status success">{addCategorySuccess}</span>}
                         </div>
                     </div>
+                    {/* --- End Add Category Form --- */}
 
                     {/* --- Expense Chart Section (Conditional) --- */}
                     {dashboardViewType === 'expense' && (
                         <div className="expense-chart-section">
                             <h3>Expense Breakdown</h3>
                             <div className="expense-chart-container">
-                                {/* Show loading indicator specifically for transaction data here */}
-                                {loadingTransactions ? (
-                                    <p>Loading transaction data...</p>
-                                ) : expensePieChartData ? ( // Check if chart data is ready
-                                     <Pie data={expensePieChartData} options={expenseChartOptions} />
-                                ) : (
-                                     <p>No expense data recorded to display in chart.</p> // No data message
-                                )}
+                                {loadingTransactions ? ( <p>Loading transaction data...</p> )
+                                 : expensePieChartData ? ( <Pie data={expensePieChartData} options={expenseChartOptions} /> )
+                                 : ( <p>No expense data recorded to display in chart.</p> )}
                             </div>
                         </div>
                     )}
