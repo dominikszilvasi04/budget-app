@@ -170,7 +170,12 @@ nav .nav-link.active {
 }
 
 /* Add Category Form Area */
-.add-category-container { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; max-width: 500px; }
+.add-category-container {
+  margin-top: 40px; /* Increase space above Add form (below grid) */
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  max-width: 500px;
+}
 .add-category-form { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 5px; }
 .add-category-form input[type="text"] {
   flex-grow: 1; padding: 10px 12px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
@@ -192,6 +197,36 @@ nav .nav-link.active {
 .category-add-status { display: inline-block; padding: 2px 0; font-size: 0.9em; font-weight: bold; }
 .category-add-status.error { color: #dc3545; }
 .category-add-status.success { color: #28a745; }
+
+/* --- NEW Styles for Expense Chart Section --- */
+.expense-chart-section {
+  margin-top: 40px; /* Consistent space above chart section */
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+.expense-chart-section h3 {
+  font-size: 1.4em; /* Title size */
+  color: #333;
+  margin-top: 0;
+  margin-bottom: 15px;
+  text-align: center;
+}
+.expense-chart-container {
+  /* Similar to budget chart container, maybe adjust size/margins */
+  max-width: 550px; /* Max width of chart */
+  height: 400px; /* Explicit height */
+  margin: 0 auto 30px auto; /* Center chart, space below */
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.expense-chart-container p { /* Style for 'No data' message */
+  text-align: center;
+  padding-top: 50px;
+  color: #777;
+  font-style: italic;
+}
 
 
 /* --- Transaction Popup/Modal Styles --- */

@@ -1,6 +1,18 @@
 // client/src/pages/DashboardPage.js
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
+// --- Chart.js Imports ---
+import { Pie } from 'react-chartjs-2';
+import {
+    Chart as ChartJS,
+    ArcElement,
+    Tooltip,
+    Legend,
+    Title
+} from 'chart.js';
+
+// --- Register Chart.js components ---
+ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 // --- Helper Functions ---
 const safeParseFloat = (value) => {
@@ -35,6 +47,33 @@ function getContrastYIQ(hexcolor, lightened = false){
 	return color;
 }
 
+// Helper function to generate chart colors
+const generateChartColors = (numColors) => {
+    const colors = []; const baseHue = 200;
+    for (let i = 0; i < numColors; i++) {
+        const hue = (baseHue + (i * 40)) % 360; const saturation = 70 + (i % 3) * 10;
+        const lightness = 60 + (i % 2) * 5; colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+    }
+    return colors;
+};
+
+// --- Chart Options for Expense Pie Chart ---
+const expenseChartOptions = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+        legend: { position: 'top', },
+        title: { display: true, text: 'Expense Breakdown by Category (All Time)', font: { size: 16 } },
+        tooltip: {
+            callbacks: {
+                label: function(context) { // Use currency format
+                    let label = context.label || ''; if (label) { label += ': '; }
+                    if (context.raw !== null && context.raw !== undefined) { label += formatCurrency(context.raw); }
+                    return label;
+                }
+            }
+        }
+    },
+};
 
 
 // --- Component Definition ---
@@ -170,6 +209,45 @@ function DashboardPage() {
     const filteredCategories = useMemo(() => {
         return categories.filter(cat => cat.type === dashboardViewType);
     }, [categories, dashboardViewType]); // Re-filter when categories or view type change
+
+    // --- Calculation for Expense Totals Map ---
+    const expenseCategoryTotals = useMemo(() => {
+        if (loadingCategories || loadingTransactions || !categories || !transactions) { return {}; }
+        const categoryTypeMap = categories.reduce((acc, cat) => { acc[cat.id] = cat.type; return acc; }, {});
+        const totals = {};
+        transactions.forEach(transaction => {
+            const transactionAmount = safeParseFloat(transaction.amount); if (isNaN(transactionAmount)) return;
+            const categoryId = transaction.category_id;
+            // Only include if category exists and is type 'expense'
+            if (categoryId !== null && categoryTypeMap[categoryId] === 'expense') {
+                totals[categoryId] = (totals[categoryId] || 0) + transactionAmount;
+            }
+        });
+        return totals;
+    }, [categories, transactions, loadingCategories, loadingTransactions]);
+
+    // --- Data Preparation for Expense Pie Chart ---
+    const expensePieChartData = useMemo(() => {
+        if (loadingCategories || loadingTransactions || !categories) { return null; }
+        const expenseCategoryIds = Object.keys(expenseCategoryTotals).filter(id => expenseCategoryTotals[id] > 0);
+        if (expenseCategoryIds.length === 0) { return null; }
+
+        const labels = []; const dataValues = [];
+        const categoryMap = categories.reduce((acc, cat) => { acc[cat.id] = cat.name; return acc; }, {});
+
+        expenseCategoryIds.forEach(id => {
+            labels.push(categoryMap[id] || `Unknown ${id}`);
+            dataValues.push(expenseCategoryTotals[id]);
+        });
+        const colors = generateChartColors(labels.length);
+        return {
+            labels: labels,
+            datasets: [{
+                label: 'Amount Spent', data: dataValues, backgroundColor: colors,
+                borderColor: colors.map(c => c.replace('60%', '50%').replace('70%', '60%')), borderWidth: 1,
+            }],
+        };
+    }, [categories, expenseCategoryTotals, loadingCategories, loadingTransactions]);
 
     // --- Handlers ---
     const clearTransactionFormFields = () => {
@@ -401,6 +479,7 @@ function DashboardPage() {
                         </div> // End category-grid
                     )}
 
+
                     {/* Add Category Form */}
                     <div className="add-category-container">
                         <form onSubmit={handleAddCategorySubmit} className="add-category-form">
@@ -417,11 +496,29 @@ function DashboardPage() {
                             {addCategorySuccess && <span className="category-add-status success">{addCategorySuccess}</span>}
                         </div>
                     </div>
+
+                    {/* --- Expense Chart Section (Conditional) --- */}
+                    {dashboardViewType === 'expense' && (
+                        <div className="expense-chart-section">
+                            <h3>Expense Breakdown</h3>
+                            <div className="expense-chart-container">
+                                {/* Show loading indicator specifically for transaction data here */}
+                                {loadingTransactions ? (
+                                    <p>Loading transaction data...</p>
+                                ) : expensePieChartData ? ( // Check if chart data is ready
+                                     <Pie data={expensePieChartData} options={expenseChartOptions} />
+                                ) : (
+                                     <p>No expense data recorded to display in chart.</p> // No data message
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {/* --- End Expense Chart Section --- */}
                 </section> {/* End categories-display-section-full */}
             </div> {/* End main-layout-single-column */}
 
 
-            {/* --- Transaction Popup/Modal (Modified) --- */}
+            {/* --- Transaction Popup/Modal --- */}
             {selectedCategoryForPopup && (
                  <div className="popup-overlay" onClick={handleClosePopup}>
                     <div className="popup-container" onClick={(e) => e.stopPropagation()}>
@@ -437,32 +534,16 @@ function DashboardPage() {
                                 <div><label htmlFor="description">Description (Optional):</label><input type="text" id="description" className="input-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details..." disabled={isSubmittingTransaction} /></div>
                                 {/* Category Display */}
                                 <div className="form-category-display"><label>Category:</label><span>{selectedCategoryForPopup.name}</span></div>
-
                                 {/* Goal Contribution Dropdown */}
-                                {/* TODO: Conditionally show this only if selectedCategoryForPopup.type === 'income' ? */}
                                 <div className="form-group">
                                     <label htmlFor="goal-contribution-select">Contribute this Amount to Goal? (Optional)</label>
-                                    <select
-                                        id="goal-contribution-select"
-                                        value={goalIdToContribute}
-                                        onChange={(e) => setGoalIdToContribute(e.target.value)}
-                                        // Disable if submitting, goals are loading, or no goals exist
-                                        disabled={isSubmittingTransaction || loadingGoals || goals.length === 0}
-                                        className="goal-contribution-select"
-                                    >
+                                    <select id="goal-contribution-select" value={goalIdToContribute} onChange={(e) => setGoalIdToContribute(e.target.value)} disabled={isSubmittingTransaction || loadingGoals || goals.length === 0} className="goal-contribution-select">
                                         <option value="">-- No Goal Contribution --</option>
-                                        {/* Map over the fetched goals state */}
-                                        {goals.map(goal => (
-                                            <option key={goal.id} value={goal.id}>
-                                                {goal.name} ({formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)})
-                                            </option>
-                                        ))}
+                                        {goals.map(goal => ( <option key={goal.id} value={goal.id}> {goal.name} ({formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}) </option> ))}
                                     </select>
                                      {loadingGoals && <small> Loading goals...</small>}
-                                     {/* Display goal loading error if it occurred */}
                                      {errorGoals && !loadingGoals && <small style={{color: 'red'}}> Error loading goals.</small>}
                                 </div>
-
                                 {/* Button Group */}
                                 <div className="popup-button-group"><button type="button" onClick={handleClosePopup} className="popup-cancel-btn" disabled={isSubmittingTransaction}>Cancel</button><button type="submit" className="popup-submit-btn" disabled={isSubmittingTransaction}>{isSubmittingTransaction ? 'Adding...' : 'Add Transaction'}</button></div>
                             </form>
@@ -485,9 +566,7 @@ function DashboardPage() {
                                 <button type="button" onClick={() => setAmount(formatAmountForDisplay(50))} disabled={isSubmittingTransaction}>Set 50</button>
                                 <button type="button" onClick={() => setAmount(formatAmountForDisplay(100))} disabled={isSubmittingTransaction}>Set 100</button>
                             </div>
-                            <div className="quick-add-clear-container">
-                                <button type="button" className="clear-button" onClick={() => setAmount('0.00')} disabled={isSubmittingTransaction}> Clear (0) </button>
-                            </div>
+                            <div className="quick-add-clear-container"> <button type="button" className="clear-button" onClick={() => setAmount('0.00')} disabled={isSubmittingTransaction}> Clear (0) </button> </div>
                         </div>
                     </div>
                 </div>
@@ -499,32 +578,15 @@ function DashboardPage() {
                     <div className="options-popup-content" onClick={(e) => e.stopPropagation()}>
                         <h3>Options for: {optionsPopupCategory.name}</h3>
                         {categoryActionError && <p className="options-error">{categoryActionError}</p>}
-                        <div className="options-color-picker">
-                             <label htmlFor="category-color">Color:</label>
-                             <input type="color" id="category-color" value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)} disabled={isProcessingCategoryAction} />
-                             <span>{selectedColor}</span>
-                        </div>
+                        <div className="options-color-picker"> <label htmlFor="category-color">Color:</label> <input type="color" id="category-color" value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)} disabled={isProcessingCategoryAction} /> <span>{selectedColor}</span> </div>
                         {isRenameMode ? (
                             <form onSubmit={handleUpdateCategorySubmit} className="rename-form">
-                                <label htmlFor="rename-category">New Name:</label>
-                                <input id="rename-category" type="text" value={renameCategoryName} onChange={(e) => { setRenameCategoryName(e.target.value); if (categoryActionError) setCategoryActionError(null); }} disabled={isProcessingCategoryAction} maxLength="100" autoFocus />
-                                <div className="options-button-group">
-                                    <button type="button" onClick={handleCancelRename} disabled={isProcessingCategoryAction}>Cancel Rename</button>
-                                    <button type="submit" disabled={ isProcessingCategoryAction || (!renameCategoryName.trim() && selectedColor === (optionsPopupCategory.color || '#FFFFFF')) || (renameCategoryName.trim() === optionsPopupCategory.name && selectedColor === (optionsPopupCategory.color || '#FFFFFF')) }>
-                                        {isProcessingCategoryAction ? 'Saving...' : 'Save Changes'}
-                                    </button>
-                                </div>
+                                <label htmlFor="rename-category">New Name:</label> <input id="rename-category" type="text" value={renameCategoryName} onChange={(e) => { setRenameCategoryName(e.target.value); if (categoryActionError) setCategoryActionError(null); }} disabled={isProcessingCategoryAction} maxLength="100" autoFocus />
+                                <div className="options-button-group"> <button type="button" onClick={handleCancelRename} disabled={isProcessingCategoryAction}>Cancel Rename</button> <button type="submit" disabled={ isProcessingCategoryAction || (!renameCategoryName.trim() && selectedColor === (optionsPopupCategory.color || '#FFFFFF')) || (renameCategoryName.trim() === optionsPopupCategory.name && selectedColor === (optionsPopupCategory.color || '#FFFFFF')) }> {isProcessingCategoryAction ? 'Saving...' : 'Save Changes'} </button> </div>
                             </form>
                         ) : (
                             <form onSubmit={handleUpdateCategorySubmit}>
-                                <div className="options-button-group">
-                                    <button type="button" className="delete-button" onClick={() => handleDeleteCategory(optionsPopupCategory.id, optionsPopupCategory.name)} disabled={isProcessingCategoryAction}> Delete </button>
-                                    <button type="button" onClick={handleTriggerRename} disabled={isProcessingCategoryAction}>Rename</button>
-                                    <button type="submit" disabled={isProcessingCategoryAction || selectedColor === (optionsPopupCategory.color || '#FFFFFF')}>
-                                        {isProcessingCategoryAction ? 'Saving...' : 'Save Color'}
-                                    </button>
-                                     <button type="button" onClick={handleCloseOptionsPopup} disabled={isProcessingCategoryAction}>Cancel</button>
-                                </div>
+                                <div className="options-button-group"> <button type="button" className="delete-button" onClick={() => handleDeleteCategory(optionsPopupCategory.id, optionsPopupCategory.name)} disabled={isProcessingCategoryAction}> Delete </button> <button type="button" onClick={handleTriggerRename} disabled={isProcessingCategoryAction}>Rename</button> <button type="submit" disabled={isProcessingCategoryAction || selectedColor === (optionsPopupCategory.color || '#FFFFFF')}> {isProcessingCategoryAction ? 'Saving...' : 'Save Color'} </button> <button type="button" onClick={handleCloseOptionsPopup} disabled={isProcessingCategoryAction}>Cancel</button> </div>
                             </form>
                         )}
                     </div>
@@ -532,6 +594,6 @@ function DashboardPage() {
             )}
         </> // End React Fragment
     );
-} // End of DashboardPage component needs to be outside the return
+} // End of DashboardPage component
 
-export default DashboardPage; // Needs to be outside the return
+export default DashboardPage;
