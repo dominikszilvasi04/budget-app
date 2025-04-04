@@ -790,18 +790,48 @@ nav .nav-link.active {
 .goal-item-card {
   background-color: #fff; border: 1px solid #eee; border-radius: 6px;
   padding: 15px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  display: flex; /* Allow vertical spacing */
-  flex-direction: column;
+  display: flex; flex-direction: column;
 }
 .goal-item-card h4 {
-  margin: 0 0 10px 0;
-  font-size: 1.15em;
-  color: #007bff; /* Blue title */
+  margin: 0 0 10px 0; font-size: 1.15em; color: #007bff;
 }
-.goal-item-card p {
-  margin: 5px 0;
-  font-size: 0.95em;
-  color: #555;
+.goal-item-card p { margin: 5px 0; font-size: 0.95em; color: #555; }
+
+/* --- NEW: Progress Info --- */
+.goal-progress-info {
+  display: flex;
+  justify-content: space-between; /* Puts amount left, % right */
+  align-items: baseline; /* Align text baselines */
+  font-size: 0.9em;
+  color: #444;
+  margin-bottom: 8px; /* Space before progress bar */
+}
+.goal-progress-info span:last-child {
+  font-weight: bold; /* Make percentage bold */
+}
+
+/* --- NEW: Progress Bar --- */
+.progress-bar-container {
+  background-color: #e9ecef; /* Light grey background */
+  border-radius: 10px; /* Rounded corners */
+  height: 12px; /* Bar height */
+  overflow: hidden; /* Clip the fill bar */
+  margin-bottom: 10px; /* Space below bar */
+  width: 100%; /* Full width */
+}
+.progress-bar-fill {
+  background-color: #28a745; /* Green fill color */
+  height: 100%; /* Full height */
+  border-radius: 10px; /* Match container radius */
+  transition: width 0.5s ease-in-out; /* Animate width changes */
+  text-align: center; /* Center text if added inside */
+  color: white; /* Text color if added inside */
+  font-size: 0.7em; /* Small text if added inside */
+  line-height: 12px; /* Match height if text added */
+}
+/* Optional: Change color when complete? */
+.progress-bar-fill[style*="width: 100%"] {
+  background-color: #17a2b8; /* Teal/Info color when 100% */
 }
 .goal-item-card .goal-notes {
   font-size: 0.85em;
@@ -814,10 +844,10 @@ nav .nav-link.active {
 
 /* NEW: Goal Card Actions */
 .goal-card-actions {
-  margin-top: 15px; /* Space above buttons */
+  margin-top: auto; /* Push actions to bottom */
   padding-top: 10px;
-  border-top: 1px solid #eee;
-  text-align: right; /* Align button right */
+  border-top: 1px solid #eee; /* Lighter separator */
+  text-align: right;
 }
 .btn-add-contribution {
   padding: 6px 12px;

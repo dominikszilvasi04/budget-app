@@ -256,39 +256,57 @@ function GoalsPage() {
             {/* --- End Add Goal Form --- */}
 
 
-            {/* --- Display Goals List Section (With Add Contribution Button) --- */}
+            {/* --- Display Goals List Section (Modified Card) --- */}
             <div className="goals-list-container">
                 <h3>Current Goals</h3>
-                {goals.length === 0 ? (
-                    <p>You haven't added any savings goals yet.</p>
-                ) : (
+                {goals.length === 0 ? ( <p>You haven't added any savings goals yet.</p> ) : (
                     <div className="goals-list">
-                        {goals.map(goal => (
-                            <div key={goal.id} className="goal-item-card">
-                                <h4>{goal.name}</h4>
-                                <p>Target: {formatCurrency(goal.target_amount)}</p>
-                                <p>Saved: {formatCurrency(goal.current_amount)}</p> {/* Simplified for now */}
-                                {/* We'll add the progress bar in the next phase */}
-                                {goal.target_date && <p>Target Date: {goal.target_date}</p>}
-                                {goal.notes && <p className="goal-notes">Notes: {goal.notes}</p>}
-                                {/* --- Add Contribution Button --- */}
-                                <div className="goal-card-actions">
-                                    <button
-                                        onClick={() => handleOpenContributionPopup(goal)} // Pass the goal object
-                                        className="btn-add-contribution"
-                                        // Optional: Disable if goal is already met?
-                                        // disabled={goal.current_amount >= goal.target_amount}
-                                    >
-                                        Add Contribution
-                                    </button>
-                                    {/* Placeholder for Edit/Delete Goal buttons */}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                        {goals.map(goal => {
+                            // --- Calculate Progress ---
+                            // Ensure target_amount is positive to avoid division by zero or weird percentages
+                            const targetAmount = Math.max(0.01, goal.target_amount); // Treat 0 target as minimum 0.01
+                            const currentAmount = Math.max(0, goal.current_amount); // Ensure current isn't negative
+                            // Calculate percentage, cap at 100% visually even if over-saved
+                            const percentage = Math.min(100, Math.max(0, (currentAmount / targetAmount) * 100));
+                            const percentageString = percentage.toFixed(1) + '%'; // Format percentage string
+
+                            return (
+                                <div key={goal.id} className="goal-item-card">
+                                    {/* Goal Name */}
+                                    <h4>{goal.name}</h4>
+
+                                    {/* Saved Amount & Percentage */}
+                                    <div className="goal-progress-info">
+                                        <span>Saved: {formatCurrency(currentAmount)} / {formatCurrency(targetAmount)}</span>
+                                        <span>{percentageString}</span>
+                                    </div>
+
+                                    {/* --- NEW Progress Bar --- */}
+                                    <div className="progress-bar-container">
+                                        <div
+                                            className="progress-bar-fill"
+                                            // Apply width based on percentage
+                                            style={{ width: percentageString }}
+                                            title={percentageString} // Tooltip showing percentage
+                                        ></div>
+                                    </div>
+                                    {/* --- End Progress Bar --- */}
+
+                                    {/* Optional Target Date & Notes */}
+                                    {goal.target_date && <p className="goal-target-date">Target Date: {goal.target_date}</p>}
+                                    {goal.notes && <p className="goal-notes">Notes: {goal.notes}</p>}
+
+                                    {/* Actions */}
+                                    <div className="goal-card-actions">
+                                        <button onClick={() => handleOpenContributionPopup(goal)} className="btn-add-contribution"> Add Contribution </button>
+                                        {/* Edit/Delete buttons later */}
+                                    </div>
+                                </div> // End goal-item-card
+                            );
+                        })}
+                    </div> // End goals-list
                 )}
-            </div>
-            {/* --- End Display Goals --- */}
+            </div> {/* End goals-list-container */}
 
 
             {/* --- Contribution Popup/Modal --- */}
