@@ -37,27 +37,57 @@ const addCategory = async (req, res) => {
     }
 };
 
-// --- NEW Function: Update/Rename Category ---
+// --- MODIFIED Function: Update Category (Name and/or Color) ---
 const updateCategory = async (req, res) => {
     const { id } = req.params;
-    const { name } = req.body;
+    // Get BOTH name and color from request body
+    const { name, color } = req.body;
 
-    // Validation
+    // --- Validation ---
     if (isNaN(parseInt(id, 10))) { return res.status(400).json({ message: 'Invalid category ID.' }); }
-    if (!name || typeof name !== 'string' || name.trim().length === 0) { return res.status(400).json({ message: 'Category name is required.' }); }
-    if (name.length > 100) { return res.status(400).json({ message: 'Category name cannot exceed 100 characters.' }); }
+
+    // Build fields to update dynamically
+    const fieldsToUpdate = {};
+    const values = [];
+    let setClause = '';
+
+    // Validate and add name if provided and different
+    if (name !== undefined) {
+        const trimmedName = name.trim();
+        if (!trimmedName) return res.status(400).json({ message: 'Category name cannot be empty if provided.' });
+        if (trimmedName.length > 100) return res.status(400).json({ message: 'Category name cannot exceed 100 characters.' });
+        fieldsToUpdate.name = trimmedName;
+        values.push(trimmedName);
+        setClause += 'name = ?';
+    }
+
+    // Validate and add color if provided
+    if (color !== undefined) {
+         // Basic hex color validation (starts with #, 7 chars long, valid hex chars)
+         if (!/^#[0-9A-F]{6}$/i.test(color)) {
+              return res.status(400).json({ message: 'Invalid color format. Use hex color code (e.g., #RRGGBB).' });
+         }
+         fieldsToUpdate.color = color;
+         values.push(color);
+         setClause += (setClause ? ', ' : '') + 'color = ?'; // Add comma if name was also updated
+    }
+
+    // Check if anything needs updating
+    if (values.length === 0) {
+         return res.status(400).json({ message: 'No update data provided (name or color).' });
+    }
 
     const categoryId = parseInt(id, 10);
-    const trimmedName = name.trim();
+    values.push(categoryId); // Add ID for the WHERE clause
 
     try {
-        // Check existence (optional)
+        // Check existence
         const [checkRows] = await dbPool.query('SELECT id FROM categories WHERE id = ?', [categoryId]);
         if (checkRows.length === 0) { return res.status(404).json({ message: 'Category not found.' }); }
 
-        // Update
-        const updateSql = 'UPDATE categories SET name = ? WHERE id = ?';
-        await dbPool.query(updateSql, [trimmedName, categoryId]);
+        // Perform the update with dynamic SET clause
+        const updateSql = `UPDATE categories SET ${setClause} WHERE id = ?`;
+        await dbPool.query(updateSql, values);
 
         // Fetch updated category
         const [updatedCategoryRows] = await dbPool.query('SELECT * FROM categories WHERE id = ?', [categoryId]);
@@ -66,7 +96,7 @@ const updateCategory = async (req, res) => {
         res.status(200).json({ message: 'Category updated successfully!', updatedCategory: updatedCategoryRows[0] });
     } catch (error) {
         console.error('Error updating category:', error);
-        if (error.code === 'ER_DUP_ENTRY') { return res.status(409).json({ message: `Another category with the name '${trimmedName}' already exists.` }); }
+        if (error.code === 'ER_DUP_ENTRY' && fieldsToUpdate.name) { return res.status(409).json({ message: `Another category with the name '${fieldsToUpdate.name}' already exists.` }); }
         res.status(500).json({ message: 'Failed to update category due to server error.' });
     }
 };

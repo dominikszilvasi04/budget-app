@@ -342,6 +342,42 @@ nav .nav-link.active {
     padding: 8px 12px;
 }
 
+/* NEW Styles for Color Picker */
+.options-color-picker {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px; /* Space below picker */
+  margin-top: 5px;
+  gap: 10px; /* Space between label, input, text */
+}
+.options-color-picker label {
+  font-weight: bold;
+  font-size: 1em;
+}
+.options-color-picker input[type="color"] {
+  /* Basic styling for native color input */
+  width: 40px;
+  height: 30px;
+  border: 1px solid #ccc;
+  padding: 2px; /* Small padding */
+  cursor: pointer;
+  border-radius: 4px;
+  background-color: #fff; /* Ensure background isn't transparent */
+}
+/* Optional: remove default browser border */
+.options-color-picker input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.options-color-picker input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+.options-color-picker span {
+  font-family: monospace; /* Show hex code nicely */
+  font-size: 0.95em;
+  color: #555;
+}
+
 /* Rename Form Styles within Options Popup */
 .rename-form { margin-top: 5px; }
 .rename-form label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 1.0em; }
