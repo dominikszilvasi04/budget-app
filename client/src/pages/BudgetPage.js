@@ -1,5 +1,5 @@
 // client/src/pages/BudgetPage.js
-import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Ensure useMemo and useCallback are imported
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 // --- Chart.js Imports ---
 import { Pie } from 'react-chartjs-2';
@@ -31,16 +31,16 @@ const formatCurrency = (num) => {
 };
 
 const safeParseBudgetFloat = (value) => {
-     if (typeof value === 'number') return value;
+     if (typeof value === 'number') return value; // Allow 0 or positive
      if (typeof value !== 'string') return NaN;
-     if (value.trim() === '') return 0.00;
+     if (value.trim() === '') return 0.00; // Treat empty as 0
      const cleanedValue = value.replace(/[\$,]/g, '').trim();
      if (cleanedValue === '') return 0.00;
      const parsed = parseFloat(cleanedValue);
-     return isNaN(parsed) || parsed < 0 ? NaN : parsed;
+     return isNaN(parsed) || parsed < 0 ? NaN : parsed; // Disallow negative
 };
 
-const generateChartColors = (numColors) => {
+const generateChartColors = (numColors) => { // Keep this if pieChartData uses it
     const colors = []; const baseHue = 200;
     for (let i = 0; i < numColors; i++) {
         const hue = (baseHue + (i * 40)) % 360; const saturation = 70 + (i % 3) * 10;
@@ -48,6 +48,7 @@ const generateChartColors = (numColors) => {
     }
     return colors;
 };
+
 
 // --- Chart Options ---
 const chartOptions = {
@@ -59,7 +60,6 @@ const chartOptions = {
             callbacks: {
                 label: function(context) {
                     let label = context.label || ''; if (label) { label += ': '; }
-                    // Use context.raw for original value
                     if (context.raw !== null && context.raw !== undefined) { label += formatCurrency(context.raw); }
                     return label;
                 }
@@ -72,54 +72,109 @@ const chartOptions = {
 function BudgetPage() {
     // --- State Variables ---
     const [budgetData, setBudgetData] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [loadingBudgets, setLoadingBudgets] = useState(true); // Specific loading state
+    const [errorBudgets, setErrorBudgets] = useState(null); // Specific error state
     const [savingStatus, setSavingStatus] = useState({});
+    const [categories, setCategories] = useState([]);
+    const [loadingCategories, setLoadingCategories] = useState(true);
+    const [errorCategories, setErrorCategories] = useState(null);
 
-    // --- Fetch Budget Data Effect ---
+    // --- Fetch Budget Data Effect (CORRECTED Setters) ---
     const fetchBudgetData = useCallback(async (controller) => {
-        setLoading(true); setError(null);
+        // Use specific setters
+        setLoadingBudgets(true);  // CORRECTED
+        setErrorBudgets(null);    // CORRECTED
         try {
             const response = await axios.get('http://localhost:5001/api/budgets/current', { signal: controller?.signal });
-            const initializedData = response.data.map(item => ({ ...item, budget_amount: item.budget_amount ?? 0.00 })); // Use nullish coalescing
+            const initializedData = response.data.map(item => ({ ...item, budget_amount: item.budget_amount ?? 0.00 }));
             setBudgetData(initializedData);
         } catch (err) {
-            if (!axios.isCancel(err)) { console.error("Error fetching budget data:", err); setError('Failed to load budget data.'); }
-        } finally { if (!controller?.signal?.aborted) setLoading(false); }
+            if (!axios.isCancel(err)) {
+                console.error("Error fetching budget data:", err);
+                // Use specific setter
+                setErrorBudgets('Failed to load budget data.'); // CORRECTED
+            }
+        } finally {
+            if (!controller?.signal?.aborted) {
+                // Use specific setter
+                setLoadingBudgets(false); // CORRECTED
+            }
+        }
     }, []); // Empty dependency array for useCallback
 
     useEffect(() => {
         const controller = new AbortController();
         fetchBudgetData(controller);
         return () => { controller.abort(); };
-    }, [fetchBudgetData]); // Depend only on the memoized fetch function
+    }, [fetchBudgetData]);
 
-    // --- *** MOVED pieChartData calculation HERE (Top Level of Component) *** ---
+    // --- Fetch Categories Effect (Keep corrected version) ---
+    useEffect(() => {
+        const controller = new AbortController();
+        const fetchCategories = async () => {
+            setLoadingCategories(true); setErrorCategories(null);
+            try {
+                const response = await axios.get('http://localhost:5001/api/categories', { signal: controller.signal });
+                setCategories(response.data);
+            } catch (err) {
+                 if (!axios.isCancel(err)) { console.error("Error fetching categories for budget page:", err); setErrorCategories('Failed to load category details.'); }
+            } finally { if (!controller.signal.aborted) setLoadingCategories(false); }
+        };
+        fetchCategories();
+        return () => controller.abort();
+    }, []);
+
+    // --- NEW: Memoized map for Category Types ---
+    const categoryTypeMap = useMemo(() => {
+        if (loadingCategories || !categories) return {}; // Wait for categories
+        return categories.reduce((acc, cat) => {
+            acc[cat.id] = cat.type; // Store type by category ID
+            return acc;
+        }, {});
+    }, [categories, loadingCategories]); // Recalculate if categories change
+
+
+    // --- NEW: Memoized Filtered Budget Data for Expenses ---
+    const filteredExpenseBudgetData = useMemo(() => {
+        // Wait for both budget and category data/types
+        if (loadingBudgets || loadingCategories || !budgetData || !categories) {
+            return [];
+        }
+        // Filter budgetData, keeping only items where the type is 'expense'
+        return budgetData.filter(item => categoryTypeMap[item.id] === 'expense');
+    }, [budgetData, categoryTypeMap, loadingBudgets, loadingCategories]); // Dependencies
+
+
+    // --- MODIFIED: Prepare Data for Pie Chart (Using Filtered Data) ---
     const pieChartData = useMemo(() => {
-        // Filter out categories with 0 or null/undefined budget amount
-        const filteredData = budgetData.filter(item => item.budget_amount && item.budget_amount > 0);
-
-        if (filteredData.length === 0) {
-            return null; // Return null if no data to display
+        // Use the already filtered expense budget data
+        if (loadingBudgets || loadingCategories || filteredExpenseBudgetData.length === 0) {
+            return null; // No data or still loading
         }
 
-        const labels = filteredData.map(item => item.name);
-        const dataValues = filteredData.map(item => item.budget_amount);
-        const backgroundColors = generateChartColors(filteredData.length);
+        // Create a map of category ID to color
+        const categoryColorMap = categories.reduce((acc, cat) => {
+            acc[cat.id] = cat.color || '#CCCCCC'; return acc;
+        }, {});
+
+        // Further filter filteredExpenseBudgetData for amounts > 0
+        const chartableData = filteredExpenseBudgetData.filter(item => item.budget_amount && item.budget_amount > 0);
+
+        if (chartableData.length === 0) {
+            return null; // No non-zero expense budgets set
+        }
+
+        const labels = chartableData.map(item => item.name);
+        const dataValues = chartableData.map(item => item.budget_amount);
+        const backgroundColors = chartableData.map(item => categoryColorMap[item.id] || '#CCCCCC');
+        const borderColors = backgroundColors.map(color => { /* ... darker border logic ... */ });
 
         return {
             labels: labels,
-            datasets: [
-                {
-                    label: 'Budget Amount',
-                    data: dataValues, // Pass the raw numeric values
-                    backgroundColor: backgroundColors,
-                    borderColor: backgroundColors.map(color => color.replace('60%', '50%').replace('70%', '60%')),
-                    borderWidth: 1,
-                },
-            ],
+            datasets: [{ label: 'Budget Amount', data: dataValues, backgroundColor: backgroundColors, borderColor: borderColors, borderWidth: 1, }],
         };
-    }, [budgetData]); // Recalculate only when budgetData changes
+    // Recalculate when filtered data, categories, or loading states change
+    }, [filteredExpenseBudgetData, categories, loadingBudgets, loadingCategories]);
 
 
     // --- Handle Input Change ---
@@ -179,93 +234,73 @@ function BudgetPage() {
     }; // End of handleBudgetSave
 
 
-    // --- Render Logic ---
-    if (loading) { // Check the combined or primary loading state
-        return <div>Loading budget data...</div>;
+     // --- Render Logic ---
+    // Update loading check
+    const isLoading = loadingBudgets || loadingCategories; // Wait for both
+    if (isLoading) { return <div>Loading budget data...</div>; }
+    // Prioritize budget error, but mention category error too if present
+    const displayError = errorBudgets || errorCategories;
+    // Show critical error only if budgetData failed AND there's no category data to display list structure
+    if (errorBudgets && budgetData.length === 0 && categories.length === 0) {
+         return <div style={{ color: 'red', padding: '20px' }}>Error: {displayError}</div>;
     }
-    if (error) { // Check for critical errors loading initial data
-        return <div style={{ color: 'red', padding: '20px' }}>Error: {error}</div>;
-    }
-    // If no critical error, proceed to render the main content
-    // Individual errors (like saving errors) are handled inline
+
 
     // --- Main Return Statement ---
     return (
-        <div className="budget-page-container"> {/* Overall page container */}
-            <h2>Monthly Budget Allocation</h2>
-            <p>Enter the budget amount for each category for the current month. Changes save automatically when you click away.</p>
+        <div className="budget-page-container">
+            <h2>Monthly Budget Allocation (Expenses)</h2> {/* Updated Title */}
+            <p>Enter the budget amount for each expense category for the current month. Changes save automatically.</p>
 
-            {/* --- Layout Wrapper for Chart and List --- */}
+            {/* Optional: Display non-critical data loading error */}
+            {displayError && !isLoading && <p style={{ color: 'orange', marginBottom: '15px' }}>Warning: {displayError}. Data may be incomplete.</p>}
+
+            {/* Chart Section */}
             <div className="budget-content-layout">
-
-                {/* --- Chart Section (Left Column) --- */}
                 <div className="budget-chart-column">
                     <div className="budget-chart-container">
-                        {/* Conditionally render chart or 'no data' message */}
                         {pieChartData ? (
                             <Pie data={pieChartData} options={chartOptions} />
                         ) : (
-                            // Show message only if not loading (loading checked above)
-                            <p>No budget amounts set to display in chart.</p>
+                            !isLoading && <p>No expense budgets set to display in chart.</p> // Updated message
                         )}
                     </div>
                 </div>
-                {/* --- End Chart Section --- */}
 
-
-                {/* --- Budget Input List Section (Right Column) --- */}
+                {/* Budget Input List Section */}
                 <div className="budget-list-column">
                     <div className="budget-list">
-                        {/* Check if budgetData array is empty */}
-                        {budgetData.length === 0 ? (
+                        {/* Use FILTERED data for list and length check */}
+                        {filteredExpenseBudgetData.length === 0 && !isLoading ? (
                             <p style={{ padding: '20px', fontStyle: 'italic', color: '#555' }}>
-                                No categories found. Add categories on the Dashboard first.
+                                No expense categories found. Add expense categories on the Dashboard first.
                             </p>
                         ) : (
-                            // Map over budgetData to render each category's input row
-                            budgetData.map((item) => {
-                                 // Determine the input value to display
-                                 const displayValue = item.budget_amount_input !== undefined
-                                    ? item.budget_amount_input
-                                    : (item.budget_amount !== null ? item.budget_amount.toFixed(2) : '0.00');
-
+                            // Map over filteredExpenseBudgetData
+                            filteredExpenseBudgetData.map((item) => {
+                                const displayValue = item.budget_amount_input !== undefined ? item.budget_amount_input : (item.budget_amount !== null ? item.budget_amount.toFixed(2) : '0.00');
                                 return (
                                     <div key={item.id} className="budget-item">
-                                        {/* Category Label */}
-                                        <label htmlFor={`budget-${item.id}`} className="budget-item-label">
-                                            {item.name}
-                                        </label>
-                                        {/* Input Group (Symbol + Input + Status) */}
+                                        <label htmlFor={`budget-${item.id}`} className="budget-item-label"> {item.name} </label>
                                         <div className="budget-item-input-group">
                                             <span className="currency-symbol">$</span>
-                                            <input
-                                                type="text"
-                                                inputMode="decimal"
-                                                id={`budget-${item.id}`}
-                                                className="budget-item-input"
-                                                value={displayValue}
-                                                onChange={(e) => handleBudgetChange(item.id, e.target.value)}
-                                                onBlur={() => handleBudgetSave(item.id)} // Save on blur
-                                                placeholder="0.00"
-                                            />
-                                            {/* Saving Status Indicator */}
+                                            <input type="text" inputMode="decimal" id={`budget-${item.id}`} className="budget-item-input" value={displayValue} onChange={(e) => handleBudgetChange(item.id, e.target.value)} onBlur={() => handleBudgetSave(item.id)} placeholder="0.00" />
                                             <span className={`budget-item-status status-${savingStatus[item.id]?.status}`}>
+                                                {/* Status messages */}
                                                 {savingStatus[item.id]?.status === 'saving' && 'Saving...'}
                                                 {savingStatus[item.id]?.status === 'saved' && 'Saved!'}
                                                 {savingStatus[item.id]?.status === 'error' && `Error: ${savingStatus[item.id]?.message || 'Failed'}`}
                                             </span>
-                                        </div> {/* End input group */}
-                                    </div> // End budget item
+                                        </div>
+                                    </div>
                                 );
                             }) // End map
                         )}
                     </div> {/* End budget-list */}
-                </div>
-                {/* --- End Budget Input List Section --- */}
-
-            </div> {/* --- End budget-content-layout --- */}
+                </div> {/* End budget-list-column */}
+            </div> {/* End budget-content-layout */}
         </div> // End budget-page-container
     );
-} 
+} // End BudgetPage Component
 
 export default BudgetPage;

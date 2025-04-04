@@ -3,14 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 // --- Chart.js Imports ---
 import { Pie } from 'react-chartjs-2';
-import {
-    Chart as ChartJS,
-    ArcElement,
-    Tooltip,
-    Legend,
-    Title
-} from 'chart.js';
-
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from 'chart.js';
 // --- Register Chart.js components ---
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
@@ -47,15 +40,6 @@ function getContrastYIQ(hexcolor, lightened = false){
 	return color;
 }
 
-// Helper function to generate chart colors
-const generateChartColors = (numColors) => {
-    const colors = []; const baseHue = 200;
-    for (let i = 0; i < numColors; i++) {
-        const hue = (baseHue + (i * 40)) % 360; const saturation = 70 + (i % 3) * 10;
-        const lightness = 60 + (i % 2) * 5; colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-    }
-    return colors;
-};
 
 // --- Chart Options for Expense Pie Chart ---
 const expenseChartOptions = {
@@ -226,28 +210,68 @@ function DashboardPage() {
         return totals;
     }, [categories, transactions, loadingCategories, loadingTransactions]);
 
-    // --- Data Preparation for Expense Pie Chart ---
+    // --- MODIFIED: Prepare Data for Expense Pie Chart ---
     const expensePieChartData = useMemo(() => {
         if (loadingCategories || loadingTransactions || !categories) { return null; }
-        const expenseCategoryIds = Object.keys(expenseCategoryTotals).filter(id => expenseCategoryTotals[id] > 0);
+
+        // Create maps for efficient lookup
+        const categoryDetailsMap = categories.reduce((acc, cat) => {
+             // Only include expense categories in the map for the chart
+             if(cat.type === 'expense') {
+                acc[cat.id] = { name: cat.name, color: cat.color || '#CCCCCC' }; // Use a default gray if color is missing
+             }
+            return acc;
+        }, {});
+
+        // Get category IDs that have expenses > 0 AND are expense types
+        const expenseCategoryIds = Object.keys(expenseCategoryTotals).filter(id =>
+             expenseCategoryTotals[id] > 0 && categoryDetailsMap[id] // Ensure ID exists in our expense map
+        );
+
         if (expenseCategoryIds.length === 0) { return null; }
 
-        const labels = []; const dataValues = [];
-        const categoryMap = categories.reduce((acc, cat) => { acc[cat.id] = cat.name; return acc; }, {});
+        // Create labels, data, and colors ONLY for categories with expenses
+        const labels = [];
+        const dataValues = [];
+        const backgroundColors = []; // Get colors from data
 
         expenseCategoryIds.forEach(id => {
-            labels.push(categoryMap[id] || `Unknown ${id}`);
-            dataValues.push(expenseCategoryTotals[id]);
+            const categoryDetail = categoryDetailsMap[id];
+            labels.push(categoryDetail.name); // Add label (category name)
+            dataValues.push(expenseCategoryTotals[id]); // Add total amount
+            backgroundColors.push(categoryDetail.color); // <<<--- Use color from category data
         });
-        const colors = generateChartColors(labels.length);
+
+        // Optional: Slightly darken border colors based on background colors
+         const borderColors = backgroundColors.map(color => {
+             // Basic darkening - this is primitive, libraries exist for better color manipulation
+             try {
+                 let r = parseInt(color.substr(1, 2), 16);
+                 let g = parseInt(color.substr(3, 2), 16);
+                 let b = parseInt(color.substr(5, 2), 16);
+                 r = Math.max(0, r - 30).toString(16).padStart(2, '0');
+                 g = Math.max(0, g - 30).toString(16).padStart(2, '0');
+                 b = Math.max(0, b - 30).toString(16).padStart(2, '0');
+                 return `#${r}${g}${b}`;
+             } catch (e) {
+                 return '#888888'; // Fallback border
+             }
+         });
+
+
         return {
             labels: labels,
-            datasets: [{
-                label: 'Amount Spent', data: dataValues, backgroundColor: colors,
-                borderColor: colors.map(c => c.replace('60%', '50%').replace('70%', '60%')), borderWidth: 1,
-            }],
+            datasets: [
+                {
+                    label: 'Amount Spent',
+                    data: dataValues,
+                    backgroundColor: backgroundColors, // Use fetched colors
+                    borderColor: borderColors,        // Use calculated darker borders
+                    borderWidth: 1,
+                },
+            ],
         };
-    }, [categories, expenseCategoryTotals, loadingCategories, loadingTransactions]);
+    }, [categories, expenseCategoryTotals, loadingCategories, loadingTransactions]); // Dependencies
 
     // --- Handlers ---
     const clearTransactionFormFields = () => {
