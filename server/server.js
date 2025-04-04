@@ -7,6 +7,7 @@ const cors = require('cors');
 const categoryRoutes = require('./routes/categoryRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const budgetRoutes = require('./routes/budgetRoutes'); // <-- Import budget routes
+const goalRoutes = require('./routes/goalRoutes'); // <-- Import goal routes
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -22,6 +23,7 @@ app.get('/', (req, res) => { /* ... */ });
 app.use('/api/categories', categoryRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/budgets', budgetRoutes); // <-- Mount budget routes
+app.use('/api/goals', goalRoutes); // <-- Mount goal routes
 
 // --- Error Handling Middleware ---
 app.use((err, req, res, next) => { /* ... */ });

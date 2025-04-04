@@ -8,7 +8,7 @@ import './App.css';
 import DashboardPage from './pages/DashboardPage';
 import HistoryPage from './pages/HistoryPage';
 import BudgetPage from './pages/BudgetPage'; // <-- Import the new page component
-
+import GoalsPage from './pages/GoalsPage'; // <-- Import new page
 function App() {
   return (
     <Router>
@@ -37,7 +37,9 @@ function App() {
             >
                 Budget
             </NavLink>
-            {/* --- End NEW Budget Link --- */}
+            <NavLink to="/goals" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+                Goals
+            </NavLink>
           </nav>
         </header>
 
@@ -50,6 +52,7 @@ function App() {
             <Route path="/budget" element={<BudgetPage />} />
             {/* --- End NEW Budget Route --- */}
             {/* <Route path="*" element={<div>Page Not Found</div>} /> */}
+            <Route path="/goals" element={<GoalsPage />} />
           </Routes>
         </main>
 
