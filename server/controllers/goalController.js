@@ -165,11 +165,114 @@ const addContribution = async (req, res) => {
             connection.release();
         }
     }
-
 }
-    module.exports = {
-        getAllGoals,
-        addGoal,
-        addContribution,
-        // Add updateGoal, deleteGoal exports here later when implemented
-    }; // <<< Make sure this closing brace is present
+
+// --- NEW Function: Update Goal ---
+const updateGoal = async (req, res) => {
+    const { id } = req.params; // Goal ID from URL
+    // Get potential fields to update from body
+    const { name, target_amount, target_date, notes } = req.body;
+
+    if (isNaN(parseInt(id, 10))) { return res.status(400).json({ message: 'Invalid goal ID.' }); }
+    const goalId = parseInt(id, 10);
+
+    const fieldsToUpdate = {};
+    const values = [];
+    let setClause = '';
+
+    // --- Validation and Clause Building ---
+    if (name !== undefined) {
+        const trimmedName = name.trim();
+        if (!trimmedName) return res.status(400).json({ message: 'Goal name cannot be empty if provided.' });
+        if (trimmedName.length > 150) return res.status(400).json({ message: 'Goal name max 150 chars.' });
+        fieldsToUpdate.name = trimmedName; values.push(trimmedName); setClause += 'name = ?';
+    }
+    if (target_amount !== undefined) {
+         const parsedTargetAmount = parseFloat(target_amount);
+         if (isNaN(parsedTargetAmount) || parsedTargetAmount <= 0) { return res.status(400).json({ message: 'Valid positive target amount required.' }); }
+         const finalTargetAmount = parseFloat(parsedTargetAmount.toFixed(2));
+         fieldsToUpdate.target_amount = finalTargetAmount; values.push(finalTargetAmount); setClause += (setClause ? ', ' : '') + 'target_amount = ?';
+    }
+    // Handle target_date (allow null or valid date)
+    let validTargetDate = undefined;
+    if (target_date !== undefined) { // Check if key exists (even if null)
+         if (target_date === null || target_date === '') {
+             validTargetDate = null; // Explicitly set to null
+         } else if (/^\d{4}-\d{2}-\d{2}$/.test(target_date)) {
+             validTargetDate = target_date; // Valid date format
+         } else {
+              return res.status(400).json({ message: 'Invalid target date format. Use YYYY-MM-DD or leave empty.' });
+         }
+         fieldsToUpdate.target_date = validTargetDate; values.push(validTargetDate); setClause += (setClause ? ', ' : '') + 'target_date = ?';
+    }
+    // Handle notes (allow null or string)
+    if (notes !== undefined) {
+        fieldsToUpdate.notes = notes === null || notes.trim() === '' ? null : notes.trim(); // Allow null/empty to clear notes
+        values.push(fieldsToUpdate.notes);
+        setClause += (setClause ? ', ' : '') + 'notes = ?';
+    }
+    // --- End Validation and Clause Building ---
+
+
+    if (values.length === 0) { return res.status(400).json({ message: 'No update data provided.' }); }
+    values.push(goalId); // Add ID for WHERE clause
+
+    try {
+        // Check existence
+        const [checkRows] = await dbPool.query('SELECT id FROM goals WHERE id = ?', [goalId]);
+        if (checkRows.length === 0) { return res.status(404).json({ message: 'Goal not found.' }); }
+
+        // Perform update
+        const updateSql = `UPDATE goals SET ${setClause} WHERE id = ?`;
+        await dbPool.query(updateSql, values);
+
+        // Fetch updated goal
+        const [updatedGoalRows] = await dbPool.query('SELECT id, name, target_amount, current_amount, target_date, notes, created_at FROM goals WHERE id = ?', [goalId]);
+        if (updatedGoalRows.length === 0) { throw new Error('Failed to retrieve updated goal.'); }
+
+         // Format before sending back
+         const formattedGoal = {
+            ...updatedGoalRows[0],
+            target_amount: parseFloat(updatedGoalRows[0].target_amount),
+            current_amount: parseFloat(updatedGoalRows[0].current_amount),
+            target_date: updatedGoalRows[0].target_date ? new Date(updatedGoalRows[0].target_date).toISOString().split('T')[0] : null
+         };
+
+        res.status(200).json({ message: 'Goal updated successfully!', updatedGoal: formattedGoal });
+
+    } catch (error) {
+        console.error('Error updating goal:', error);
+        // Handle potential duplicate name error if unique constraint exists
+        // if (error.code === 'ER_DUP_ENTRY' && fieldsToUpdate.name) { return res.status(409).json({ message: `Goal name already exists.` }); }
+        res.status(500).json({ message: 'Failed to update goal.' });
+    }
+};
+
+
+// --- NEW Function: Delete Goal ---
+const deleteGoal = async (req, res) => {
+    const { id } = req.params;
+    if (isNaN(parseInt(id, 10))) { return res.status(400).json({ message: 'Invalid goal ID.' }); }
+    const goalId = parseInt(id, 10);
+
+    // ON DELETE CASCADE in DB schema handles deleting related contributions automatically
+
+    try {
+        const deleteSql = 'DELETE FROM goals WHERE id = ?';
+        const [result] = await dbPool.query(deleteSql, [goalId]);
+
+        if (result.affectedRows === 0) { return res.status(404).json({ message: 'Goal not found.' }); }
+
+        res.status(200).json({ message: `Goal with ID ${goalId} deleted successfully.` });
+    } catch (error) {
+        console.error('Error deleting goal:', error);
+        res.status(500).json({ message: 'Failed to delete goal.' });
+    }
+};
+module.exports = {
+    getAllGoals,
+    addGoal,
+    addContribution,
+    updateGoal,     // Ensure it's listed here
+    deleteGoal      // Ensure it's listed here
+};

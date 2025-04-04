@@ -43,6 +43,20 @@ function GoalsPage() {
     const [isAddingContribution, setIsAddingContribution] = useState(false);
     const [addContributionError, setAddContributionError] = useState(null);
     const [addContributionSuccess, setAddContributionSuccess] = useState(null);
+
+    // --- NEW State for Goal Options Popup ---
+    const [optionsPopupGoal, setOptionsPopupGoal] = useState(null); // The goal object for which options are shown
+    const [isGoalRenameMode, setIsGoalRenameMode] = useState(false); // Toggles rename form visibility
+    // State for rename form inputs - initialize when popup opens
+    const [renameGoalNameInput, setRenameGoalNameInput] = useState('');
+    const [renameTargetAmountInput, setRenameTargetAmountInput] = useState('');
+    const [renameTargetDateInput, setRenameTargetDateInput] = useState('');
+    const [renameNotesInput, setRenameNotesInput] = useState('');
+    // Loading/Error state specifically for goal update/delete actions
+    const [isProcessingGoalAction, setIsProcessingGoalAction] = useState(false);
+    const [goalActionError, setGoalActionError] = useState(null);
+
+
     // --- Fetch Goals ---
     const fetchGoals = useCallback(async (controller) => {
         setLoading(true);
@@ -184,6 +198,141 @@ function GoalsPage() {
     };
 
 
+    // --- NEW Handlers for Goal Options Popup ---
+    const handleGoalOptionsIconClick = (event, goal) => {
+        event.stopPropagation(); // Prevent card click action
+        setOptionsPopupGoal(goal); // Set the goal for the options popup
+        // Pre-fill rename form state with current goal data
+        setRenameGoalNameInput(goal.name);
+        setRenameTargetAmountInput(goal.target_amount.toFixed(2)); // Format for input type=number
+        setRenameTargetDateInput(goal.target_date || ''); // Use empty string if null
+        setRenameNotesInput(goal.notes || ''); // Use empty string if null
+        // Reset popup state
+        setIsGoalRenameMode(false); // Start in default view
+        setGoalActionError(null); // Clear previous errors
+    };
+
+    const handleCloseGoalOptionsPopup = () => {
+        setOptionsPopupGoal(null); // Close the popup
+        // Clear rename state just in case
+        setIsGoalRenameMode(false);
+        setGoalActionError(null);
+        // No need to clear rename inputs here, they get set on open
+    };
+
+    const handleTriggerGoalRename = () => {
+        setIsGoalRenameMode(true); // Switch view within the popup
+        setGoalActionError(null); // Clear errors
+    };
+
+    const handleCancelGoalRename = () => {
+        setIsGoalRenameMode(false); // Switch view back
+        // No need to reset inputs here, they'll reset if popup is reopened
+        setGoalActionError(null); // Clear errors
+    };
+
+    // --- NEW Update Goal Submit Handler ---
+    const handleUpdateGoalSubmit = async (event) => {
+        event.preventDefault();
+        if (!optionsPopupGoal) return;
+
+        const goalId = optionsPopupGoal.id;
+        const originalGoal = optionsPopupGoal;
+
+        // Prepare payload with potentially changed values
+        const payload = {};
+        let changed = false;
+
+        // Name
+        const newNameTrimmed = renameGoalNameInput.trim();
+        if (newNameTrimmed && newNameTrimmed !== originalGoal.name) {
+            if (newNameTrimmed.length > 150) { setGoalActionError('Name max 150 chars.'); return; }
+            payload.name = newNameTrimmed;
+            changed = true;
+        } else if (!newNameTrimmed && isGoalRenameMode) { // Check if empty only in rename mode
+            setGoalActionError('Goal name is required.'); return;
+        }
+
+        // Target Amount
+        const parsedTarget = safeParseGoalFloat(renameTargetAmountInput);
+         // Use !== comparison because 0 is falsy but could be a valid (though disallowed by safeParseGoalFloat) input attempt
+        if (renameTargetAmountInput !== '' && isNaN(parsedTarget)) {
+             setGoalActionError('Valid positive target amount required.'); return;
+        }
+        if (!isNaN(parsedTarget) && parsedTarget !== originalGoal.target_amount) {
+            payload.target_amount = parsedTarget;
+            changed = true;
+        }
+
+         // Target Date
+        const newDate = renameTargetDateInput || null; // Treat empty string as null
+        if (newDate !== originalGoal.target_date) {
+             // Optional: add date format validation here if needed before sending
+            payload.target_date = newDate;
+            changed = true;
+        }
+
+        // Notes
+         const newNotes = renameNotesInput.trim() || null; // Treat empty string as null
+        if (newNotes !== (originalGoal.notes || null)) { // Compare with null if original notes were null
+            payload.notes = newNotes;
+            changed = true;
+        }
+
+        // If nothing actually changed, just close
+        if (!changed) {
+            handleCloseGoalOptionsPopup();
+            return;
+        }
+
+        setIsProcessingGoalAction(true);
+        setGoalActionError(null);
+
+        try {
+            const response = await axios.put(`http://localhost:5001/api/goals/${goalId}`, payload);
+
+            // Update the goal in the main list state
+            setGoals(prevGoals => prevGoals.map(g =>
+                g.id === goalId ? response.data.updatedGoal : g
+             ).sort((a, b) => a.name.localeCompare(b.name))); // Keep sorted
+
+            handleCloseGoalOptionsPopup(); // Close on success
+
+        } catch (err) {
+            console.error("Error updating goal:", err);
+            let message = "Failed to update goal.";
+            if (err.response?.data?.message) { message = err.response.data.message; }
+            setGoalActionError(message);
+        } finally {
+             setIsProcessingGoalAction(false);
+        }
+    };
+
+
+    // --- NEW Delete Goal Handler ---
+    const handleDeleteGoal = async (goalId, goalName) => {
+        if (!window.confirm(`Are you sure you want to delete the goal "${goalName}"? All contributions will also be deleted.`)) {
+             return;
+        }
+
+        setIsProcessingGoalAction(true);
+        setGoalActionError(null);
+
+        try {
+            await axios.delete(`http://localhost:5001/api/goals/${goalId}`);
+            // Remove goal from state
+            setGoals(prevGoals => prevGoals.filter(g => g.id !== goalId));
+            handleCloseGoalOptionsPopup(); // Close on success
+        } catch (err) {
+             console.error("Error deleting goal:", err);
+             let message = "Failed to delete goal.";
+             if (err.response?.data?.message) { message = err.response.data.message; }
+             setGoalActionError(message); // Show error in popup
+        } finally {
+             setIsProcessingGoalAction(false);
+        }
+    };
+
     // --- Render Logic ---
     if (loading) { return <div>Loading goals...</div>; }
     if (error) { return <div style={{ color: 'red', padding: '20px' }}>Error: {error}</div>; }
@@ -256,50 +405,43 @@ function GoalsPage() {
             {/* --- End Add Goal Form --- */}
 
 
-            {/* --- Display Goals List Section (Modified Card) --- */}
+            {/* Display Goals List Section */}
             <div className="goals-list-container">
                 <h3>Current Goals</h3>
-                {goals.length === 0 ? ( <p>You haven't added any savings goals yet.</p> ) : (
+                {goals.length === 0 && !loading ? ( <p>You haven't added any savings goals yet.</p> ) : (
                     <div className="goals-list">
                         {goals.map(goal => {
-                            // --- Calculate Progress ---
-                            // Ensure target_amount is positive to avoid division by zero or weird percentages
-                            const targetAmount = Math.max(0.01, goal.target_amount); // Treat 0 target as minimum 0.01
-                            const currentAmount = Math.max(0, goal.current_amount); // Ensure current isn't negative
-                            // Calculate percentage, cap at 100% visually even if over-saved
+                            // Calculate progress for display
+                            const targetAmount = Math.max(0.01, goal.target_amount);
+                            const currentAmount = Math.max(0, goal.current_amount);
                             const percentage = Math.min(100, Math.max(0, (currentAmount / targetAmount) * 100));
-                            const percentageString = percentage.toFixed(1) + '%'; // Format percentage string
+                            const percentageString = percentage.toFixed(1) + '%';
 
                             return (
                                 <div key={goal.id} className="goal-item-card">
-                                    {/* Goal Name */}
-                                    <h4>{goal.name}</h4>
+                                    {/* --- Goal Options Button --- */}
+                                    <button
+                                        className="goal-options-btn" // Use a specific class
+                                        onClick={(e) => handleGoalOptionsIconClick(e, goal)}
+                                        title="Goal Options"
+                                        disabled={isProcessingGoalAction && optionsPopupGoal?.id === goal.id}
+                                    >
+                                        ⚙️
+                                    </button>
+                                    {/* --- End Options Button --- */}
 
-                                    {/* Saved Amount & Percentage */}
+                                    <h4>{goal.name}</h4>
                                     <div className="goal-progress-info">
                                         <span>Saved: {formatCurrency(currentAmount)} / {formatCurrency(targetAmount)}</span>
                                         <span>{percentageString}</span>
                                     </div>
-
-                                    {/* --- NEW Progress Bar --- */}
                                     <div className="progress-bar-container">
-                                        <div
-                                            className="progress-bar-fill"
-                                            // Apply width based on percentage
-                                            style={{ width: percentageString }}
-                                            title={percentageString} // Tooltip showing percentage
-                                        ></div>
+                                        <div className="progress-bar-fill" style={{ width: percentageString }} title={percentageString}></div>
                                     </div>
-                                    {/* --- End Progress Bar --- */}
-
-                                    {/* Optional Target Date & Notes */}
                                     {goal.target_date && <p className="goal-target-date">Target Date: {goal.target_date}</p>}
                                     {goal.notes && <p className="goal-notes">Notes: {goal.notes}</p>}
-
-                                    {/* Actions */}
                                     <div className="goal-card-actions">
                                         <button onClick={() => handleOpenContributionPopup(goal)} className="btn-add-contribution"> Add Contribution </button>
-                                        {/* Edit/Delete buttons later */}
                                     </div>
                                 </div> // End goal-item-card
                             );
@@ -354,9 +496,57 @@ function GoalsPage() {
             )}
             {/* --- End Contribution Popup --- */}
 
+            {/* --- NEW: Goal Options Popup/Modal --- */}
+        {optionsPopupGoal && (
+             <div className="popup-overlay options-overlay" onClick={handleCloseGoalOptionsPopup}>
+                 <div className="options-popup-content" onClick={(e) => e.stopPropagation()}>
+                     <h3>Options for: {optionsPopupGoal.name}</h3>
+                     {goalActionError && <p className="options-error">{goalActionError}</p>}
+
+                     {/* Conditionally Render Rename Form or Default Buttons */}
+                     {isGoalRenameMode ? (
+                        // Rename Form
+                         <form onSubmit={handleUpdateGoalSubmit} className="rename-form goal-rename-form"> {/* Added specific class */}
+                            <div className="form-group">
+                                 <label htmlFor="rename-goal-name">Goal Name:</label>
+                                 <input id="rename-goal-name" type="text" value={renameGoalNameInput} onChange={(e) => { setRenameGoalNameInput(e.target.value); if (goalActionError) setGoalActionError(null); }} disabled={isProcessingGoalAction} maxLength="150" required autoFocus />
+                            </div>
+                            <div className="form-group">
+                                 <label htmlFor="rename-goal-target-amount">Target Amount ($):</label>
+                                 <input id="rename-goal-target-amount" type="number" value={renameTargetAmountInput} onChange={(e) => { setRenameTargetAmountInput(e.target.value); if (goalActionError) setGoalActionError(null); }} disabled={isProcessingGoalAction} step="0.01" min="0.01" required />
+                             </div>
+                             <div className="form-group">
+                                 <label htmlFor="rename-goal-target-date">Target Date (Optional):</label>
+                                 <input id="rename-goal-target-date" type="date" value={renameTargetDateInput} onChange={(e) => { setRenameTargetDateInput(e.target.value); if (goalActionError) setGoalActionError(null); }} disabled={isProcessingGoalAction} />
+                             </div>
+                             <div className="form-group">
+                                 <label htmlFor="rename-goal-notes">Notes (Optional):</label>
+                                 <textarea id="rename-goal-notes" value={renameNotesInput} onChange={(e) => { setRenameNotesInput(e.target.value); if (goalActionError) setGoalActionError(null); }} rows="2" disabled={isProcessingGoalAction}></textarea>
+                             </div>
+                             {/* Rename Buttons */}
+                             <div className="options-button-group">
+                                 <button type="button" onClick={handleCancelGoalRename} disabled={isProcessingGoalAction}>Cancel</button>
+                                 <button type="submit" disabled={isProcessingGoalAction /* Add more precise check later */}>
+                                     {isProcessingGoalAction ? 'Saving...' : 'Save Changes'}
+                                 </button>
+                             </div>
+                         </form>
+                     ) : (
+                        // Default Options Buttons
+                         <div className="options-button-group">
+                            <button className="delete-button" onClick={() => handleDeleteGoal(optionsPopupGoal.id, optionsPopupGoal.name)} disabled={isProcessingGoalAction}> Delete </button>
+                            <button onClick={handleTriggerGoalRename} disabled={isProcessingGoalAction}>Rename / Edit</button>
+                            <button onClick={handleCloseGoalOptionsPopup} disabled={isProcessingGoalAction}>Cancel</button>
+                         </div>
+                     )}
+                 </div> {/* End options-popup-content */}
+             </div> // End options-overlay
+         )} {/* End conditional rendering of goal options popup */}
 
         </div> // End goals-page-container
     );
+    
+    
 } // End of GoalsPage component needs to be outside this block
 
 export default GoalsPage;
