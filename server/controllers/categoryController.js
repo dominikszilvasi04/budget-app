@@ -12,33 +12,64 @@ const getAllCategories = async (req, res) => {
     }
 };
 
-// --- MODIFIED: Add Category (Accepts Type) ---
 const addCategory = async (req, res) => {
-    // Get name AND type from request body
     const { name, type } = req.body;
 
-    // Validation
-    if (!name || typeof name !== 'string' || name.trim().length === 0) { return res.status(400).json({ message: 'Category name required.' }); }
-    if (name.length > 100) { return res.status(400).json({ message: 'Category name max 100 chars.' }); }
-    // Validate type - must be 'income' or 'expense'
+    // --- Validation ---
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        console.log("Backend validation failed: Name required"); // Add log
+        return res.status(400).json({ message: 'Category name is required and cannot be empty.' });
+    }
+    if (name.length > 100) {
+        console.log("Backend validation failed: Name too long"); // Add log
+         return res.status(400).json({ message: 'Category name cannot exceed 100 characters.' });
+    }
     if (!type || (type !== 'income' && type !== 'expense')) {
+         console.log("Backend validation failed: Invalid type"); // Add log
          return res.status(400).json({ message: "Category type must be 'income' or 'expense'." });
     }
 
     const trimmedName = name.trim();
+    console.log(`Backend: Attempting to insert category '${trimmedName}' with type '${type}'`); // Add log
 
     try {
-        // Add type to the INSERT statement
         const sql = 'INSERT INTO categories (name, type) VALUES (?, ?)';
-        const [result] = await dbPool.query(sql, [trimmedName, type]); // Pass type here
+        const [result] = await dbPool.query(sql, [trimmedName, type]);
+        console.log("Backend: Insert successful, ID:", result.insertId); // Add log
 
         const insertedId = result.insertId;
+        // Fetch the newly inserted category to return it
         const [newCategoryRows] = await dbPool.query('SELECT * FROM categories WHERE id = ?', [insertedId]);
-        if (newCategoryRows.length === 0) { throw new Error('Failed to retrieve newly added category.'); }
-        res.status(201).json({ message: 'Category added successfully!', newCategory: newCategoryRows[0] });
-    } catch (error) { /* ... duplicate entry and other error handling ... */ }
-};
 
+        if (newCategoryRows.length === 0) {
+             // This case IS problematic if it happens - it means insert worked but select failed
+             console.error("Backend Error: Failed to retrieve newly added category after insert."); // Log error
+             // SEND A RESPONSE HERE!
+             return res.status(500).json({ message: 'Category added but failed to retrieve details.' });
+        }
+
+        console.log("Backend: Sending success response with new category."); // Add log
+        // Send back the newly created category object
+        res.status(201).json({
+          message: 'Category added successfully!',
+          newCategory: newCategoryRows[0] // Send the full new category object back
+        });
+
+    } catch (error) {
+        console.error('Backend Error adding category:', error.message, 'Code:', error.code); // Log specific error
+
+        // Handle specific errors like duplicate entry
+        if (error.code === 'ER_DUP_ENTRY') {
+          console.log("Backend: Duplicate entry detected."); // Add log
+          // Ensure response is sent
+          return res.status(409).json({ message: `Category '${trimmedName}' already exists.` });
+        }
+
+        // --- Ensure a response is ALWAYS sent in catch ---
+        // Handle other potential database errors
+        res.status(500).json({ message: 'Failed to add category due to a server error.' });
+    }
+};
 // --- MODIFIED: Update Category (Handles Type Update) ---
 const updateCategory = async (req, res) => {
     const { id } = req.params;

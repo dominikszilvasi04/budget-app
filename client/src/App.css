@@ -140,8 +140,10 @@ nav .nav-link.active {
 
 .category-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); /* Responsive, max ~6 columns */
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); /* Keep responsive columns */
   gap: 25px;
+  /* --- ADD THIS LINE --- */
+  justify-content: start; /* Prevent items stretching to fill empty space */
 }
 
 .category-select-box {

@@ -190,35 +190,56 @@ function DashboardPage() {
         finally { setTimeout(() => setIsSubmittingTransaction(false), 500); }
     };
     // --- ** Modified Category Add Handler ** ---
+    // --- Category Add Handler (with more logging) ---
     const handleAddCategorySubmit = async (event) => {
         event.preventDefault();
         const trimmedName = newCategoryName.trim();
-        if (!trimmedName) { setAddCategoryError("Category name cannot be empty."); return; }
+        if (!trimmedName) {
+            setAddCategoryError("Category name cannot be empty.");
+            return;
+        }
 
-        setIsAddingCategory(true);
-        setAddCategoryError(null); setAddCategorySuccess(null);
+        console.log("Attempting to add category:", trimmedName); // Log start
+        setIsAddingCategory(true); // Set loading TRUE
+        setAddCategoryError(null);
+        setAddCategorySuccess(null);
 
         try {
-            // ** Pass type to API **
             const response = await axios.post('http://localhost:5001/api/categories', {
                 name: trimmedName,
-                type: newCategoryType // Send selected type
+                type: newCategoryType
             });
 
+            // Success path:
+            console.log("Category added successfully:", response.data); // Log success
             setAddCategoryError(null);
-            setCategories(prevCategories => [...prevCategories, response.data.newCategory].sort((a, b) => a.name.localeCompare(b.name)));
-            setNewCategoryName('');
-            // Optionally reset type dropdown? Let's keep it for now.
-            // setNewCategoryType('expense');
+            setCategories(prevCategories =>
+                [...prevCategories, response.data.newCategory].sort((a, b) =>
+                    a.name.localeCompare(b.name)
+                 )
+            );
+            setNewCategoryName(''); // Clear input
             setAddCategorySuccess(`Category '${response.data.newCategory.name}' added!`);
             setTransactionRefetchTrigger(p => p + 1);
             setTimeout(() => setAddCategorySuccess(null), 3000);
+
         } catch (err) {
-            console.error("Error adding category:", err);
-            let message = "Failed."; if (err.response?.data?.message) { message = err.response.data.message; }
-            setAddCategoryError(message); setAddCategorySuccess(null);
+            // Error path:
+            console.error("Error adding category:", err); // Log the full error
+            let message = "Failed to add category.";
+            if (err.response && err.response.data && err.response.data.message) {
+                message = err.response.data.message;
+            }
+             console.log("Setting add category error state:", message); // Log before setting error state
+            setAddCategoryError(message);
+            setAddCategorySuccess(null);
+
         } finally {
-            setIsAddingCategory(false);
+            // --- This block MUST run ---
+            console.log("Executing finally block for add category..."); // Log entry into finally
+            setIsAddingCategory(false); // Set loading FALSE
+            console.log("isAddingCategory state should now be false."); // Log after setting state
+            // --- End Finally ---
         }
     };
     const handleOptionsIconClick = (event, category) => {
