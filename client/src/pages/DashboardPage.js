@@ -1,9 +1,8 @@
 // client/src/pages/DashboardPage.js
-import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Added useMemo, useCallback
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 
 // --- Helper Functions ---
-// Parses a string to float safely, returning NaN if invalid
 const safeParseFloat = (value) => {
     if (typeof value === 'number') return value;
     if (typeof value !== 'string') return NaN;
@@ -13,53 +12,35 @@ const safeParseFloat = (value) => {
     return isNaN(parsed) ? NaN : parsed;
 };
 
-// Formats a number (or numeric string) to 2 decimal places for display
 const formatAmountForDisplay = (value) => {
     const num = safeParseFloat(value);
-    if (isNaN(num)) {
-        return '';
-    }
+    if (isNaN(num)) { return ''; }
     return num.toFixed(2);
 };
 
-// Formats number as currency
 const formatCurrency = (num) => {
     const parsedNum = typeof num === 'number' ? num : safeParseFloat(num);
-    if (isNaN(parsedNum)) {
-        num = 0;
-    } else {
-        num = parsedNum; // Use the successfully parsed number
-    }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(num);
+    if (isNaN(parsedNum)) { num = 0; } else { num = parsedNum; }
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
 };
 
-// Helper function for text contrast
 function getContrastYIQ(hexcolor, lightened = false){
-    if (!hexcolor || typeof hexcolor !== 'string') return lightened ? '#e0e0e0' : '#000000'; // Default light gray/black if no color
+    if (!hexcolor || typeof hexcolor !== 'string') return lightened ? '#e0e0e0' : '#000000';
     hexcolor = hexcolor.replace("#", "");
-    // Ensure hexcolor is valid 6 digit hex
-    if (hexcolor.length !== 6 || !/^[0-9A-F]{6}$/i.test(hexcolor)) {
-         return lightened ? '#e0e0e0' : '#000000'; // Default on invalid format
-    }
-	const r = parseInt(hexcolor.substr(0,2),16);
-	const g = parseInt(hexcolor.substr(2,2),16);
-	const b = parseInt(hexcolor.substr(4,2),16);
+    if (hexcolor.length !== 6 || !/^[0-9A-F]{6}$/i.test(hexcolor)) { return lightened ? '#e0e0e0' : '#000000'; }
+	const r = parseInt(hexcolor.substr(0,2),16); const g = parseInt(hexcolor.substr(2,2),16); const b = parseInt(hexcolor.substr(4,2),16);
 	const yiq = ((r*299)+(g*587)+(b*114))/1000;
-    const color = (yiq >= 128) ? '#000000' : '#FFFFFF'; // Black text on light, White text on dark
-    if (lightened) { // For borders/lines, return a slightly lighter/darker shade
-         return (yiq >= 128) ? '#dddddd' : '#555555'; // Adjusted shades
-    }
+    const color = (yiq >= 128) ? '#000000' : '#FFFFFF';
+    if (lightened) { return (yiq >= 128) ? '#dddddd' : '#555555'; }
 	return color;
 }
+
 
 
 // --- Component Definition ---
 function DashboardPage() {
     // --- State Variables ---
-    const [categories, setCategories] = useState([]);
+    const [categories, setCategories] = useState([]); // ALL categories
     const [loadingCategories, setLoadingCategories] = useState(true);
     const [errorCategories, setErrorCategories] = useState(null);
     const [transactions, setTransactions] = useState([]);
@@ -75,6 +56,8 @@ function DashboardPage() {
     const [submitTransactionSuccess, setSubmitTransactionSuccess] = useState(null);
     const [selectedCategoryForPopup, setSelectedCategoryForPopup] = useState(null);
     const [newCategoryName, setNewCategoryName] = useState('');
+    // ** NEW: State for Category Type in Add Form **
+    const [newCategoryType, setNewCategoryType] = useState('expense'); // Default to expense
     const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [addCategoryError, setAddCategoryError] = useState(null);
     const [addCategorySuccess, setAddCategorySuccess] = useState(null);
@@ -83,10 +66,10 @@ function DashboardPage() {
     const [renameCategoryName, setRenameCategoryName] = useState('');
     const [isProcessingCategoryAction, setIsProcessingCategoryAction] = useState(false);
     const [categoryActionError, setCategoryActionError] = useState(null);
+    const [selectedColor, setSelectedColor] = useState('#FFFFFF');
     const [transactionRefetchTrigger, setTransactionRefetchTrigger] = useState(0);
-    // State for Color Picker in Options Popup
-    const [selectedColor, setSelectedColor] = useState('#FFFFFF'); // Default color
-
+    // ** NEW: State for Dashboard View Type **
+    const [dashboardViewType, setDashboardViewType] = useState('expense'); // 'expense' or 'income'
 
     // --- Fetch Categories Effect ---
     useEffect(() => {
@@ -159,6 +142,10 @@ function DashboardPage() {
         return map;
     }, [budgetData, loadingBudgets]);
 
+    // --- ** Filtered Categories based on View Type ** ---
+    const filteredCategories = useMemo(() => {
+        return categories.filter(cat => cat.type === dashboardViewType);
+    }, [categories, dashboardViewType]); // Re-filter when categories or view type change
 
     // --- Handlers ---
     const clearTransactionFormFields = () => {
@@ -202,12 +189,37 @@ function DashboardPage() {
         catch (err) { console.error('Error submitting transaction:', err); let errorMessage = 'Failed.'; if (err.response?.data?.message) { errorMessage = err.response.data.message; } setSubmitTransactionError(errorMessage); setSubmitTransactionSuccess(null); }
         finally { setTimeout(() => setIsSubmittingTransaction(false), 500); }
     };
+    // --- ** Modified Category Add Handler ** ---
     const handleAddCategorySubmit = async (event) => {
-        event.preventDefault(); const trimmedName = newCategoryName.trim(); if (!trimmedName) { setAddCategoryError("Name empty."); return; }
-        setIsAddingCategory(true); setAddCategoryError(null); setAddCategorySuccess(null);
-        try { const response = await axios.post('http://localhost:5001/api/categories', { name: trimmedName }); setAddCategoryError(null); setCategories(prev => [...prev, response.data.newCategory].sort((a, b) => a.name.localeCompare(b.name))); setNewCategoryName(''); setAddCategorySuccess(`'${response.data.newCategory.name}' added!`); setTransactionRefetchTrigger(p => p + 1); setTimeout(() => setAddCategorySuccess(null), 3000); }
-        catch (err) { console.error("Error adding category:", err); let message = "Failed."; if (err.response?.data?.message) { message = err.response.data.message; } setAddCategoryError(message); setAddCategorySuccess(null); }
-        finally { setIsAddingCategory(false); }
+        event.preventDefault();
+        const trimmedName = newCategoryName.trim();
+        if (!trimmedName) { setAddCategoryError("Category name cannot be empty."); return; }
+
+        setIsAddingCategory(true);
+        setAddCategoryError(null); setAddCategorySuccess(null);
+
+        try {
+            // ** Pass type to API **
+            const response = await axios.post('http://localhost:5001/api/categories', {
+                name: trimmedName,
+                type: newCategoryType // Send selected type
+            });
+
+            setAddCategoryError(null);
+            setCategories(prevCategories => [...prevCategories, response.data.newCategory].sort((a, b) => a.name.localeCompare(b.name)));
+            setNewCategoryName('');
+            // Optionally reset type dropdown? Let's keep it for now.
+            // setNewCategoryType('expense');
+            setAddCategorySuccess(`Category '${response.data.newCategory.name}' added!`);
+            setTransactionRefetchTrigger(p => p + 1);
+            setTimeout(() => setAddCategorySuccess(null), 3000);
+        } catch (err) {
+            console.error("Error adding category:", err);
+            let message = "Failed."; if (err.response?.data?.message) { message = err.response.data.message; }
+            setAddCategoryError(message); setAddCategorySuccess(null);
+        } finally {
+            setIsAddingCategory(false);
+        }
     };
     const handleOptionsIconClick = (event, category) => {
         event.stopPropagation(); setOptionsPopupCategory(category); setRenameCategoryName(category.name); setSelectedColor(category.color || '#FFFFFF'); setIsRenameMode(false); setCategoryActionError(null);
@@ -253,17 +265,43 @@ function DashboardPage() {
     const displayDataError = errorTransactions || errorBudgets; // Non-critical data errors
 
     return (
-        <>
+        <> {/* React Fragment */}
             <div className="main-layout-single-column">
                 <section className="categories-display-section-full">
-                    <h2>Categories</h2>
+                    {/* Section Header with Title and Toggle */}
+                    <div className="section-header-controls">
+                        {/* Title changes based on view type */}
+                        <h2>{dashboardViewType === 'expense' ? 'Expense Categories' : 'Income Sources'}</h2>
+                        {/* View Type Toggle Buttons */}
+                        <div className="view-toggle">
+                            <button
+                                className={`toggle-btn ${dashboardViewType === 'expense' ? 'active' : ''}`}
+                                onClick={() => setDashboardViewType('expense')}
+                            >
+                                Expenses
+                            </button>
+                            <button
+                                className={`toggle-btn ${dashboardViewType === 'income' ? 'active' : ''}`}
+                                onClick={() => setDashboardViewType('income')}
+                            >
+                                Income
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Optional Data Error Display */}
                     {displayDataError && !isLoading && <p style={{ color: 'orange', marginBottom: '15px' }}>Warning: Could not load all data. Totals/Budgets may be inaccurate. ({displayDataError})</p>}
-                    {categories.length === 0 && !loadingCategories ? ( <p>No categories defined yet. Add one below!</p> ) : (
+
+                    {/* Category Grid Display - Uses FILTERED categories */}
+                    {filteredCategories.length === 0 && !loadingCategories ? (
+                         <p>No {dashboardViewType} categories defined yet. Add one below!</p>
+                    ) : (
                         <div className="category-grid">
-                            {categories.map(category => {
+                            {/* Map over FILTERED categories */}
+                            {filteredCategories.map(category => {
                                 const allocatedBudget = budgetMap[category.id] ?? 0.00;
-                                const totalSpent = categoryTotals[category.id] ?? 0.00;
-                                const difference = allocatedBudget - totalSpent;
+                                const totalSpentOrReceived = categoryTotals[category.id] ?? 0.00; // Rename for clarity
+                                const difference = allocatedBudget - totalSpentOrReceived; // Relevant mainly for expenses
                                 const boxColor = category.color || '#FFFFFF';
                                 const textColor = getContrastYIQ(boxColor);
                                 const borderColor = getContrastYIQ(boxColor, true);
@@ -273,22 +311,47 @@ function DashboardPage() {
                                     <div key={category.id} className="category-select-box" onClick={() => handleCategoryBoxClick(category)} style={{ backgroundColor: boxColor }}>
                                         <button className="category-options-btn" onClick={(e) => handleOptionsIconClick(e, category)} title="Category Options" style={{ color: optionsColor }} disabled={isProcessingCategoryAction && optionsPopupCategory?.id === category.id}>⚙️</button>
                                         <h3 style={{ color: textColor }}>{category.name}</h3>
-                                        <div className="category-financials" style={{ color: textColor, borderTopColor: borderColor }}>
-                                            <p className="category-budget">Budget: <span>{formatCurrency(allocatedBudget)}</span></p>
-                                            <p className={`category-difference ${difference >= 0 ? 'positive' : 'negative'}`}>
-                                                {difference >= 0 ? 'Remaining:' : 'Overspent:'}
-                                                <span style={{ color: difference >= 0 ? '#28a745' : '#dc3545' }}>{formatCurrency(Math.abs(difference))}</span>
-                                            </p>
-                                        </div>
-                                        <p className="category-spent-total" style={{ color: textColor }}>Spent: {formatCurrency(totalSpent)}</p>
-                                    </div>
+
+                                        {/* Conditional Financial Display */}
+                                        {dashboardViewType === 'expense' ? (
+                                            <>
+                                                <div className="category-financials" style={{ color: textColor, borderTopColor: borderColor }}>
+                                                    <p className="category-budget">Budget: <span>{formatCurrency(allocatedBudget)}</span></p>
+                                                    <p className={`category-difference ${difference >= 0 ? 'positive' : 'negative'}`}>
+                                                        {difference >= 0 ? 'Remaining:' : 'Overspent:'}
+                                                        <span style={{ color: difference >= 0 ? '#28a745' : '#dc3545' }}>{formatCurrency(Math.abs(difference))}</span>
+                                                    </p>
+                                                </div>
+                                                <p className="category-spent-total" style={{ color: textColor }}>Spent: {formatCurrency(totalSpentOrReceived)}</p>
+                                            </>
+                                        ) : ( // Income View
+                                            <>
+                                                {/* Hide Budget/Difference for Income, just show total */}
+                                                <p className="category-spent-total income" style={{ color: textColor, marginTop: 'auto', paddingTop: '10px', borderTop: `1px dashed ${borderColor}` }}>
+                                                    Received: {formatCurrency(totalSpentOrReceived)}
+                                                </p>
+                                            </>
+                                        )}
+                                    </div> // End category-select-box
                                 );
                              })}
-                        </div>
+                        </div> // End category-grid
                     )}
+
+                    {/* Add Category Form (Modified) */}
                     <div className="add-category-container">
-                         <form onSubmit={handleAddCategorySubmit} className="add-category-form">
+                        <form onSubmit={handleAddCategorySubmit} className="add-category-form">
                             <input type="text" value={newCategoryName} onChange={(e) => { setNewCategoryName(e.target.value); if (addCategoryError) setAddCategoryError(null); }} placeholder="New category name..." disabled={isAddingCategory} maxLength="100" aria-describedby="category-add-status" />
+                            {/* Type Selector */}
+                            <select
+                                value={newCategoryType}
+                                onChange={(e) => setNewCategoryType(e.target.value)}
+                                disabled={isAddingCategory}
+                                className="add-category-type-select"
+                            >
+                                <option value="expense">Expense</option>
+                                <option value="income">Income</option>
+                            </select>
                             <button type="submit" disabled={isAddingCategory || !newCategoryName.trim()}> {isAddingCategory ? 'Adding...' : 'Add Category'} </button>
                         </form>
                         <div id="category-add-status" className="category-add-status-container">

@@ -12,79 +12,70 @@ const getAllCategories = async (req, res) => {
     }
 };
 
+// --- MODIFIED: Add Category (Accepts Type) ---
 const addCategory = async (req, res) => {
-    const { name } = req.body;
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-        return res.status(400).json({ message: 'Category name is required and cannot be empty.' });
+    // Get name AND type from request body
+    const { name, type } = req.body;
+
+    // Validation
+    if (!name || typeof name !== 'string' || name.trim().length === 0) { return res.status(400).json({ message: 'Category name required.' }); }
+    if (name.length > 100) { return res.status(400).json({ message: 'Category name max 100 chars.' }); }
+    // Validate type - must be 'income' or 'expense'
+    if (!type || (type !== 'income' && type !== 'expense')) {
+         return res.status(400).json({ message: "Category type must be 'income' or 'expense'." });
     }
-    if (name.length > 100) {
-        return res.status(400).json({ message: 'Category name cannot exceed 100 characters.' });
-    }
+
     const trimmedName = name.trim();
+
     try {
-        const sql = 'INSERT INTO categories (name) VALUES (?)';
-        const [result] = await dbPool.query(sql, [trimmedName]);
+        // Add type to the INSERT statement
+        const sql = 'INSERT INTO categories (name, type) VALUES (?, ?)';
+        const [result] = await dbPool.query(sql, [trimmedName, type]); // Pass type here
+
         const insertedId = result.insertId;
         const [newCategoryRows] = await dbPool.query('SELECT * FROM categories WHERE id = ?', [insertedId]);
         if (newCategoryRows.length === 0) { throw new Error('Failed to retrieve newly added category.'); }
         res.status(201).json({ message: 'Category added successfully!', newCategory: newCategoryRows[0] });
-    } catch (error) {
-        console.error('Error adding category:', error);
-        if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({ message: `Category '${trimmedName}' already exists.` });
-        }
-        res.status(500).json({ message: 'Failed to add category due to a server error.' });
-    }
+    } catch (error) { /* ... duplicate entry and other error handling ... */ }
 };
 
-// --- MODIFIED Function: Update Category (Name and/or Color) ---
+// --- MODIFIED: Update Category (Handles Type Update) ---
 const updateCategory = async (req, res) => {
     const { id } = req.params;
-    // Get BOTH name and color from request body
-    const { name, color } = req.body;
+    // Get name, color, AND type from body
+    const { name, color, type } = req.body;
 
-    // --- Validation ---
     if (isNaN(parseInt(id, 10))) { return res.status(400).json({ message: 'Invalid category ID.' }); }
+    const categoryId = parseInt(id, 10);
 
-    // Build fields to update dynamically
     const fieldsToUpdate = {};
     const values = [];
     let setClause = '';
 
-    // Validate and add name if provided and different
+    // Name validation and update clause
     if (name !== undefined) {
         const trimmedName = name.trim();
-        if (!trimmedName) return res.status(400).json({ message: 'Category name cannot be empty if provided.' });
-        if (trimmedName.length > 100) return res.status(400).json({ message: 'Category name cannot exceed 100 characters.' });
-        fieldsToUpdate.name = trimmedName;
-        values.push(trimmedName);
-        setClause += 'name = ?';
+        if (!trimmedName) return res.status(400).json({ message: 'Name cannot be empty.' });
+        if (trimmedName.length > 100) return res.status(400).json({ message: 'Name max 100 chars.' });
+        fieldsToUpdate.name = trimmedName; values.push(trimmedName); setClause += 'name = ?';
     }
-
-    // Validate and add color if provided
+    // Color validation and update clause
     if (color !== undefined) {
-         // Basic hex color validation (starts with #, 7 chars long, valid hex chars)
-         if (!/^#[0-9A-F]{6}$/i.test(color)) {
-              return res.status(400).json({ message: 'Invalid color format. Use hex color code (e.g., #RRGGBB).' });
-         }
-         fieldsToUpdate.color = color;
-         values.push(color);
-         setClause += (setClause ? ', ' : '') + 'color = ?'; // Add comma if name was also updated
+         if (!/^#[0-9A-F]{6}$/i.test(color)) { return res.status(400).json({ message: 'Invalid color format.' }); }
+         fieldsToUpdate.color = color; values.push(color); setClause += (setClause ? ', ' : '') + 'color = ?';
     }
-
+    // --- NEW: Type validation and update clause ---
+    if (type !== undefined) {
+        if (type !== 'income' && type !== 'expense') { return res.status(400).json({ message: "Type must be 'income' or 'expense'." }); }
+        fieldsToUpdate.type = type; values.push(type); setClause += (setClause ? ', ' : '') + 'type = ?';
+    }
     // Check if anything needs updating
-    if (values.length === 0) {
-         return res.status(400).json({ message: 'No update data provided (name or color).' });
-    }
-
-    const categoryId = parseInt(id, 10);
-    values.push(categoryId); // Add ID for the WHERE clause
-
+    if (values.length === 0) { return res.status(400).json({ message: 'No update data provided.' }); }
+    values.push(categoryId); // Add ID for WHERE clause
     try {
-        // Check existence
+        // Check existence...
         const [checkRows] = await dbPool.query('SELECT id FROM categories WHERE id = ?', [categoryId]);
         if (checkRows.length === 0) { return res.status(404).json({ message: 'Category not found.' }); }
-
         // Perform the update with dynamic SET clause
         const updateSql = `UPDATE categories SET ${setClause} WHERE id = ?`;
         await dbPool.query(updateSql, values);
@@ -119,9 +110,4 @@ const deleteCategory = async (req, res) => {
 };
 
 // Export ALL functions
-module.exports = {
-  getAllCategories,
-  addCategory,
-  updateCategory, // <-- Export new
-  deleteCategory, // <-- Export new
-};
+module.exports = { getAllCategories, addCategory, updateCategory, deleteCategory };

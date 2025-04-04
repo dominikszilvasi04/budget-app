@@ -73,6 +73,61 @@ nav .nav-link.active {
 .categories-display-section-full {
     text-align: left;
 }
+
+/* NEW: Header for Section with Toggle */
+.section-header-controls {
+  display: flex;
+  justify-content: space-between; /* Align title left, toggle right */
+  align-items: center; /* Vertically align */
+  margin-bottom: 20px; /* Space below header */
+  padding-bottom: 10px; /* Space for border */
+  border-bottom: 1px solid #eee; /* Separator */
+}
+.section-header-controls h2 {
+  /* Remove bottom border/margin from general H2 style */
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 1.6em;
+  color: #333;
+}
+
+/* NEW: View Toggle Styles */
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  overflow: hidden; /* Clip children to rounded corners */
+}
+.toggle-btn {
+  padding: 8px 15px;
+  font-size: 0.95em;
+  font-weight: 500;
+  background-color: #fff;
+  color: #555;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  border-right: 1px solid #ccc; /* Separator */
+}
+.toggle-btn:last-child {
+  border-right: none; /* No separator for last button */
+}
+.toggle-btn:hover {
+  background-color: #f8f9fa;
+}
+.toggle-btn.active {
+  background-color: #007bff; /* Active background color */
+  color: white;
+  cursor: default;
+}
+.toggle-btn:disabled { /* If we add disabled state later */
+  background-color: #e9ecef;
+  color: #adb5bd;
+  cursor: not-allowed;
+}
+
+
 /* General H2 style for section titles */
 .categories-display-section-full h2, .history-list-section h2 {
     font-size: 1.6em;
@@ -144,38 +199,24 @@ nav .nav-link.active {
 /* --- NEW: Financial Info Container --- */
 .category-financials {
   width: 100%;
-  margin-bottom: 10px; /* Space before total spent */
-  padding-bottom: 10px; /* Space */
-  border-bottom: 1px dashed #eee; /* Separator line */
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-top: 1px dashed; /* Use dynamic border color */
 }
 
-.category-budget, .category-difference {
+.category-budget, .category-difference, .category-spent-total {
   font-size: 0.95em;
   margin: 4px 0;
-  display: flex; /* Align label and value */
-  justify-content: space-between; /* Push value to right */
+  display: flex;
+  justify-content: space-between;
 }
-.category-budget span, .category-difference span {
-  font-weight: bold;
-}
-
-/* Style for remaining/overspent */
-.category-difference.positive span {
-  color: #28a745; /* Green for positive remaining */
-}
-.category-difference.negative span {
-  color: #dc3545; /* Red for negative (overspent) */
-}
-
-/* Renamed from category-total */
+.category-budget span, .category-difference span { font-weight: bold; }
+.category-difference.positive span { color: #28a745; }
+.category-difference.negative span { color: #dc3545; }
 .category-spent-total {
-  font-size: 1.0em; /* Adjust size */
-  font-weight: 500; /* Normal bold */
-  color: #555;
-  margin: 0; /* Remove default p margin */
-  width: 100%;
-  text-align: right; /* Align spent total right */
+    font-size: 1.0em; font-weight: 500; margin: 0; width: 100%; text-align: right;
 }
+
 /* --- NEW Style for Category Total --- */
 .category-total {
   font-size: 1.3em; /* Make total prominent */
@@ -220,6 +261,28 @@ nav .nav-link.active {
 }
 .add-category-form input[type="text"]:focus {
   outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+/* NEW Style for Type Select */
+.add-category-type-select {
+  padding: 10px 8px; /* Match input padding */
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #333;
+  cursor: pointer;
+  flex-shrink: 0; /* Prevent shrinking */
+  margin-left: 5px; /* Add slight space before button */
+  margin-right: 5px;
+}
+.add-category-type-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+.add-category-type-select:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
 }
 .add-category-form button[type="submit"] {
   padding: 10px 15px; font-size: 1em; background-color: #007bff; color: white;
