@@ -40,7 +40,7 @@ function getContrastYIQ(hexcolor, lightened = false){
 // --- Component Definition ---
 function DashboardPage() {
     // --- State Variables ---
-    const [categories, setCategories] = useState([]); // ALL categories
+    const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
     const [errorCategories, setErrorCategories] = useState(null);
     const [transactions, setTransactions] = useState([]);
@@ -49,18 +49,27 @@ function DashboardPage() {
     const [budgetData, setBudgetData] = useState([]);
     const [loadingBudgets, setLoadingBudgets] = useState(true);
     const [errorBudgets, setErrorBudgets] = useState(null);
+    // --- NEW: Goals state for dropdown ---
+    const [goals, setGoals] = useState([]);
+    const [loadingGoals, setLoadingGoals] = useState(true);
+    const [errorGoals, setErrorGoals] = useState(null);
+
+    // Transaction Popup Form State
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
+    // --- NEW: State for selected goal in popup ---
+    const [goalIdToContribute, setGoalIdToContribute] = useState(''); // '' means none selected
     const [isSubmittingTransaction, setIsSubmittingTransaction] = useState(false);
     const [submitTransactionError, setSubmitTransactionError] = useState(null);
     const [submitTransactionSuccess, setSubmitTransactionSuccess] = useState(null);
     const [selectedCategoryForPopup, setSelectedCategoryForPopup] = useState(null);
+    // Add Category Form State
     const [newCategoryName, setNewCategoryName] = useState('');
-    // ** NEW: State for Category Type in Add Form **
-    const [newCategoryType, setNewCategoryType] = useState('expense'); // Default to expense
+    const [newCategoryType, setNewCategoryType] = useState('expense');
     const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [addCategoryError, setAddCategoryError] = useState(null);
     const [addCategorySuccess, setAddCategorySuccess] = useState(null);
+    // Category Options Popup State
     const [optionsPopupCategory, setOptionsPopupCategory] = useState(null);
     const [isRenameMode, setIsRenameMode] = useState(false);
     const [renameCategoryName, setRenameCategoryName] = useState('');
@@ -68,8 +77,7 @@ function DashboardPage() {
     const [categoryActionError, setCategoryActionError] = useState(null);
     const [selectedColor, setSelectedColor] = useState('#FFFFFF');
     const [transactionRefetchTrigger, setTransactionRefetchTrigger] = useState(0);
-    // ** NEW: State for Dashboard View Type **
-    const [dashboardViewType, setDashboardViewType] = useState('expense'); // 'expense' or 'income'
+    const [dashboardViewType, setDashboardViewType] = useState('expense');
 
     // --- Fetch Categories Effect ---
     useEffect(() => {
@@ -120,6 +128,22 @@ function DashboardPage() {
         return () => { controller.abort(); };
     }, [transactionRefetchTrigger]);
 
+    // --- NEW: Fetch Goals Effect ---
+    useEffect(() => {
+        const controller = new AbortController();
+        const fetchGoalsData = async () => {
+            setLoadingGoals(true); setErrorGoals(null);
+            try {
+                const response = await axios.get('http://localhost:5001/api/goals', { signal: controller.signal });
+                setGoals(response.data);
+            } catch (err) {
+                if (!axios.isCancel(err)) { console.error("Error fetching goals for dropdown:", err); setErrorGoals('Failed to load goals.'); }
+            } finally { if (!controller.signal.aborted) setLoadingGoals(false); }
+        };
+        fetchGoalsData();
+        return () => controller.abort();
+    }, []); // Fetch goals once on mount
+
 
     // --- Calculate Category Totals ---
     const categoryTotals = useMemo(() => {
@@ -149,7 +173,8 @@ function DashboardPage() {
 
     // --- Handlers ---
     const clearTransactionFormFields = () => {
-        setDescription(''); setAmount(''); setSubmitTransactionError(null); setSubmitTransactionSuccess(null);
+        setDescription(''); setAmount(''); setGoalIdToContribute(''); // Clear selected goal
+        setSubmitTransactionError(null); setSubmitTransactionSuccess(null);
     };
     const handleCategoryBoxClick = (category) => {
          if (optionsPopupCategory?.id === category.id) return;
@@ -179,14 +204,37 @@ function DashboardPage() {
     const handleQuickAdd = (addValue) => {
         const currentNumericAmount = safeParseFloat(amount) || 0; const newNumericAmount = currentNumericAmount + addValue; setAmount(formatAmountForDisplay(newNumericAmount));
     };
+    // --- Modified Transaction Form Submission Handler ---
     const handleTransactionSubmit = async (event) => {
-        event.preventDefault(); if (!selectedCategoryForPopup) { setSubmitTransactionError('No category selected.'); return; }
-        const finalAmount = safeParseFloat(amount); if (isNaN(finalAmount)) { setSubmitTransactionError('Please enter a valid amount.'); setSubmitTransactionSuccess(null); return; }
+        event.preventDefault();
+        if (!selectedCategoryForPopup) { setSubmitTransactionError('No category selected.'); return; }
+        const finalAmount = safeParseFloat(amount);
+        if (isNaN(finalAmount)) { setSubmitTransactionError('Please enter a valid amount.'); setSubmitTransactionSuccess(null); return; }
+
         const currentDate = new Date().toISOString().split('T')[0];
-        const transactionData = { description: description || null, amount: finalAmount, transaction_date: currentDate, category_id: selectedCategoryForPopup.id };
+        // --- Include goalIdToContribute in payload if selected ---
+        const transactionData = {
+            description: description || null,
+            amount: finalAmount,
+            transaction_date: currentDate,
+            category_id: selectedCategoryForPopup.id,
+            goalIdToContribute: goalIdToContribute || null // Send null if ''
+        };
+
         setIsSubmittingTransaction(true); setSubmitTransactionError(null); setSubmitTransactionSuccess(null);
-        try { await axios.post('http://localhost:5001/api/transactions', transactionData); setSubmitTransactionSuccess(`Transaction for ${selectedCategoryForPopup.name} added!`); setTransactionRefetchTrigger(prev => prev + 1); setTimeout(() => { handleClosePopup(); }, 1500); }
-        catch (err) { console.error('Error submitting transaction:', err); let errorMessage = 'Failed.'; if (err.response?.data?.message) { errorMessage = err.response.data.message; } setSubmitTransactionError(errorMessage); setSubmitTransactionSuccess(null); }
+        try {
+            // Backend now handles both transaction and potential contribution
+            const response = await axios.post('http://localhost:5001/api/transactions', transactionData);
+            setSubmitTransactionSuccess(`Transaction added!`);
+             // If backend sent back updatedGoal data, we could potentially update a local goals state here too
+             if (response.data.updatedGoal) {
+                 console.log("Goal was updated:", response.data.updatedGoal);
+                 // If GoalsPage state was managed globally (e.g., Context, Redux), update it here.
+                 // For now, we rely on GoalsPage refetching itself.
+             }
+            setTransactionRefetchTrigger(prev => prev + 1); // Trigger refetch
+            setTimeout(() => { handleClosePopup(); }, 1500);
+        } catch (err) { /* ... error handling ... */ }
         finally { setTimeout(() => setIsSubmittingTransaction(false), 500); }
     };
     // --- ** Modified Category Add Handler ** ---
@@ -280,40 +328,36 @@ function DashboardPage() {
     };
 
     // --- Render Logic ---
-    const isLoading = loadingCategories; // Base loading on categories
-    if (isLoading) { return <div>Loading dashboard data...</div>; }
-    if (errorCategories && categories.length === 0) { return <div style={{ color: 'red', padding: '20px' }}>Error loading categories: {errorCategories}. Cannot display dashboard.</div>; }
-    const displayDataError = errorTransactions || errorBudgets; // Non-critical data errors
+    // Combine ALL initial loading states needed for the main view
+    const isLoading = loadingCategories || loadingGoals; // Base page structure needs categories & goals for dropdown
+    if (isLoading) {
+        return <div>Loading dashboard data...</div>;
+    }
+    // Handle critical category error first
+    if (errorCategories && categories.length === 0) {
+        return <div style={{ color: 'red', padding: '20px' }}>Error loading categories: {errorCategories}. Cannot display dashboard.</div>;
+    }
+    // Optionally display other non-critical errors (transactions, budgets, goals)
+    const displayDataError = errorTransactions || errorBudgets || errorGoals;
 
+    // --- Main Return Statement ---
     return (
         <> {/* React Fragment */}
             <div className="main-layout-single-column">
                 <section className="categories-display-section-full">
                     {/* Section Header with Title and Toggle */}
                     <div className="section-header-controls">
-                        {/* Title changes based on view type */}
                         <h2>{dashboardViewType === 'expense' ? 'Expense Categories' : 'Income Sources'}</h2>
-                        {/* View Type Toggle Buttons */}
                         <div className="view-toggle">
-                            <button
-                                className={`toggle-btn ${dashboardViewType === 'expense' ? 'active' : ''}`}
-                                onClick={() => setDashboardViewType('expense')}
-                            >
-                                Expenses
-                            </button>
-                            <button
-                                className={`toggle-btn ${dashboardViewType === 'income' ? 'active' : ''}`}
-                                onClick={() => setDashboardViewType('income')}
-                            >
-                                Income
-                            </button>
+                            <button className={`toggle-btn ${dashboardViewType === 'expense' ? 'active' : ''}`} onClick={() => setDashboardViewType('expense')}>Expenses</button>
+                            <button className={`toggle-btn ${dashboardViewType === 'income' ? 'active' : ''}`} onClick={() => setDashboardViewType('income')}>Income</button>
                         </div>
                     </div>
 
-                    {/* Optional Data Error Display */}
-                    {displayDataError && !isLoading && <p style={{ color: 'orange', marginBottom: '15px' }}>Warning: Could not load all data. Totals/Budgets may be inaccurate. ({displayDataError})</p>}
+                    {/* Display Data Loading Errors */}
+                    {displayDataError && !isLoading && <p style={{ color: 'orange', marginBottom: '15px' }}>Warning: Could not load all data ({displayDataError}). Totals/Budgets/Goals may be inaccurate.</p>}
 
-                    {/* Category Grid Display - Uses FILTERED categories */}
+                    {/* Category Grid Display - Uses filteredCategories */}
                     {filteredCategories.length === 0 && !loadingCategories ? (
                          <p>No {dashboardViewType} categories defined yet. Add one below!</p>
                     ) : (
@@ -321,8 +365,8 @@ function DashboardPage() {
                             {/* Map over FILTERED categories */}
                             {filteredCategories.map(category => {
                                 const allocatedBudget = budgetMap[category.id] ?? 0.00;
-                                const totalSpentOrReceived = categoryTotals[category.id] ?? 0.00; // Rename for clarity
-                                const difference = allocatedBudget - totalSpentOrReceived; // Relevant mainly for expenses
+                                const totalSpentOrReceived = categoryTotals[category.id] ?? 0.00;
+                                const difference = allocatedBudget - totalSpentOrReceived;
                                 const boxColor = category.color || '#FFFFFF';
                                 const textColor = getContrastYIQ(boxColor);
                                 const borderColor = getContrastYIQ(boxColor, true);
@@ -332,7 +376,6 @@ function DashboardPage() {
                                     <div key={category.id} className="category-select-box" onClick={() => handleCategoryBoxClick(category)} style={{ backgroundColor: boxColor }}>
                                         <button className="category-options-btn" onClick={(e) => handleOptionsIconClick(e, category)} title="Category Options" style={{ color: optionsColor }} disabled={isProcessingCategoryAction && optionsPopupCategory?.id === category.id}>⚙️</button>
                                         <h3 style={{ color: textColor }}>{category.name}</h3>
-
                                         {/* Conditional Financial Display */}
                                         {dashboardViewType === 'expense' ? (
                                             <>
@@ -347,7 +390,6 @@ function DashboardPage() {
                                             </>
                                         ) : ( // Income View
                                             <>
-                                                {/* Hide Budget/Difference for Income, just show total */}
                                                 <p className="category-spent-total income" style={{ color: textColor, marginTop: 'auto', paddingTop: '10px', borderTop: `1px dashed ${borderColor}` }}>
                                                     Received: {formatCurrency(totalSpentOrReceived)}
                                                 </p>
@@ -359,17 +401,12 @@ function DashboardPage() {
                         </div> // End category-grid
                     )}
 
-                    {/* Add Category Form (Modified) */}
+                    {/* Add Category Form */}
                     <div className="add-category-container">
                         <form onSubmit={handleAddCategorySubmit} className="add-category-form">
                             <input type="text" value={newCategoryName} onChange={(e) => { setNewCategoryName(e.target.value); if (addCategoryError) setAddCategoryError(null); }} placeholder="New category name..." disabled={isAddingCategory} maxLength="100" aria-describedby="category-add-status" />
                             {/* Type Selector */}
-                            <select
-                                value={newCategoryType}
-                                onChange={(e) => setNewCategoryType(e.target.value)}
-                                disabled={isAddingCategory}
-                                className="add-category-type-select"
-                            >
+                            <select value={newCategoryType} onChange={(e) => setNewCategoryType(e.target.value)} disabled={isAddingCategory} className="add-category-type-select">
                                 <option value="expense">Expense</option>
                                 <option value="income">Income</option>
                             </select>
@@ -380,24 +417,57 @@ function DashboardPage() {
                             {addCategorySuccess && <span className="category-add-status success">{addCategorySuccess}</span>}
                         </div>
                     </div>
-                </section>
-            </div>
+                </section> {/* End categories-display-section-full */}
+            </div> {/* End main-layout-single-column */}
 
-            {/* Transaction Popup */}
+
+            {/* --- Transaction Popup/Modal (Modified) --- */}
             {selectedCategoryForPopup && (
                  <div className="popup-overlay" onClick={handleClosePopup}>
                     <div className="popup-container" onClick={(e) => e.stopPropagation()}>
+                        {/* Panel 1: Main Form Content */}
                         <div className="popup-content-main">
                             <h2>Add Transaction for: {selectedCategoryForPopup.name}</h2>
                             {submitTransactionError && <p style={{ color: 'red', marginTop: '-10px', marginBottom: '15px' }}>Error: {submitTransactionError}</p>}
                             {submitTransactionSuccess && <p style={{ color: 'green', marginTop: '-10px', marginBottom: '15px' }}>{submitTransactionSuccess}</p>}
                             <form onSubmit={handleTransactionSubmit} className="popup-form">
+                                {/* Amount Input */}
                                 <div><label htmlFor="amount">Amount:</label><input type="text" inputMode="decimal" id="amount" className="input-amount" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAmountCalculation(e.target.value); }}} onBlur={(e) => handleAmountCalculation(e.target.value)} placeholder="0.00 or +5, -10 etc." required disabled={isSubmittingTransaction} autoFocus /></div>
+                                {/* Description Input */}
                                 <div><label htmlFor="description">Description (Optional):</label><input type="text" id="description" className="input-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details..." disabled={isSubmittingTransaction} /></div>
+                                {/* Category Display */}
                                 <div className="form-category-display"><label>Category:</label><span>{selectedCategoryForPopup.name}</span></div>
+
+                                {/* Goal Contribution Dropdown */}
+                                {/* TODO: Conditionally show this only if selectedCategoryForPopup.type === 'income' ? */}
+                                <div className="form-group">
+                                    <label htmlFor="goal-contribution-select">Contribute this Amount to Goal? (Optional)</label>
+                                    <select
+                                        id="goal-contribution-select"
+                                        value={goalIdToContribute}
+                                        onChange={(e) => setGoalIdToContribute(e.target.value)}
+                                        // Disable if submitting, goals are loading, or no goals exist
+                                        disabled={isSubmittingTransaction || loadingGoals || goals.length === 0}
+                                        className="goal-contribution-select"
+                                    >
+                                        <option value="">-- No Goal Contribution --</option>
+                                        {/* Map over the fetched goals state */}
+                                        {goals.map(goal => (
+                                            <option key={goal.id} value={goal.id}>
+                                                {goal.name} ({formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)})
+                                            </option>
+                                        ))}
+                                    </select>
+                                     {loadingGoals && <small> Loading goals...</small>}
+                                     {/* Display goal loading error if it occurred */}
+                                     {errorGoals && !loadingGoals && <small style={{color: 'red'}}> Error loading goals.</small>}
+                                </div>
+
+                                {/* Button Group */}
                                 <div className="popup-button-group"><button type="button" onClick={handleClosePopup} className="popup-cancel-btn" disabled={isSubmittingTransaction}>Cancel</button><button type="submit" className="popup-submit-btn" disabled={isSubmittingTransaction}>{isSubmittingTransaction ? 'Adding...' : 'Add Transaction'}</button></div>
                             </form>
                         </div>
+                        {/* Panel 2: Quick Add Buttons */}
                         <div className="quick-add-panel">
                             <h4>Quick Add</h4>
                             <div className="quick-add-buttons">
@@ -423,7 +493,7 @@ function DashboardPage() {
                 </div>
              )}
 
-            {/* Category Options Popup */}
+            {/* --- Category Options Popup/Modal --- */}
             {optionsPopupCategory && (
                 <div className="popup-overlay options-overlay" onClick={handleCloseOptionsPopup}>
                     <div className="options-popup-content" onClick={(e) => e.stopPropagation()}>
@@ -460,8 +530,8 @@ function DashboardPage() {
                     </div>
                 </div>
             )}
-        </>
+        </> // End React Fragment
     );
-}
+} // End of DashboardPage component needs to be outside the return
 
-export default DashboardPage;
+export default DashboardPage; // Needs to be outside the return

@@ -340,6 +340,30 @@ nav .nav-link.active {
     display: block; padding: 12px; background-color: #f8f9fa;
     border: 1px solid #e9ecef; border-radius: 4px; font-size: 1em; color: #555;
 }
+
+/* NEW Style for Goal Contribution Select */
+.popup-form .goal-contribution-select {
+  width: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #333;
+  font-size: 1em;
+  cursor: pointer;
+}
+.popup-form .goal-contribution-select:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+.popup-form .form-group small { /* Style for loading/error message */
+  font-size: 0.85em;
+  margin-top: 4px;
+  display: inline-block;
+  color: #6c757d;
+}
+
 .popup-button-group { margin-top: 30px; display: flex; justify-content: flex-end; gap: 10px; }
 .popup-cancel-btn, .popup-submit-btn { padding: 10px 20px; font-size: 1em; border: none; border-radius: 4px; cursor: pointer; }
 .popup-cancel-btn { background-color: #6c757d; color: white; }
