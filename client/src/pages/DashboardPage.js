@@ -1,5 +1,5 @@
 // client/src/pages/DashboardPage.js
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 // --- Chart.js Imports ---
 import { Pie } from 'react-chartjs-2';
@@ -88,7 +88,6 @@ function DashboardPage() {
     const [selectedCategoryForPopup, setSelectedCategoryForPopup] = useState(null);
     // Add Category Form State
     const [newCategoryName, setNewCategoryName] = useState('');
-    const [newCategoryType, setNewCategoryType] = useState('expense');
     const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [addCategoryError, setAddCategoryError] = useState(null);
     const [addCategorySuccess, setAddCategorySuccess] = useState(null);
@@ -425,11 +424,26 @@ function DashboardPage() {
                     {/* Section Header with Title and Toggle */}
                     <div className="section-header-controls">
                         <h2>{dashboardViewType === 'expense' ? 'Expense Categories' : 'Income Sources'}</h2>
+        
+                    </div>
+                    {/* --- View Type Toggle (Moved Here and Centered via CSS) --- */}
+                    <div className="view-toggle-container"> {/* Container for centering */}
                         <div className="view-toggle">
-                            <button className={`toggle-btn ${dashboardViewType === 'expense' ? 'active' : ''}`} onClick={() => setDashboardViewType('expense')}>Expenses</button>
-                            <button className={`toggle-btn ${dashboardViewType === 'income' ? 'active' : ''}`} onClick={() => setDashboardViewType('income')}>Income</button>
+                            <button
+                                className={`toggle-btn ${dashboardViewType === 'expense' ? 'active' : ''}`}
+                                onClick={() => setDashboardViewType('expense')} // Uses local setter
+                            >
+                                Expenses
+                            </button>
+                            <button
+                                className={`toggle-btn ${dashboardViewType === 'income' ? 'active' : ''}`}
+                                onClick={() => setDashboardViewType('income')} // Uses local setter
+                            >
+                                Income
+                            </button>
                         </div>
                     </div>
+                    {/* --- End View Type Toggle --- */}
 
                     {/* Display Data Loading Errors */}
                     {displayDataError && !isLoading && <p style={{ color: 'orange', marginBottom: '15px' }}>Warning: Could not load all data ({displayDataError}). Totals/Budgets/Goals may be inaccurate.</p>}

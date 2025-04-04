@@ -34,20 +34,12 @@ const safeParseBudgetFloat = (value) => {
      if (typeof value === 'number') return value; // Allow 0 or positive
      if (typeof value !== 'string') return NaN;
      if (value.trim() === '') return 0.00; // Treat empty as 0
-     const cleanedValue = value.replace(/[\$,]/g, '').trim();
+     const cleanedValue = value.replace(/[$,]/g, '').trim();
      if (cleanedValue === '') return 0.00;
      const parsed = parseFloat(cleanedValue);
      return isNaN(parsed) || parsed < 0 ? NaN : parsed; // Disallow negative
 };
 
-const generateChartColors = (numColors) => { // Keep this if pieChartData uses it
-    const colors = []; const baseHue = 200;
-    for (let i = 0; i < numColors; i++) {
-        const hue = (baseHue + (i * 40)) % 360; const saturation = 70 + (i % 3) * 10;
-        const lightness = 60 + (i % 2) * 5; colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-    }
-    return colors;
-};
 
 
 // --- Chart Options ---
@@ -167,14 +159,24 @@ function BudgetPage() {
         const labels = chartableData.map(item => item.name);
         const dataValues = chartableData.map(item => item.budget_amount);
         const backgroundColors = chartableData.map(item => categoryColorMap[item.id] || '#CCCCCC');
-        const borderColors = backgroundColors.map(color => { /* ... darker border logic ... */ });
+        const borderColors = backgroundColors.map(color => {
+            try {
+                let r = parseInt(color.substr(1, 2), 16), g = parseInt(color.substr(3, 2), 16), b = parseInt(color.substr(5, 2), 16);
+                r = Math.max(0, r - 30).toString(16).padStart(2, '0');
+                g = Math.max(0, g - 30).toString(16).padStart(2, '0');
+                b = Math.max(0, b - 30).toString(16).padStart(2, '0');
+                return `#${r}${g}${b}`; // <-- Add explicit return
+            } catch (e) {
+                return '#888888'; // <-- Return fallback in catch
+            }
+        });
 
         return {
             labels: labels,
             datasets: [{ label: 'Budget Amount', data: dataValues, backgroundColor: backgroundColors, borderColor: borderColors, borderWidth: 1, }],
         };
     // Recalculate when filtered data, categories, or loading states change
-    }, [filteredExpenseBudgetData, categories, loadingBudgets, loadingCategories]);
+    },[budgetData, categories, loadingBudgets, loadingCategories]); 
 
 
     // --- Handle Input Change ---
