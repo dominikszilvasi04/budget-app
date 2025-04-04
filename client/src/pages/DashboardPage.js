@@ -58,6 +58,23 @@ const expenseChartOptions = {
         }
     },
 };
+const incomeChartOptions = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+        legend: { position: 'top', },
+        // Update title
+        title: { display: true, text: 'Income Breakdown by Source (All Time)', font: { size: 16 } },
+        tooltip: {
+            callbacks: {
+                label: function(context) { // Use currency format
+                    let label = context.label || ''; if (label) { label += ': '; }
+                    if (context.raw !== null && context.raw !== undefined) { label += formatCurrency(context.raw); }
+                    return label;
+                }
+            }
+        }
+    },
+};
 
 
 // --- Component Definition ---
@@ -212,65 +229,93 @@ function DashboardPage() {
     // --- MODIFIED: Prepare Data for Expense Pie Chart ---
     const expensePieChartData = useMemo(() => {
         if (loadingCategories || loadingTransactions || !categories) { return null; }
-
-        // Create maps for efficient lookup
-        const categoryDetailsMap = categories.reduce((acc, cat) => {
-             // Only include expense categories in the map for the chart
-             if(cat.type === 'expense') {
-                acc[cat.id] = { name: cat.name, color: cat.color || '#CCCCCC' }; // Use a default gray if color is missing
-             }
-            return acc;
-        }, {});
-
-        // Get category IDs that have expenses > 0 AND are expense types
-        const expenseCategoryIds = Object.keys(expenseCategoryTotals).filter(id =>
-             expenseCategoryTotals[id] > 0 && categoryDetailsMap[id] // Ensure ID exists in our expense map
-        );
-
+        const categoryDetailsMap = categories.reduce((acc, cat) => { if(cat.type === 'expense') { acc[cat.id] = { name: cat.name, color: cat.color || '#CCCCCC' }; } return acc; }, {});
+        const expenseCategoryIds = Object.keys(expenseCategoryTotals).filter(id => expenseCategoryTotals[id] > 0 && categoryDetailsMap[id]);
         if (expenseCategoryIds.length === 0) { return null; }
 
-        // Create labels, data, and colors ONLY for categories with expenses
-        const labels = [];
-        const dataValues = [];
-        const backgroundColors = []; // Get colors from data
-
+        const labels = []; const dataValues = []; const backgroundColors = [];
         expenseCategoryIds.forEach(id => {
             const categoryDetail = categoryDetailsMap[id];
-            labels.push(categoryDetail.name); // Add label (category name)
-            dataValues.push(expenseCategoryTotals[id]); // Add total amount
-            backgroundColors.push(categoryDetail.color); // <<<--- Use color from category data
+            labels.push(categoryDetail.name);
+            dataValues.push(expenseCategoryTotals[id]);
+            backgroundColors.push(categoryDetail.color);
         });
-
-        // Optional: Slightly darken border colors based on background colors
-         const borderColors = backgroundColors.map(color => {
-             // Basic darkening - this is primitive, libraries exist for better color manipulation
-             try {
-                 let r = parseInt(color.substr(1, 2), 16);
-                 let g = parseInt(color.substr(3, 2), 16);
-                 let b = parseInt(color.substr(5, 2), 16);
-                 r = Math.max(0, r - 30).toString(16).padStart(2, '0');
-                 g = Math.max(0, g - 30).toString(16).padStart(2, '0');
-                 b = Math.max(0, b - 30).toString(16).padStart(2, '0');
-                 return `#${r}${g}${b}`;
-             } catch (e) {
-                 return '#888888'; // Fallback border
-             }
-         });
-
-
         return {
             labels: labels,
             datasets: [
                 {
                     label: 'Amount Spent',
                     data: dataValues,
-                    backgroundColor: backgroundColors, // Use fetched colors
-                    borderColor: borderColors,        // Use calculated darker borders
-                    borderWidth: 1,
+                    backgroundColor: backgroundColors,
+                    // --- APPLY CHANGES HERE ---
+                    borderColor: 'black', // Use white borders for separation
+                    borderWidth: 1,       // Increase border width (adjust value as needed)
+                    // --- END CHANGES ---
                 },
             ],
         };
-    }, [categories, expenseCategoryTotals, loadingCategories, loadingTransactions]); // Dependencies
+    }, [categories, expenseCategoryTotals, loadingCategories, loadingTransactions]);
+
+    // --- NEW: Calculate Income Totals Map ---
+    // Creates an object like { categoryId: totalIncomeAmount }
+    const incomeCategoryTotals = useMemo(() => {
+        if (loadingCategories || loadingTransactions || !categories || !transactions) { return {}; }
+        const categoryTypeMap = categories.reduce((acc, cat) => { acc[cat.id] = cat.type; return acc; }, {});
+        const totals = {};
+        transactions.forEach(transaction => {
+            const transactionAmount = safeParseFloat(transaction.amount); if (isNaN(transactionAmount)) return;
+            const categoryId = transaction.category_id;
+            // Check if category exists AND its type is 'income'
+            if (categoryId !== null && categoryTypeMap[categoryId] === 'income') {
+                totals[categoryId] = (totals[categoryId] || 0) + transactionAmount;
+            }
+            // NOTE: This assumes positive amounts are income for income categories.
+        });
+        return totals;
+    }, [categories, transactions, loadingCategories, loadingTransactions]);
+
+    // --- NEW: Prepare Data for Income Pie Chart ---
+    const incomePieChartData = useMemo(() => {
+        if (loadingCategories || loadingTransactions || !categories) { return null; }
+
+        // Map for category details (name, color) - only need income types
+        const categoryDetailsMap = categories.reduce((acc, cat) => {
+             if(cat.type === 'income') {
+                acc[cat.id] = { name: cat.name, color: cat.color || '#A9A9A9' }; // Different fallback gray?
+             }
+            return acc;
+        }, {});
+
+        // Get category IDs that have income > 0 AND are income types
+        const incomeCategoryIds = Object.keys(incomeCategoryTotals).filter(id =>
+             incomeCategoryTotals[id] > 0 && categoryDetailsMap[id]
+        );
+
+        if (incomeCategoryIds.length === 0) { return null; } // No income data
+
+        const labels = []; const dataValues = []; const backgroundColors = [];
+        incomeCategoryIds.forEach(id => {
+            const categoryDetail = categoryDetailsMap[id];
+            labels.push(categoryDetail.name);
+            dataValues.push(incomeCategoryTotals[id]);
+            backgroundColors.push(categoryDetail.color);
+        });
+
+        return {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Amount Received',
+                    data: dataValues,
+                    backgroundColor: backgroundColors,
+                     // --- APPLY SAME CHANGES HERE ---
+                    borderColor: 'black', // Use white borders for separation
+                    borderWidth: 1,       // Increase border width
+                    // --- END CHANGES ---
+                },
+            ],
+        };
+    }, [categories, incomeCategoryTotals, loadingCategories, loadingTransactions]);
 
     // --- Handlers ---
     const clearTransactionFormFields = () => {
@@ -536,6 +581,25 @@ function DashboardPage() {
                         </div>
                     )}
                     {/* --- End Expense Chart Section --- */}
+
+                    {/* --- NEW Income Chart Section (Conditional) --- */}
+                    {dashboardViewType === 'income' && (
+                        <div className="income-chart-section"> {/* Use specific class */}
+                            <h3>Income Breakdown</h3>
+                            {/* Reuse chart container style or create new */}
+                            <div className="income-chart-container">
+                                {loadingTransactions ? (
+                                    <p>Loading transaction data...</p>
+                                ) : incomePieChartData ? ( // Use income chart data
+                                     <Pie data={incomePieChartData} options={incomeChartOptions} /> // Use income options
+                                ) : (
+                                     <p>No income data recorded to display in chart.</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {/* --- End Income Chart Section --- */}
+
                 </section> {/* End categories-display-section-full */}
             </div> {/* End main-layout-single-column */}
 

@@ -113,8 +113,32 @@ nav .nav-link.active { color: #61dafb; border-bottom: 2px solid #61dafb; }
 /* Expense Chart Section (Dashboard) */
 .expense-chart-section { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; }
 .expense-chart-section h3 { font-size: 1.4em; color: #333; margin-top: 0; margin-bottom: 15px; text-align: center; }
-.expense-chart-container { max-width: 550px; height: 400px; margin: 0 auto 30px auto; padding: 15px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+.expense-chart-container {
+  max-width: 550px; height: 400px; margin: 0 auto 30px auto; padding: 15px;
+  background-color: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
 .expense-chart-container p { text-align: center; padding-top: 50px; color: #777; font-style: italic; }
+
+/* --- NEW Styles for Income Chart Section --- */
+.income-chart-section {
+  /* Similar styling to expense section */
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+.income-chart-section h3 {
+  /* Reuse expense h3 style or customize */
+  font-size: 1.4em; color: #333; margin-top: 0; margin-bottom: 15px; text-align: center;
+}
+.income-chart-container {
+   /* Reuse expense container style or customize */
+  max-width: 550px; height: 400px; margin: 0 auto 30px auto; padding: 15px;
+  background-color: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.income-chart-container p { /* Style for 'No data' message */
+  text-align: center; padding-top: 50px; color: #777; font-style: italic;
+}
+/* --- End Income Chart Section Styles --- */
 
 
 /* --- Transaction Popup/Modal Styles --- */

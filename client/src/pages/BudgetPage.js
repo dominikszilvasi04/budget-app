@@ -137,47 +137,46 @@ function BudgetPage() {
     }, [budgetData, categoryTypeMap, loadingBudgets, loadingCategories]); // Dependencies
 
 
-    // --- MODIFIED: Prepare Data for Pie Chart (Using Filtered Data) ---
+    // --- MODIFIED: Prepare Data for Pie Chart ---
     const pieChartData = useMemo(() => {
-        // Use the already filtered expense budget data
-        if (loadingBudgets || loadingCategories || filteredExpenseBudgetData.length === 0) {
-            return null; // No data or still loading
-        }
+        if (loadingBudgets || loadingCategories || !budgetData || !categories) { return null; }
 
-        // Create a map of category ID to color
-        const categoryColorMap = categories.reduce((acc, cat) => {
-            acc[cat.id] = cat.color || '#CCCCCC'; return acc;
-        }, {});
+        const categoryColorMap = categories.reduce((acc, cat) => { acc[cat.id] = cat.color || '#CCCCCC'; return acc; }, {});
 
-        // Further filter filteredExpenseBudgetData for amounts > 0
-        const chartableData = filteredExpenseBudgetData.filter(item => item.budget_amount && item.budget_amount > 0);
+        // --- Filter for EXPENSE categories with budget > 0 ---
+        // We need categoryTypeMap here too, or fetch categories with type
+        const categoryTypeMap = categories.reduce((acc, cat) => { acc[cat.id] = cat.type; return acc; }, {});
+        const filteredData = budgetData.filter(item =>
+            item.budget_amount &&
+            item.budget_amount > 0 &&
+            categoryTypeMap[item.id] === 'expense' // Only include expense types
+        );
 
-        if (chartableData.length === 0) {
-            return null; // No non-zero expense budgets set
-        }
+        if (filteredData.length === 0) { return null; }
 
-        const labels = chartableData.map(item => item.name);
-        const dataValues = chartableData.map(item => item.budget_amount);
-        const backgroundColors = chartableData.map(item => categoryColorMap[item.id] || '#CCCCCC');
-        const borderColors = backgroundColors.map(color => {
-            try {
-                let r = parseInt(color.substr(1, 2), 16), g = parseInt(color.substr(3, 2), 16), b = parseInt(color.substr(5, 2), 16);
-                r = Math.max(0, r - 30).toString(16).padStart(2, '0');
-                g = Math.max(0, g - 30).toString(16).padStart(2, '0');
-                b = Math.max(0, b - 30).toString(16).padStart(2, '0');
-                return `#${r}${g}${b}`; // <-- Add explicit return
-            } catch (e) {
-                return '#888888'; // <-- Return fallback in catch
-            }
-        });
+        const labels = filteredData.map(item => item.name);
+        const dataValues = filteredData.map(item => item.budget_amount);
+        const backgroundColors = filteredData.map(item => categoryColorMap[item.id] || '#CCCCCC');
+
+        // REMOVE borderColors calculation
+        // const borderColors = backgroundColors.map(color => { /* ... */ });
 
         return {
             labels: labels,
-            datasets: [{ label: 'Budget Amount', data: dataValues, backgroundColor: backgroundColors, borderColor: borderColors, borderWidth: 1, }],
+            datasets: [
+                {
+                    label: 'Budget Amount',
+                    data: dataValues,
+                    backgroundColor: backgroundColors,
+                    // --- APPLY CHANGES HERE ---
+                    borderColor: 'black', // Static white border
+                    borderWidth: 1,       // Increased width
+                    // --- END CHANGES ---
+                },
+            ],
         };
-    // Recalculate when filtered data, categories, or loading states change
-    },[budgetData, categories, loadingBudgets, loadingCategories]); 
-
+    // Update dependencies to include categoryTypeMap source (categories)
+    }, [budgetData, categories, loadingBudgets, loadingCategories]);
 
     // --- Handle Input Change ---
     const handleBudgetChange = (categoryId, value) => {
