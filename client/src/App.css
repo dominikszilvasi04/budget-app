@@ -297,6 +297,75 @@ gap: 10px; /* Space between items */
 .history-amount.income { color: #28a745; } /* Green for income */
 .history-amount.expense { color: #dc3545; } /* Red for expense */
 
+/* --- History Page Summary Row Styles --- */
+.history-summary-row {
+  display: flex;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  gap: 30px;
+  margin-bottom: 40px; /* Space below summary row */
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eee;
+  align-items: center; /* Center items vertically */
+}
+
+/* History Chart container */
+.history-chart-container {
+  flex: 1; /* Allow chart container to grow */
+  min-width: 300px; /* Minimum width */
+  max-width: 400px; /* Max width */
+  height: 300px; /* Fixed height */
+  padding: 10px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  box-sizing: border-box;
+}
+/* Style for placeholder when chart has no data */
+.chart-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #888;
+  font-style: italic;
+  text-align: center;
+}
+
+/* History Summary Text Area */
+.history-summary-text {
+  flex: 1; /* Allow text area to grow */
+  min-width: 250px; /* Minimum width */
+  padding-left: 20px;
+}
+.history-summary-text h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.2em;
+  color: #333;
+}
+.history-summary-text p {
+  margin: 8px 0;
+  font-size: 1.1em;
+  display: flex;
+  justify-content: space-between;
+}
+.history-summary-text span {
+  font-weight: bold;
+}
+.history-summary-text hr {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 15px 0;
+}
+.income-text { color: #28a745; } /* Green */
+.expense-text { color: #dc3545; } /* Red */
+
+/* Optional: Container for the detailed lists below summary */
+.history-details-section {
+  margin-top: 20px; /* Add space below summary row */
+}
+/* --- End History Page Summary Row Styles --- */
+
 
 .history-category-group { margin-bottom: 2em; }
 .history-category-group h3 { border-bottom: 2px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; color: #333; font-size: 1.25em; }

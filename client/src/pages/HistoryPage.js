@@ -1,8 +1,11 @@
 // client/src/pages/HistoryPage.js
-import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Added useMemo, useCallback
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
-// Import relevant CSS or rely on App.css
-// import './HistoryPage.css';
+// --- Chart.js Imports & Registration ---
+// Import Doughnut as an alternative to Pie
+import { Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from 'chart.js';
+ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 // --- Helper function (or import) ---
 const formatCurrency = (num) => {
@@ -19,6 +22,34 @@ const safeParseFloat = (value) => {
   const parsed = parseFloat(cleanedValue);
   return isNaN(parsed) ? NaN : parsed;
 };
+
+// --- NEW: Chart Options for Income vs Expense ---
+const incomeExpenseChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false, // Allows setting height via container
+  plugins: {
+      legend: {
+          position: 'bottom', // Legend below chart
+      },
+      title: {
+          display: true,
+          text: 'Income vs. Expense Ratio (All Time)', // Chart title
+          font: { size: 16 }
+      },
+      tooltip: {
+          callbacks: {
+              label: function(context) { // Currency format
+                  let label = context.label || ''; if (label) { label += ': '; }
+                  if (context.raw !== null && context.raw !== undefined) { label += formatCurrency(context.raw); }
+                  return label;
+              }
+          }
+      }
+  },
+  // Cutout makes it a Doughnut chart - adjust % for thickness
+  cutout: '60%',
+};
+
 
 function HistoryPage() {
   // --- State for this page ---
@@ -129,6 +160,45 @@ function HistoryPage() {
 
 }, [categories, transactions, loadingCategories, loadingTransactions]);
 
+// --- NEW: Prepare Data for Income vs Expense Chart ---
+const incomeExpenseChartData = useMemo(() => {
+  // Use totals calculated in groupedByType
+  const { incomeTotal, expenseTotal } = groupedByType;
+
+  // Only create chart data if there's income or expense
+  if (incomeTotal <= 0 && expenseTotal <= 0) {
+      return null;
+  }
+
+  const labels = [];
+  const dataValues = [];
+  const backgroundColors = [];
+
+  if (incomeTotal > 0) {
+      labels.push('Total Income');
+      dataValues.push(incomeTotal);
+      backgroundColors.push('hsl(145, 63%, 42%)'); // Greenish
+  }
+  if (expenseTotal > 0) {
+      labels.push('Total Expenses');
+      dataValues.push(expenseTotal);
+      backgroundColors.push('hsl(349, 83%, 60%)'); // Reddish
+  }
+
+  return {
+      labels: labels,
+      datasets: [
+          {
+              label: 'Amount',
+              data: dataValues,
+              backgroundColor: backgroundColors,
+              borderColor: ['#FFFFFF', '#FFFFFF'], // White borders
+              borderWidth: 3, // Thicker borders
+          },
+      ],
+  };
+}, [groupedByType]); // Recalculate when groupedByType changes
+
   // --- Render Logic ---
     // Combined loading check
     const isLoading = loadingCategories || loadingTransactions;
@@ -137,77 +207,110 @@ function HistoryPage() {
     const displayError = errorCategories || errorTransactions;
     if (displayError) { return <div style={{ color: 'red', padding: '20px' }}>Error: {displayError}</div>; }
 
-  // --- JSX Return Statement (Modified) ---
-  return (
-    <div className="history-list-section">
-        <h2>Transaction History</h2>
+      // --- Main Return Statement (Modified with Chart and Summary Row) ---
+      return (
+        // Changed outer container class name for clarity
+        <div className="history-page-container">
+            <h2>Transaction History</h2>
 
-        {/* Display Delete Status Messages */}
-        {deleteError && <p className="options-error">{deleteError}</p>} {/* Reuse style */}
-        {deleteSuccess && <p className="options-success">{deleteSuccess}</p>} {/* Reuse style */}
+            {/* Display Delete Status Messages */}
+            {deleteError && <p className="options-error">{deleteError}</p>}
+            {deleteSuccess && <p className="options-success">{deleteSuccess}</p>}
 
-        {/* --- Income Section --- */}
-        <div className="history-type-section">
-            <h3>Income (+{formatCurrency(groupedByType.incomeTotal)})</h3>
-            {groupedByType.income.length === 0 ? (
-                <p className="no-transactions-msg">No income transactions recorded.</p>
-            ) : (
-                <ul>
-                    {groupedByType.income.map(t => (
-                        <li key={t.id}>
-                            {/* Details - maybe add category name? */}
-                            <span className="history-date">{t.transaction_date}</span>
-                            <span className="history-category">({t.category_name || 'N/A'})</span> {/* category_name from existing transaction fetch */}
-                            <span className="history-desc">{t.description || <i>(No description)</i>}</span>
-                            <span className="history-amount income">{formatCurrency(t.amount)}</span>
-                            {/* Delete Button */}
-                            <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
+            {/* --- Summary Row (Chart + Text) --- */}
+            <div className="history-summary-row">
+                {/* Chart Container */}
+                <div className="history-chart-container">
+                    {/* Use the incomeExpenseChartData variable */}
+                    {incomeExpenseChartData ? (
+                        <Doughnut data={incomeExpenseChartData} options={incomeExpenseChartOptions} />
+                    ) : (
+                        // Show placeholder if no data for chart
+                        <div className="chart-placeholder">No income or expense data for chart.</div>
+                    )}
+                </div>
+                {/* Summary Text */}
+                 <div className="history-summary-text">
+                     <h4>Summary (All Time)</h4>
+                     {/* Use calculated totals from groupedByType */}
+                     <p>Total Income: <span className="income-text">{formatCurrency(groupedByType.incomeTotal)}</span></p>
+                     <p>Total Expenses: <span className="expense-text">{formatCurrency(groupedByType.expenseTotal)}</span></p>
+                     <hr/>
+                     <p>Net Savings:
+                        {/* Apply income or expense class based on net value */}
+                        <span className={groupedByType.incomeTotal >= groupedByType.expenseTotal ? 'income-text' : 'expense-text'}>
+                            {formatCurrency(groupedByType.incomeTotal - groupedByType.expenseTotal)}
+                        </span>
+                     </p>
+                 </div>
+            </div>
+            {/* --- End Summary Row --- */}
 
-        {/* --- Expense Section --- */}
-         <div className="history-type-section">
-            <h3>Expenses (-{formatCurrency(groupedByType.expenseTotal)})</h3>
-            {groupedByType.expense.length === 0 ? (
-                <p className="no-transactions-msg">No expense transactions recorded.</p>
-            ) : (
-                 <ul>
-                     {groupedByType.expense.map(t => (
-                         <li key={t.id}>
-                            <span className="history-date">{t.transaction_date}</span>
-                            <span className="history-category">({t.category_name || 'N/A'})</span>
-                            <span className="history-desc">{t.description || <i>(No description)</i>}</span>
-                            <span className="history-amount expense">{formatCurrency(t.amount)}</span>
-                            <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
-                         </li>
-                     ))}
-                 </ul>
-            )}
-        </div>
 
-        {/* --- Optional: Uncategorized Section --- */}
-        {groupedByType.uncategorized.length > 0 && (
-             <div className="history-type-section uncategorized">
-                <h3>Uncategorized</h3>
-                <ul>
-                    {groupedByType.uncategorized.map(t => (
-                        <li key={t.id}>
-                            <span className="history-date">{t.transaction_date}</span>
-                            {/* No category name here */}
-                            <span className="history-desc">{t.description || <i>(No description)</i>}</span>
-                            <span className="history-amount">{formatCurrency(t.amount)}</span>{/* Default color */}
-                            <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
-                        </li>
-                    ))}
-                </ul>
-             </div>
-        )}
+             {/* --- Transaction Details Section --- */}
+            <div className="history-details-section">
+                {/* Income Section */}
+                <div className="history-type-section">
+                    {/* Title now includes total from groupedByType */}
+                    <h3>Income (+{formatCurrency(groupedByType.incomeTotal)})</h3>
+                    {groupedByType.income.length === 0 ? (
+                        <p className="no-transactions-msg">No income transactions recorded.</p>
+                    ) : (
+                        <ul>
+                            {groupedByType.income.map(t => (
+                                <li key={t.id}>
+                                    <span className="history-date">{t.transaction_date}</span>
+                                    <span className="history-category">({t.category_name || 'N/A'})</span>
+                                    <span className="history-desc">{t.description || <i>(No description)</i>}</span>
+                                    <span className="history-amount income">{formatCurrency(t.amount)}</span>
+                                    <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
 
-    </div> // End history-list-section
-);
-}
+                {/* Expense Section */}
+                 <div className="history-type-section">
+                    {/* Title now includes total from groupedByType */}
+                    <h3>Expenses (-{formatCurrency(groupedByType.expenseTotal)})</h3>
+                    {groupedByType.expense.length === 0 ? (
+                        <p className="no-transactions-msg">No expense transactions recorded.</p>
+                    ) : (
+                         <ul>
+                             {groupedByType.expense.map(t => (
+                                 <li key={t.id}>
+                                    <span className="history-date">{t.transaction_date}</span>
+                                    <span className="history-category">({t.category_name || 'N/A'})</span>
+                                    <span className="history-desc">{t.description || <i>(No description)</i>}</span>
+                                    <span className="history-amount expense">{formatCurrency(t.amount)}</span>
+                                    <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
+                                 </li>
+                             ))}
+                         </ul>
+                    )}
+                </div>
 
-export default HistoryPage;
+                {/* Optional: Uncategorized Section */}
+                {groupedByType.uncategorized.length > 0 && (
+                     <div className="history-type-section uncategorized">
+                        <h3>Uncategorized</h3>
+                        <ul>
+                            {groupedByType.uncategorized.map(t => (
+                                <li key={t.id}>
+                                    <span className="history-date">{t.transaction_date}</span>
+                                    <span className="history-desc">{t.description || <i>(No description)</i>}</span>
+                                    <span className="history-amount">{formatCurrency(t.amount)}</span>
+                                    <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
+                                </li>
+                            ))}
+                        </ul>
+                     </div>
+                )}
+            </div> {/* End history-details-section */}
+
+        </div> // End history-page-container
+    );
+} // End of HistoryPage component should be outside
+
+export default HistoryPage; // Should be outside
