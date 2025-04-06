@@ -78,7 +78,7 @@ nav .nav-link.active { color: #61dafb; border-bottom: 2px solid #61dafb; }
 }
 .category-select-box:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 .category-select-box h3 {
-    font-size: 1.2em; margin: 0 0 10px 0; color: #333; font-weight: 600; pointer-events: none; padding-right: 30px;
+    font-size: 1.2em; margin: 0 0 10px 0; color: #333; font-weight: 600; pointer-events: none; padding-right: 0px;
     width: 100%; box-sizing: border-box; text-align: center; min-height: 40px; display: flex;
     align-items: center; justify-content: center; flex-grow: 1;
 }
@@ -244,6 +244,60 @@ nav .nav-link.active { color: #61dafb; border-bottom: 2px solid #61dafb; }
 /* --- History Page Styles --- */
 .history-list-section { padding: 0 30px 30px 30px; max-width: 900px; margin: 0 auto; text-align: left; }
 /* H2 already styled */
+
+/* NEW: Type Section Container */
+.history-type-section {
+  margin-bottom: 2.5em; /* Space between Income/Expense sections */
+  border: 1px solid #eee; /* Optional border */
+  border-radius: 5px;
+  background-color: #fff; /* White background */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+/* Style section headers */
+.history-type-section h3 {
+  /* Reuse budget/goal header style? Or custom */
+  padding: 12px 15px;
+  margin: 0;
+  background-color: #f8f9fa; /* Light background */
+  border-bottom: 1px solid #eee;
+  font-size: 1.2em;
+  color: #495057; /* Header text color */
+  font-weight: 600;
+  border-radius: 5px 5px 0 0; /* Round top corners */
+}
+.history-type-section.uncategorized h3 { /* Style uncategorized differently? */
+  background-color: #fff3cd; /* Light yellow */
+  border-bottom-color: #ffeeba;
+  color: #856404;
+}
+
+.history-type-section ul { list-style: none; padding: 0; margin: 0; } /* Remove padding from ul */
+.history-type-section li {
+padding: 10px 15px; /* Adjust padding */
+border-bottom: 1px solid #f0f0f0; /* Lighter separator */
+display: flex;
+align-items: center; /* Vertically align */
+gap: 10px; /* Space between items */
+}
+.history-type-section li:last-child { border-bottom: none; }
+
+/* Specific column styling */
+.history-date {
+  font-size: 0.9em; color: #666; flex-basis: 100px; flex-shrink: 0; /* Fixed date width */
+}
+.history-category {
+   font-size: 0.85em; color: #888; font-style: italic; flex-basis: 120px; flex-shrink: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; /* Prevent long names breaking layout */
+}
+.history-desc {
+  flex-grow: 1; /* Allow description to take space */ font-size: 0.95em; color: #333;
+}
+.history-amount {
+  font-weight: bold; font-size: 1.05em; flex-basis: 110px; flex-shrink: 0; text-align: right;
+}
+.history-amount.income { color: #28a745; } /* Green for income */
+.history-amount.expense { color: #dc3545; } /* Red for expense */
+
+
 .history-category-group { margin-bottom: 2em; }
 .history-category-group h3 { border-bottom: 2px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; color: #333; font-size: 1.25em; }
 .history-category-group ul { list-style: none; padding-left: 10px; margin: 0; }

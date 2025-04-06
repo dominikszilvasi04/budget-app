@@ -1,12 +1,23 @@
 // client/src/pages/HistoryPage.js
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Added useMemo, useCallback
 import axios from 'axios';
 // Import relevant CSS or rely on App.css
 // import './HistoryPage.css';
 
 // --- Helper function (or import) ---
 const formatCurrency = (num) => {
+    const parsedNum = typeof num === 'number' ? num : parseFloat(num);
+    if (isNaN(parsedNum)) { num = 0; } else { num = parsedNum; }
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+};
+
+const safeParseFloat = (value) => {
+  if (typeof value === 'number') return value;
+  if (typeof value !== 'string') return NaN;
+  const cleanedValue = value.trim();
+  if (cleanedValue === '') return NaN;
+  const parsed = parseFloat(cleanedValue);
+  return isNaN(parsed) ? NaN : parsed;
 };
 
 function HistoryPage() {
@@ -14,34 +25,34 @@ function HistoryPage() {
   const [transactions, setTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [errorTransactions, setErrorTransactions] = useState(null);
-  const [categories, setCategories] = useState([]); // Also need categories to list all headers
+  // --- NEW: State for Categories ---
+  const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [errorCategories, setErrorCategories] = useState(null);
-  // State for delete status messages (optional, but good UX)
+
   const [deleteError, setDeleteError] = useState(null);
   const [deleteSuccess, setDeleteSuccess] = useState(null);
+  const [refetchTrigger, setRefetchTrigger] = useState(0); // For refetching transactions after delete
 
   // --- Fetch Categories Effect ---
   useEffect(() => {
+    const controller = new AbortController();
     const fetchCategories = async () => {
-      setLoadingCategories(true);
-      setErrorCategories(null);
-      try {
-        const response = await axios.get('http://localhost:5001/api/categories');
-        setCategories(response.data);
-      } catch (err) {
-        console.error("Error fetching categories:", err);
-        setErrorCategories('Failed to load categories.');
-      } finally {
-        setLoadingCategories(false);
-      }
+        setLoadingCategories(true); setErrorCategories(null);
+        try {
+            const response = await axios.get('http://localhost:5001/api/categories', { signal: controller.signal });
+            setCategories(response.data); // Store all categories
+        } catch (err) {
+            if (!axios.isCancel(err)) { console.error("Error fetching categories for history:", err); setErrorCategories('Failed to load category details.'); }
+        } finally { if (!controller.signal.aborted) setLoadingCategories(false); }
     };
     fetchCategories();
-  }, []);
+    return () => controller.abort();
+}, []); // Fetch once on mount
+
 
   // --- Fetch Transactions Effect ---
    // Separate flag/counter for triggering refetch after delete
-  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -84,89 +95,119 @@ function HistoryPage() {
     }
   };
 
-  // --- Grouping Transactions Logic (Copied/Adapted) ---
-  const groupedTransactions = useMemo(() => {
-     const groups = {};
-     transactions.forEach(t => {
-        const categoryName = t.category_name || 'Uncategorized';
-        if (!groups[categoryName]) {
-            groups[categoryName] = [];
-        }
-        groups[categoryName].push(t);
-     });
-     return groups;
-  }, [transactions]);
+  // --- Process Data for Grouping by Type (Corrected safeParseFloat usage) ---
+  const groupedByType = useMemo(() => {
+    if (loadingCategories || loadingTransactions || !categories || !transactions) {
+        return { income: [], expense: [], uncategorized: [], incomeTotal: 0, expenseTotal: 0 }; // Include totals in default
+    }
+
+    const categoryTypeMap = categories.reduce((acc, cat) => { acc[cat.id] = cat.type; return acc; }, {});
+    const incomeTransactions = [];
+    const expenseTransactions = [];
+    const uncategorizedTransactions = [];
+
+    transactions.forEach(t => {
+        const categoryId = t.category_id;
+        const type = categoryId !== null ? categoryTypeMap[categoryId] : null;
+
+        if (type === 'income') { incomeTransactions.push(t); }
+        else if (type === 'expense') { expenseTransactions.push(t); }
+        else { uncategorizedTransactions.push(t); }
+    });
+
+    // Calculate totals using the CORRECT function name
+    const incomeTotal = incomeTransactions.reduce((sum, t) => sum + (safeParseFloat(t.amount) || 0), 0); // Use defined safeParseFloat
+    const expenseTotal = expenseTransactions.reduce((sum, t) => sum + (safeParseFloat(t.amount) || 0), 0); // Use defined safeParseFloat
+
+    return {
+        income: incomeTransactions,
+        expense: expenseTransactions,
+        uncategorized: uncategorizedTransactions,
+        incomeTotal: incomeTotal, // Add totals to returned object
+        expenseTotal: expenseTotal
+    };
+
+}, [categories, transactions, loadingCategories, loadingTransactions]);
 
   // --- Render Logic ---
-  if (loadingCategories || loadingTransactions) {
-    return <div>Loading history data...</div>;
-  }
-  // Prioritize category error if it prevents rendering headers
-  if (errorCategories) {
-    return <div style={{ color: 'red' }}>Error loading categories: {errorCategories}</div>;
-  }
-   // Show transaction loading error if categories loaded fine
-   if (errorTransactions) {
-       return <div style={{ color: 'red' }}>Error loading transactions: {errorTransactions}</div>;
-   }
+    // Combined loading check
+    const isLoading = loadingCategories || loadingTransactions;
+    if (isLoading) { return <div>Loading history data...</div>; }
+    // Combined error check (can refine later)
+    const displayError = errorCategories || errorTransactions;
+    if (displayError) { return <div style={{ color: 'red', padding: '20px' }}>Error: {displayError}</div>; }
 
-
+  // --- JSX Return Statement (Modified) ---
   return (
-    <div className="history-list-section"> {/* Use a specific class */}
-      <h2>Transaction History</h2>
+    <div className="history-list-section">
+        <h2>Transaction History</h2>
 
-      {/* Display Delete Status Messages */}
-      {deleteError && <p style={{ color: 'red' }}>Error: {deleteError}</p>}
-      {deleteSuccess && <p style={{ color: 'green' }}>{deleteSuccess}</p>}
+        {/* Display Delete Status Messages */}
+        {deleteError && <p className="options-error">{deleteError}</p>} {/* Reuse style */}
+        {deleteSuccess && <p className="options-success">{deleteSuccess}</p>} {/* Reuse style */}
 
-      {categories.length === 0 && transactions.length === 0 ? (
-        <p>No categories or transactions found.</p>
-      ) : (
-         <>
-            {/* Iterate over CATEGORIES to ensure all are listed */}
-            {categories.map(category => {
-                const transactionsInCategory = groupedTransactions[category.name] || [];
-                return (
-                    <div key={category.id} className="history-category-group">
-                        <h3>{category.name}</h3>
-                        {transactionsInCategory.length > 0 ? (
-                            <ul>
-                                {transactionsInCategory.map(t => (
-                                    <li key={t.id}>
-                                        <span>{t.transaction_date}</span> - {' '}
-                                        <span>{t.description || <i>(No description)</i>}</span>:{' '}
-                                        <strong>{formatCurrency(t.amount)}</strong>
-                                        <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="no-transactions-msg">No transactions in this category.</p>
-                        )}
-                    </div>
-                );
-            })}
-
-            {/* Handle Uncategorized separately */}
-            {groupedTransactions['Uncategorized'] && groupedTransactions['Uncategorized'].length > 0 && (
-                <div key="uncategorized" className="history-category-group">
-                    <h3>Uncategorized</h3>
-                    <ul>
-                        {groupedTransactions['Uncategorized'].map(t => (
-                            <li key={t.id}>
-                                <span>{t.transaction_date}</span> - {' '}
-                                <span>{t.description || <i>(No description)</i>}</span>:{' '}
-                                <strong>{formatCurrency(t.amount)}</strong>
-                                <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+        {/* --- Income Section --- */}
+        <div className="history-type-section">
+            <h3>Income (+{formatCurrency(groupedByType.incomeTotal)})</h3>
+            {groupedByType.income.length === 0 ? (
+                <p className="no-transactions-msg">No income transactions recorded.</p>
+            ) : (
+                <ul>
+                    {groupedByType.income.map(t => (
+                        <li key={t.id}>
+                            {/* Details - maybe add category name? */}
+                            <span className="history-date">{t.transaction_date}</span>
+                            <span className="history-category">({t.category_name || 'N/A'})</span> {/* category_name from existing transaction fetch */}
+                            <span className="history-desc">{t.description || <i>(No description)</i>}</span>
+                            <span className="history-amount income">{formatCurrency(t.amount)}</span>
+                            {/* Delete Button */}
+                            <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
+                        </li>
+                    ))}
+                </ul>
             )}
-        </>
-      )}
-    </div>
-  );
+        </div>
+
+        {/* --- Expense Section --- */}
+         <div className="history-type-section">
+            <h3>Expenses (-{formatCurrency(groupedByType.expenseTotal)})</h3>
+            {groupedByType.expense.length === 0 ? (
+                <p className="no-transactions-msg">No expense transactions recorded.</p>
+            ) : (
+                 <ul>
+                     {groupedByType.expense.map(t => (
+                         <li key={t.id}>
+                            <span className="history-date">{t.transaction_date}</span>
+                            <span className="history-category">({t.category_name || 'N/A'})</span>
+                            <span className="history-desc">{t.description || <i>(No description)</i>}</span>
+                            <span className="history-amount expense">{formatCurrency(t.amount)}</span>
+                            <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
+                         </li>
+                     ))}
+                 </ul>
+            )}
+        </div>
+
+        {/* --- Optional: Uncategorized Section --- */}
+        {groupedByType.uncategorized.length > 0 && (
+             <div className="history-type-section uncategorized">
+                <h3>Uncategorized</h3>
+                <ul>
+                    {groupedByType.uncategorized.map(t => (
+                        <li key={t.id}>
+                            <span className="history-date">{t.transaction_date}</span>
+                            {/* No category name here */}
+                            <span className="history-desc">{t.description || <i>(No description)</i>}</span>
+                            <span className="history-amount">{formatCurrency(t.amount)}</span>{/* Default color */}
+                            <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
+                        </li>
+                    ))}
+                </ul>
+             </div>
+        )}
+
+    </div> // End history-list-section
+);
 }
 
 export default HistoryPage;
