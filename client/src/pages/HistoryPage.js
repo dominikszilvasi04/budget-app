@@ -236,7 +236,7 @@ const incomeExpenseChartData = useMemo(() => {
                      <p>Total Income: <span className="income-text">{formatCurrency(groupedByType.incomeTotal)}</span></p>
                      <p>Total Expenses: <span className="expense-text">{formatCurrency(groupedByType.expenseTotal)}</span></p>
                      <hr/>
-                     <p>Net Savings:
+                     <p>Surplus:
                         {/* Apply income or expense class based on net value */}
                         <span className={groupedByType.incomeTotal >= groupedByType.expenseTotal ? 'income-text' : 'expense-text'}>
                             {formatCurrency(groupedByType.incomeTotal - groupedByType.expenseTotal)}
