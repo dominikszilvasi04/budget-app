@@ -166,45 +166,72 @@ const getAllTransactions = async (req, res) => {
 };
 
 const deleteTransaction = async (req, res) => {
-    // Extract the ID from the route parameters
     const { id } = req.params;
-  
-    // Basic validation: Ensure ID is a number
     if (isNaN(parseInt(id, 10))) {
-      return res.status(400).json({ message: 'Invalid transaction ID.' });
+        return res.status(400).json({ message: 'Invalid transaction ID.' });
     }
-  
-    try {
-      const transactionId = parseInt(id, 10);
-  
-      // Construct the SQL Query
-      const sql = 'DELETE FROM transactions WHERE id = ?';
-  
-      // Execute the Query
-      const [result] = await dbPool.query(sql, [transactionId]);
-  
-      // Check if any row was actually deleted
-      if (result.affectedRows === 0) {
-        // If no rows were affected, the transaction ID likely didn't exist
-        return res.status(404).json({ message: 'Transaction not found.' });
-      }
-  
-      // Send Success Response (200 OK or 204 No Content are suitable)
-      // Sending 200 with a message is often clearer for the frontend
-      res.status(200).json({ message: `Transaction with ID ${transactionId} deleted successfully.` });
-      // Alternatively, for 204 No Content:
-      // res.status(204).send();
-  
-    } catch (error) {
-      console.error('Error deleting transaction:', error);
-      res.status(500).json({ message: 'Failed to delete transaction due to server error.' });
-    }
-  };
-  
+    const transactionId = parseInt(id, 10);
 
-// Export both controller functions
+    let connection;
+    try {
+        // --- Start DB Transaction for safe deletion ---
+        connection = await dbPool.getConnection();
+        await connection.beginTransaction();
+
+        // 1. Check if this transaction resulted in a contribution
+        // We can find it by looking for a note that links them.
+        // NOTE: This assumes your `addTransaction` contribution note is reliable.
+        const contributionNotes = `From transaction: ID ${transactionId}`;
+        const findContribSql = 'SELECT id, goal_id, amount FROM goal_contributions WHERE notes = ?';
+        const [contribRows] = await connection.query(findContribSql, [contributionNotes]);
+
+        // 2. If a contribution was found, reverse it
+        if (contribRows.length > 0) {
+            const contribution = contribRows[0];
+            const amountToReverse = parseFloat(contribution.amount);
+
+            console.log(`Reversing contribution ${contribution.id} of ${amountToReverse} from goal ${contribution.goal_id}`);
+
+            // 2a. Subtract the amount from the goal's current_amount
+            const updateGoalSql = 'UPDATE goals SET current_amount = current_amount - ? WHERE id = ?';
+            await connection.query(updateGoalSql, [amountToReverse, contribution.goal_id]);
+
+            // 2b. Delete the contribution record itself
+            const deleteContribSql = 'DELETE FROM goal_contributions WHERE id = ?';
+            await connection.query(deleteContribSql, [contribution.id]);
+        }
+
+        // 3. Finally, delete the main transaction record
+        const deleteTxSql = 'DELETE FROM transactions WHERE id = ?';
+        const [result] = await connection.query(deleteTxSql, [transactionId]);
+
+        if (result.affectedRows === 0) {
+            // If the transaction wasn't found, nothing was done, so rollback and send 404
+            await connection.rollback();
+            return res.status(404).json({ message: 'Transaction not found.' });
+        }
+
+        // --- Commit all changes ---
+        await connection.commit();
+
+        res.status(200).json({ message: `Transaction with ID ${transactionId} deleted successfully.` });
+
+    } catch (error) {
+        console.error('Error deleting transaction:', error);
+        if (connection) {
+            await connection.rollback(); // Rollback on any error
+        }
+        res.status(500).json({ message: 'Failed to delete transaction due to server error.' });
+    } finally {
+        if (connection) {
+            connection.release(); // Always release connection
+        }
+    }
+};
+
+// ... update module.exports to include the new deleteTransaction ...
 module.exports = {
   addTransaction,
   getAllTransactions,
-  deleteTransaction, // <-- Export the new function
+  deleteTransaction,
 };
