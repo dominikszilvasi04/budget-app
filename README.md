@@ -14,7 +14,7 @@ This application features a React frontend that communicates with a robust Node.
 * **Data Visualization**: Interactive charts on the dashboard and history pages provide a clear visual breakdown of your financial habits.
 
 ## 📸 Screenshots
-![](https://imgur.com/a/I5FyabG)
+https://imgur.com/a/I5FyabG
 
 ## 🛠️ Tech Stack
 
