@@ -22,6 +22,3 @@ https://imgur.com/a/I5FyabG
 * **Backend**: Node.js, Express.js
 * **Database**: MySQL
 * **Development**: Nodemon
-
-Thanks for reading!
-
