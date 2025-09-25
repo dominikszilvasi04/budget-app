@@ -23,3 +23,5 @@ https://imgur.com/a/I5FyabG
 * **Database**: MySQL
 * **Development**: Nodemon
 
+Thanks for reading!
+
