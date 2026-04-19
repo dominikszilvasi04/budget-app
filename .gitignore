@@ -26,5 +26,9 @@ Thumbs.db
 
 # Log files
 *.log
-# Local Copilot instruction files
-.github/
+
+# Keep CI/CD workflows in git, ignore local instruction artefacts
+.github/*
+!.github/workflows/
+!.github/workflows/**
+.github/instructions/
