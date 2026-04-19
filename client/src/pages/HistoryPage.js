@@ -1,316 +1,327 @@
-// client/src/pages/HistoryPage.js
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-// --- Chart.js Imports & Registration ---
-// Import Doughnut as an alternative to Pie
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from 'chart.js';
+
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
-// --- Helper function (or import) ---
-const formatCurrency = (num) => {
-    const parsedNum = typeof num === 'number' ? num : parseFloat(num);
-    if (isNaN(parsedNum)) { num = 0; } else { num = parsedNum; }
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+const formatCurrency = (value) => {
+  const numericValue = typeof value === 'number' ? value : parseFloat(value);
+  const safeValue = Number.isNaN(numericValue) ? 0 : numericValue;
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'USD' }).format(safeValue);
 };
 
-const safeParseFloat = (value) => {
-  if (typeof value === 'number') return value;
-  if (typeof value !== 'string') return NaN;
-  const cleanedValue = value.trim();
-  if (cleanedValue === '') return NaN;
-  const parsed = parseFloat(cleanedValue);
-  return isNaN(parsed) ? NaN : parsed;
+const parseNumber = (value) => {
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  if (typeof value !== 'string') {
+    return NaN;
+  }
+
+  const trimmedValue = value.trim();
+  if (trimmedValue === '') {
+    return NaN;
+  }
+
+  const parsedValue = parseFloat(trimmedValue);
+  return Number.isNaN(parsedValue) ? NaN : parsedValue;
 };
 
-// --- NEW: Chart Options for Income vs Expense ---
 const incomeExpenseChartOptions = {
   responsive: true,
-  maintainAspectRatio: false, // Allows setting height via container
+  maintainAspectRatio: false,
   plugins: {
-      legend: {
-          position: 'bottom', // Legend below chart
-      },
-      title: {
-          display: true,
-          text: 'Income vs. Expense Ratio (All Time)', // Chart title
-          font: { size: 16 }
-      },
-      tooltip: {
-          callbacks: {
-              label: function(context) { // Currency format
-                  let label = context.label || ''; if (label) { label += ': '; }
-                  if (context.raw !== null && context.raw !== undefined) { label += formatCurrency(context.raw); }
-                  return label;
-              }
+    legend: {
+      position: 'bottom',
+    },
+    title: {
+      display: true,
+      text: 'Income vs Expense Ratio (All Time)',
+      font: { size: 16 },
+    },
+    tooltip: {
+      callbacks: {
+        label(context) {
+          let label = context.label || '';
+          if (label) {
+            label += ': ';
           }
-      }
+          if (context.raw !== null && context.raw !== undefined) {
+            label += formatCurrency(context.raw);
+          }
+          return label;
+        },
+      },
+    },
   },
-  // Cutout makes it a Doughnut chart - adjust % for thickness
   cutout: '60%',
 };
 
-
 function HistoryPage() {
-  // --- State for this page ---
   const [transactions, setTransactions] = useState([]);
-  const [loadingTransactions, setLoadingTransactions] = useState(true);
-  const [errorTransactions, setErrorTransactions] = useState(null);
-  // --- NEW: State for Categories ---
+  const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
+  const [transactionsError, setTransactionsError] = useState(null);
+
   const [categories, setCategories] = useState([]);
-  const [loadingCategories, setLoadingCategories] = useState(true);
-  const [errorCategories, setErrorCategories] = useState(null);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(null);
 
   const [deleteError, setDeleteError] = useState(null);
   const [deleteSuccess, setDeleteSuccess] = useState(null);
-  const [refetchTrigger, setRefetchTrigger] = useState(0); // For refetching transactions after delete
+  const [refreshIndex, setRefreshIndex] = useState(0);
 
-  // --- Fetch Categories Effect ---
   useEffect(() => {
-    const controller = new AbortController();
+    const abortController = new AbortController();
+
     const fetchCategories = async () => {
-        setLoadingCategories(true); setErrorCategories(null);
-        try {
-            const response = await axios.get('http://localhost:5001/api/categories', { signal: controller.signal });
-            setCategories(response.data); // Store all categories
-        } catch (err) {
-            if (!axios.isCancel(err)) { console.error("Error fetching categories for history:", err); setErrorCategories('Failed to load category details.'); }
-        } finally { if (!controller.signal.aborted) setLoadingCategories(false); }
+      setIsCategoriesLoading(true);
+      setCategoriesError(null);
+
+      try {
+        const response = await axios.get('http://localhost:5001/api/categories', {
+          signal: abortController.signal,
+        });
+        setCategories(response.data);
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.error('Error fetching categories for history page:', error);
+          setCategoriesError('Failed to load category details.');
+        }
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsCategoriesLoading(false);
+        }
+      }
     };
+
     fetchCategories();
-    return () => controller.abort();
-}, []); // Fetch once on mount
-
-
-  // --- Fetch Transactions Effect ---
-   // Separate flag/counter for triggering refetch after delete
+    return () => abortController.abort();
+  }, []);
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      setLoadingTransactions(true);
-      setErrorTransactions(null);
+      setIsTransactionsLoading(true);
+      setTransactionsError(null);
+
       try {
         const response = await axios.get('http://localhost:5001/api/transactions');
         setTransactions(response.data);
-      } catch (err) {
-        console.error("Error fetching transactions:", err);
-        setErrorTransactions('Failed to load transactions.');
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+        setTransactionsError('Failed to load transactions.');
       } finally {
-        setLoadingTransactions(false);
+        setIsTransactionsLoading(false);
       }
     };
+
     fetchTransactions();
-  }, [refetchTrigger]); // Re-fetch when refetchTrigger changes
+  }, [refreshIndex]);
 
-
-  // --- Transaction Deletion Handler (Copied/Adapted) ---
-   const handleDeleteTransaction = async (id) => {
+  const deleteTransaction = async (transactionIdentifier) => {
     if (!window.confirm('Are you sure you want to delete this transaction?')) {
       return;
     }
-    setDeleteError(null); // Clear previous errors/success
+
+    setDeleteError(null);
     setDeleteSuccess(null);
+
     try {
-      const response = await axios.delete(`http://localhost:5001/api/transactions/${id}`);
+      const response = await axios.delete(`http://localhost:5001/api/transactions/${transactionIdentifier}`);
       setDeleteSuccess(response.data.message || 'Transaction deleted.');
-      // Instead of filtering state directly, trigger a refetch
-      setRefetchTrigger(prev => prev + 1); // Increment trigger to cause useEffect to run
+      setRefreshIndex((currentValue) => currentValue + 1);
       setTimeout(() => setDeleteSuccess(null), 3000);
-    } catch (err) {
-      console.error('Error deleting transaction:', err);
-      let errorMessage = 'Failed to delete transaction.';
-      if (err.response && err.response.data && err.response.data.message) {
-        errorMessage = err.response.data.message;
-      }
-      setDeleteError(errorMessage);
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      const message = error.response?.data?.message || 'Failed to delete transaction.';
+      setDeleteError(message);
     }
   };
 
-  // --- Process Data for Grouping by Type (Corrected safeParseFloat usage) ---
-  const groupedByType = useMemo(() => {
-    if (loadingCategories || loadingTransactions || !categories || !transactions) {
-        return { income: [], expense: [], uncategorized: [], incomeTotal: 0, expenseTotal: 0 }; // Include totals in default
+  const groupedTransactions = useMemo(() => {
+    if (isCategoriesLoading || isTransactionsLoading || !categories || !transactions) {
+      return {
+        income: [],
+        expense: [],
+        uncategorised: [],
+        incomeTotal: 0,
+        expenseTotal: 0,
+      };
     }
 
-    const categoryTypeMap = categories.reduce((acc, cat) => { acc[cat.id] = cat.type; return acc; }, {});
+    const categoryTypeByIdentifier = categories.reduce((result, category) => {
+      result[category.id] = category.type;
+      return result;
+    }, {});
+
     const incomeTransactions = [];
     const expenseTransactions = [];
-    const uncategorizedTransactions = [];
+    const uncategorisedTransactions = [];
 
-    transactions.forEach(t => {
-        const categoryId = t.category_id;
-        const type = categoryId !== null ? categoryTypeMap[categoryId] : null;
+    transactions.forEach((transaction) => {
+      const categoryIdentifier = transaction.category_id;
+      const categoryType = categoryIdentifier !== null ? categoryTypeByIdentifier[categoryIdentifier] : null;
 
-        if (type === 'income') { incomeTransactions.push(t); }
-        else if (type === 'expense') { expenseTransactions.push(t); }
-        else { uncategorizedTransactions.push(t); }
+      if (categoryType === 'income') {
+        incomeTransactions.push(transaction);
+      } else if (categoryType === 'expense') {
+        expenseTransactions.push(transaction);
+      } else {
+        uncategorisedTransactions.push(transaction);
+      }
     });
 
-    // Calculate totals using the CORRECT function name
-    const incomeTotal = incomeTransactions.reduce((sum, t) => sum + (safeParseFloat(t.amount) || 0), 0); // Use defined safeParseFloat
-    const expenseTotal = expenseTransactions.reduce((sum, t) => sum + (safeParseFloat(t.amount) || 0), 0); // Use defined safeParseFloat
+    const incomeTotal = incomeTransactions.reduce((total, transaction) => total + (parseNumber(transaction.amount) || 0), 0);
+    const expenseTotal = expenseTransactions.reduce((total, transaction) => total + (parseNumber(transaction.amount) || 0), 0);
 
     return {
-        income: incomeTransactions,
-        expense: expenseTransactions,
-        uncategorized: uncategorizedTransactions,
-        incomeTotal: incomeTotal, // Add totals to returned object
-        expenseTotal: expenseTotal
+      income: incomeTransactions,
+      expense: expenseTransactions,
+      uncategorised: uncategorisedTransactions,
+      incomeTotal,
+      expenseTotal,
     };
+  }, [categories, transactions, isCategoriesLoading, isTransactionsLoading]);
 
-}, [categories, transactions, loadingCategories, loadingTransactions]);
+  const incomeExpenseChartData = useMemo(() => {
+    const { incomeTotal, expenseTotal } = groupedTransactions;
 
-// --- NEW: Prepare Data for Income vs Expense Chart ---
-const incomeExpenseChartData = useMemo(() => {
-  // Use totals calculated in groupedByType
-  const { incomeTotal, expenseTotal } = groupedByType;
-
-  // Only create chart data if there's income or expense
-  if (incomeTotal <= 0 && expenseTotal <= 0) {
+    if (incomeTotal <= 0 && expenseTotal <= 0) {
       return null;
-  }
+    }
 
-  const labels = [];
-  const dataValues = [];
-  const backgroundColors = [];
+    const labels = [];
+    const values = [];
+    const backgroundColours = [];
 
-  if (incomeTotal > 0) {
+    if (incomeTotal > 0) {
       labels.push('Total Income');
-      dataValues.push(incomeTotal);
-      backgroundColors.push('hsl(145, 63%, 42%)'); // Greenish
-  }
-  if (expenseTotal > 0) {
+      values.push(incomeTotal);
+      backgroundColours.push('hsl(145, 63%, 42%)');
+    }
+
+    if (expenseTotal > 0) {
       labels.push('Total Expenses');
-      dataValues.push(expenseTotal);
-      backgroundColors.push('hsl(349, 83%, 60%)'); // Reddish
+      values.push(expenseTotal);
+      backgroundColours.push('hsl(349, 83%, 60%)');
+    }
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Amount',
+          data: values,
+          backgroundColor: backgroundColours,
+          borderColor: ['#FFFFFF', '#FFFFFF'],
+          borderWidth: 3,
+        },
+      ],
+    };
+  }, [groupedTransactions]);
+
+  const isLoading = isCategoriesLoading || isTransactionsLoading;
+  if (isLoading) {
+    return <div>Loading history data...</div>;
   }
 
-  return {
-      labels: labels,
-      datasets: [
-          {
-              label: 'Amount',
-              data: dataValues,
-              backgroundColor: backgroundColors,
-              borderColor: ['#FFFFFF', '#FFFFFF'], // White borders
-              borderWidth: 3, // Thicker borders
-          },
-      ],
-  };
-}, [groupedByType]); // Recalculate when groupedByType changes
+  const displayError = categoriesError || transactionsError;
+  if (displayError) {
+    return <div style={{ color: 'red', padding: '20px' }}>Error: {displayError}</div>;
+  }
 
-  // --- Render Logic ---
-    // Combined loading check
-    const isLoading = loadingCategories || loadingTransactions;
-    if (isLoading) { return <div>Loading history data...</div>; }
-    // Combined error check (can refine later)
-    const displayError = errorCategories || errorTransactions;
-    if (displayError) { return <div style={{ color: 'red', padding: '20px' }}>Error: {displayError}</div>; }
+  return (
+    <div className="history-page-container">
+      <h2>Transaction History</h2>
 
-      // --- Main Return Statement (Modified with Chart and Summary Row) ---
-      return (
-        // Changed outer container class name for clarity
-        <div className="history-page-container">
-            <h2>Transaction History</h2>
+      {deleteError && <p className="options-error">{deleteError}</p>}
+      {deleteSuccess && <p className="options-success">{deleteSuccess}</p>}
 
-            {/* Display Delete Status Messages */}
-            {deleteError && <p className="options-error">{deleteError}</p>}
-            {deleteSuccess && <p className="options-success">{deleteSuccess}</p>}
+      <div className="history-summary-row">
+        <div className="history-chart-container">
+          {incomeExpenseChartData ? (
+            <Doughnut data={incomeExpenseChartData} options={incomeExpenseChartOptions} />
+          ) : (
+            <div className="chart-placeholder">No income or expense data for chart.</div>
+          )}
+        </div>
 
-            {/* --- Summary Row (Chart + Text) --- */}
-            <div className="history-summary-row">
-                {/* Chart Container */}
-                <div className="history-chart-container">
-                    {/* Use the incomeExpenseChartData variable */}
-                    {incomeExpenseChartData ? (
-                        <Doughnut data={incomeExpenseChartData} options={incomeExpenseChartOptions} />
-                    ) : (
-                        // Show placeholder if no data for chart
-                        <div className="chart-placeholder">No income or expense data for chart.</div>
-                    )}
-                </div>
-                {/* Summary Text */}
-                 <div className="history-summary-text">
-                     <h4>Summary (All Time)</h4>
-                     {/* Use calculated totals from groupedByType */}
-                     <p>Total Income: <span className="income-text">{formatCurrency(groupedByType.incomeTotal)}</span></p>
-                     <p>Total Expenses: <span className="expense-text">{formatCurrency(groupedByType.expenseTotal)}</span></p>
-                     <hr/>
-                     <p>Surplus:
-                        {/* Apply income or expense class based on net value */}
-                        <span className={groupedByType.incomeTotal >= groupedByType.expenseTotal ? 'income-text' : 'expense-text'}>
-                            {formatCurrency(groupedByType.incomeTotal - groupedByType.expenseTotal)}
-                        </span>
-                     </p>
-                 </div>
-            </div>
-            {/* --- End Summary Row --- */}
+        <div className="history-summary-text">
+          <h4>Summary (All Time)</h4>
+          <p>
+            Total Income: <span className="income-text">{formatCurrency(groupedTransactions.incomeTotal)}</span>
+          </p>
+          <p>
+            Total Expenses: <span className="expense-text">{formatCurrency(groupedTransactions.expenseTotal)}</span>
+          </p>
+          <hr />
+          <p>
+            Surplus:
+            <span className={groupedTransactions.incomeTotal >= groupedTransactions.expenseTotal ? 'income-text' : 'expense-text'}>
+              {formatCurrency(groupedTransactions.incomeTotal - groupedTransactions.expenseTotal)}
+            </span>
+          </p>
+        </div>
+      </div>
 
+      <div className="history-details-section">
+        <div className="history-type-section">
+          <h3>Income (+{formatCurrency(groupedTransactions.incomeTotal)})</h3>
+          {groupedTransactions.income.length === 0 ? (
+            <p className="no-transactions-msg">No income transactions recorded.</p>
+          ) : (
+            <ul>
+              {groupedTransactions.income.map((transaction) => (
+                <li key={transaction.id}>
+                  <span className="history-date">{transaction.transaction_date}</span>
+                  <span className="history-category">({transaction.category_name || 'N/A'})</span>
+                  <span className="history-desc">{transaction.description || <i>(No description)</i>}</span>
+                  <span className="history-amount income">{formatCurrency(transaction.amount)}</span>
+                  <button onClick={() => deleteTransaction(transaction.id)} className="delete-button-history">Delete</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-             {/* --- Transaction Details Section --- */}
-            <div className="history-details-section">
-                {/* Income Section */}
-                <div className="history-type-section">
-                    {/* Title now includes total from groupedByType */}
-                    <h3>Income (+{formatCurrency(groupedByType.incomeTotal)})</h3>
-                    {groupedByType.income.length === 0 ? (
-                        <p className="no-transactions-msg">No income transactions recorded.</p>
-                    ) : (
-                        <ul>
-                            {groupedByType.income.map(t => (
-                                <li key={t.id}>
-                                    <span className="history-date">{t.transaction_date}</span>
-                                    <span className="history-category">({t.category_name || 'N/A'})</span>
-                                    <span className="history-desc">{t.description || <i>(No description)</i>}</span>
-                                    <span className="history-amount income">{formatCurrency(t.amount)}</span>
-                                    <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
+        <div className="history-type-section">
+          <h3>Expenses (-{formatCurrency(groupedTransactions.expenseTotal)})</h3>
+          {groupedTransactions.expense.length === 0 ? (
+            <p className="no-transactions-msg">No expense transactions recorded.</p>
+          ) : (
+            <ul>
+              {groupedTransactions.expense.map((transaction) => (
+                <li key={transaction.id}>
+                  <span className="history-date">{transaction.transaction_date}</span>
+                  <span className="history-category">({transaction.category_name || 'N/A'})</span>
+                  <span className="history-desc">{transaction.description || <i>(No description)</i>}</span>
+                  <span className="history-amount expense">{formatCurrency(transaction.amount)}</span>
+                  <button onClick={() => deleteTransaction(transaction.id)} className="delete-button-history">Delete</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-                {/* Expense Section */}
-                 <div className="history-type-section">
-                    {/* Title now includes total from groupedByType */}
-                    <h3>Expenses (-{formatCurrency(groupedByType.expenseTotal)})</h3>
-                    {groupedByType.expense.length === 0 ? (
-                        <p className="no-transactions-msg">No expense transactions recorded.</p>
-                    ) : (
-                         <ul>
-                             {groupedByType.expense.map(t => (
-                                 <li key={t.id}>
-                                    <span className="history-date">{t.transaction_date}</span>
-                                    <span className="history-category">({t.category_name || 'N/A'})</span>
-                                    <span className="history-desc">{t.description || <i>(No description)</i>}</span>
-                                    <span className="history-amount expense">{formatCurrency(t.amount)}</span>
-                                    <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
-                                 </li>
-                             ))}
-                         </ul>
-                    )}
-                </div>
+        {groupedTransactions.uncategorised.length > 0 && (
+          <div className="history-type-section uncategorized">
+            <h3>Uncategorised</h3>
+            <ul>
+              {groupedTransactions.uncategorised.map((transaction) => (
+                <li key={transaction.id}>
+                  <span className="history-date">{transaction.transaction_date}</span>
+                  <span className="history-desc">{transaction.description || <i>(No description)</i>}</span>
+                  <span className="history-amount">{formatCurrency(transaction.amount)}</span>
+                  <button onClick={() => deleteTransaction(transaction.id)} className="delete-button-history">Delete</button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-                {/* Optional: Uncategorized Section */}
-                {groupedByType.uncategorized.length > 0 && (
-                     <div className="history-type-section uncategorized">
-                        <h3>Uncategorized</h3>
-                        <ul>
-                            {groupedByType.uncategorized.map(t => (
-                                <li key={t.id}>
-                                    <span className="history-date">{t.transaction_date}</span>
-                                    <span className="history-desc">{t.description || <i>(No description)</i>}</span>
-                                    <span className="history-amount">{formatCurrency(t.amount)}</span>
-                                    <button onClick={() => handleDeleteTransaction(t.id)} className="delete-button-history">X</button>
-                                </li>
-                            ))}
-                        </ul>
-                     </div>
-                )}
-            </div> {/* End history-details-section */}
-
-        </div> // End history-page-container
-    );
-} // End of HistoryPage component should be outside
-
-export default HistoryPage; // Should be outside
+export default HistoryPage;

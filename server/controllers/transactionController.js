@@ -1,7 +1,7 @@
 const dbPool = require('../db');
 
 const addTransaction = async (req, res) => {
-  const { description, amount, transaction_date, category_id, goalIdToContribute = null } = req.body; // Default goal ID to null
+    const { description, amount, transaction_date, category_id, goalIdToContribute = null } = req.body;
 
   if (amount === undefined || typeof amount !== 'number' || !transaction_date || !category_id) {
       return res.status(400).json({ message: 'Missing/invalid fields (amount, date, category).' });
