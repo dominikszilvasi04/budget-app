@@ -286,21 +286,21 @@ function BudgetPage() {
 
     const isLoading = isBudgetsLoading || isCategoriesLoading;
     if (isLoading) {
-        return <div>Loading budget data...</div>;
+        return <div className="page-status">Loading budget data...</div>;
     }
 
     const displayError = budgetsError || categoriesError;
     if (budgetsError && budgets.length === 0 && categories.length === 0) {
-        return <div style={{ color: 'red', padding: '20px' }}>Error: {displayError}</div>;
+        return <div className="page-status page-status-error">Error: {displayError}</div>;
     }
 
     return (
         <div className="budget-page-container">
             <h2>Monthly Budget Allocation (Expenses)</h2>
-            <p>Enter the budget amount for each expense category for the current month. Changes save automatically.</p>
+            <p className="section-subtitle">Enter a monthly budget for each expense category. Changes are saved automatically.</p>
 
             {displayError && !isLoading && (
-                <p style={{ color: 'orange', marginBottom: '15px' }}>Warning: {displayError}. Data may be incomplete.</p>
+                <p className="dashboard-warning-banner">Warning: {displayError}. Data may be incomplete.</p>
             )}
 
             <div className="budget-content-layout">
@@ -317,7 +317,7 @@ function BudgetPage() {
                 <div className="budget-list-column">
                     <div className="budget-list">
                         {expenseBudgets.length === 0 && !isLoading ? (
-                            <p style={{ padding: '20px', fontStyle: 'italic', color: '#555' }}>
+                            <p className="empty-state-message">
                                 No expense categories found. Add expense categories on the Dashboard first.
                             </p>
                         ) : (
