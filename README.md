@@ -22,3 +22,34 @@ https://imgur.com/a/I5FyabG
 * **Backend**: Node.js, Express.js
 * **Database**: MySQL
 * **Development**: Nodemon
+
+## CI/CD and Quality Gates
+
+This repository now includes automated pipelines for pushes and pull requests:
+
+- [CI pipeline](.github/workflows/ci.yml)
+	- installs client and server dependencies
+	- runs lint checks for client and server
+	- runs Prettier formatting checks
+	- runs client tests
+	- builds the client production bundle
+- [Container build pipeline](.github/workflows/container-build.yml)
+	- validates Docker builds for both server and client images
+
+## Linting and Formatting
+
+- Client lint: run `npm run lint` in [client/package.json](client/package.json)
+- Server lint: run `npm run lint` in [server/package.json](server/package.json)
+- Formatting check (root): `npx prettier@3.3.3 --check "**/*.{js,jsx,json,css,md,yml,yaml}"`
+
+## Containers
+
+- Server image: [server/Dockerfile](server/Dockerfile)
+- Client image: [client/Dockerfile](client/Dockerfile)
+- Local multi-service setup: [docker-compose.yml](docker-compose.yml)
+
+To build and run with Docker Compose:
+
+1. Ensure Docker Desktop is running.
+2. Run `docker compose up --build` from the repository root.
+3. Open the client at `http://localhost:3000`.
