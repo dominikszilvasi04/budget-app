@@ -1,4 +1,3 @@
-// client/src/pages/DashboardPage.js
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { Pie } from 'react-chartjs-2';
@@ -394,7 +393,15 @@ function DashboardPage() {
             }
             setTransactionRefetchTrigger(prev => prev + 1);
             setTimeout(() => { handleClosePopup(); }, 1500);
-        } catch (err) { /* ... error handling ... */ }
+        } catch (err) {
+            console.error('Error adding transaction:', err);
+            let message = 'Failed to add transaction.';
+            if (err.response?.data?.message) {
+                message = err.response.data.message;
+            }
+            setSubmitTransactionError(message);
+            setSubmitTransactionSuccess(null);
+        }
         finally { setTimeout(() => setIsSubmittingTransaction(false), 500); }
     };
 
@@ -417,7 +424,15 @@ function DashboardPage() {
              setAddCategorySuccess(`Category '${response.data.newCategory.name}' added!`);
              setTransactionRefetchTrigger(p => p + 1);
              setTimeout(() => setAddCategorySuccess(null), 3000);
-        } catch (err) { /* ... error handling ... */ }
+        } catch (err) {
+            console.error('Error adding category:', err);
+            let message = 'Failed to add category.';
+            if (err.response?.data?.message) {
+                message = err.response.data.message;
+            }
+            setAddCategoryError(message);
+            setAddCategorySuccess(null);
+        }
         finally { setIsAddingCategory(false); }
     };
     const handleOptionsIconClick = (event, category) => {
@@ -510,7 +525,7 @@ function DashboardPage() {
 
                                 return (
                                     <div key={category.id} className="category-select-box" onClick={() => handleCategoryBoxClick(category)} style={{ backgroundColor: boxColor }}>
-                                        <button className="category-options-btn" onClick={(e) => handleOptionsIconClick(e, category)} title="Category Options" style={{ color: optionsColor }} disabled={isProcessingCategoryAction && optionsPopupCategory?.id === category.id}>⚙️</button>
+                                        <button className="category-options-btn" onClick={(e) => handleOptionsIconClick(e, category)} title="Category Options" style={{ color: optionsColor }} disabled={isProcessingCategoryAction && optionsPopupCategory?.id === category.id}>⋯</button>
                                         <h3 style={{ color: textColor }}>{category.name}</h3>
                                         {dashboardViewType === 'expense' ? (
                                             <>
@@ -530,7 +545,7 @@ function DashboardPage() {
                                                 </p>
                                             </>
                                         )}
-                                    </div> // End category-select-box
+                                    </div>
                                 );
                              })}
                         </div>
@@ -544,7 +559,7 @@ function DashboardPage() {
                                 type="text"
                                 value={newCategoryName}
                                 onChange={(e) => { setNewCategoryName(e.target.value); if (addCategoryError) setAddCategoryError(null); }}
-                                placeholder={`New ${dashboardViewType} name...`} // Dynamic placeholder
+                                placeholder={`New ${dashboardViewType} name...`}
                                 disabled={isAddingCategory}
                                 maxLength="100"
                                 aria-describedby="category-add-status"
