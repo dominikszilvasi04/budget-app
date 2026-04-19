@@ -26,17 +26,55 @@ const formatCurrency = (num) => {
     return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'USD' }).format(num);
 };
 
-function getContrastYIQ(hexcolor, lightened = false){
-    if (!hexcolor || typeof hexcolor !== 'string') return lightened ? '#e0e0e0' : '#000000';
-    hexcolor = hexcolor.replace("#", "");
-    if (hexcolor.length !== 6 || !/^[0-9A-F]{6}$/i.test(hexcolor)) { return lightened ? '#e0e0e0' : '#000000'; }
-    const r = parseInt(hexcolor.substr(0, 2), 16);
-    const g = parseInt(hexcolor.substr(2, 2), 16);
-    const b = parseInt(hexcolor.substr(4, 2), 16);
-    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-    const color = (yiq >= 128) ? '#000000' : '#FFFFFF';
-    if (lightened) { return (yiq >= 128) ? '#dddddd' : '#555555'; }
-    return color;
+function parseColourToRgb(colourValue) {
+    if (!colourValue || typeof colourValue !== 'string') {
+        return null;
+    }
+
+    const trimmedColour = colourValue.trim();
+
+    const shortHexMatch = trimmedColour.match(/^#([0-9a-f]{3})$/i);
+    if (shortHexMatch) {
+        const [r, g, b] = shortHexMatch[1].split('').map((digit) => parseInt(digit + digit, 16));
+        return { r, g, b };
+    }
+
+    const longHexMatch = trimmedColour.match(/^#([0-9a-f]{6})$/i);
+    if (longHexMatch) {
+        const hex = longHexMatch[1];
+        return {
+            r: parseInt(hex.slice(0, 2), 16),
+            g: parseInt(hex.slice(2, 4), 16),
+            b: parseInt(hex.slice(4, 6), 16)
+        };
+    }
+
+    const rgbMatch = trimmedColour.match(/^rgba?\((\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*(?:\d*\.?\d+))?\)$/i);
+    if (rgbMatch) {
+        const red = Math.min(255, parseInt(rgbMatch[1], 10));
+        const green = Math.min(255, parseInt(rgbMatch[2], 10));
+        const blue = Math.min(255, parseInt(rgbMatch[3], 10));
+        return { r: red, g: green, b: blue };
+    }
+
+    return null;
+}
+
+function getContrastYIQ(colourValue, lightened = false) {
+    const rgb = parseColourToRgb(colourValue);
+
+    if (!rgb) {
+        return lightened ? '#d1d5db' : '#FFFFFF';
+    }
+
+    const yiq = ((rgb.r * 299) + (rgb.g * 587) + (rgb.b * 114)) / 1000;
+    const isLightBackground = yiq >= 150;
+
+    if (lightened) {
+        return isLightBackground ? '#8b95a7' : '#d1d5db';
+    }
+
+    return isLightBackground ? '#0f172a' : '#f8fafc';
 }
 
 
@@ -474,11 +512,11 @@ function DashboardPage() {
 
     const isLoading = loadingCategories || loadingGoals;
     if (isLoading) {
-        return <div>Loading dashboard data...</div>;
+        return <div className="page-status">Loading dashboard data...</div>;
     }
 
     if (errorCategories && categories.length === 0) {
-        return <div style={{ color: 'red', padding: '20px' }}>Error loading categories: {errorCategories}. Cannot display dashboard.</div>;
+        return <div className="page-status page-status-error">Error loading categories: {errorCategories}. Cannot display dashboard.</div>;
     }
 
     const displayDataError = errorTransactions || errorBudgets || errorGoals;
@@ -508,7 +546,11 @@ function DashboardPage() {
                         </div>
                     </div>
 
-                    {displayDataError && !isLoading && <p style={{ color: 'orange', marginBottom: '15px' }}>Warning: Could not load all data ({displayDataError}). Totals/Budgets/Goals may be inaccurate.</p>}
+                    {displayDataError && !isLoading && (
+                        <p className="dashboard-warning-banner">
+                            Warning: Could not load all data ({displayDataError}). Totals, budgets, and goals may be inaccurate.
+                        </p>
+                    )}
 
                     {filteredCategories.length === 0 && !loadingCategories ? (
                          <p>No {dashboardViewType} categories defined yet. Add one below!</p>
@@ -524,23 +566,33 @@ function DashboardPage() {
                                 const optionsColor = textColor === '#000000' ? '#6c757d' : '#cccccc';
 
                                 return (
-                                    <div key={category.id} className="category-select-box" onClick={() => handleCategoryBoxClick(category)} style={{ backgroundColor: boxColor }}>
-                                        <button className="category-options-btn" onClick={(e) => handleOptionsIconClick(e, category)} title="Category Options" style={{ color: optionsColor }} disabled={isProcessingCategoryAction && optionsPopupCategory?.id === category.id}>⋯</button>
-                                        <h3 style={{ color: textColor }}>{category.name}</h3>
+                                    <div
+                                        key={category.id}
+                                        className="category-select-box"
+                                        onClick={() => handleCategoryBoxClick(category)}
+                                        style={{
+                                            backgroundColor: boxColor,
+                                            '--category-text-colour': textColor,
+                                            '--category-border-colour': borderColor,
+                                            '--category-options-colour': optionsColor
+                                        }}
+                                    >
+                                        <button className="category-options-btn" onClick={(e) => handleOptionsIconClick(e, category)} title="Category Options" disabled={isProcessingCategoryAction && optionsPopupCategory?.id === category.id}>⋯</button>
+                                        <h3>{category.name}</h3>
                                         {dashboardViewType === 'expense' ? (
                                             <>
-                                                <div className="category-financials" style={{ color: textColor, borderTopColor: borderColor }}>
+                                                <div className="category-financials">
                                                     <p className="category-budget">Budget: <span>{formatCurrency(allocatedBudget)}</span></p>
                                                     <p className={`category-difference ${difference >= 0 ? 'positive' : 'negative'}`}>
                                                         {difference >= 0 ? 'Remaining:' : 'Overspent:'}
-                                                        <span style={{ color: difference >= 0 ? '#28a745' : '#dc3545' }}>{formatCurrency(Math.abs(difference))}</span>
+                                                        <span className="category-difference-value">{formatCurrency(Math.abs(difference))}</span>
                                                     </p>
                                                 </div>
-                                                <p className="category-spent-total" style={{ color: textColor }}>Spent: {formatCurrency(totalSpentOrReceived)}</p>
+                                                <p className="category-spent-total">Spent: {formatCurrency(totalSpentOrReceived)}</p>
                                             </>
                                         ) : (
                                             <>
-                                                <p className="category-spent-total income" style={{ color: textColor, marginTop: 'auto', paddingTop: '10px', borderTop: `1px dashed ${borderColor}` }}>
+                                                <p className="category-spent-total income income-total-row">
                                                     Received: {formatCurrency(totalSpentOrReceived)}
                                                 </p>
                                             </>
@@ -605,26 +657,76 @@ function DashboardPage() {
 
 
             {selectedCategoryForPopup && (
-                 <div className="popup-overlay" onClick={handleClosePopup}>
+                <div className="popup-overlay" onClick={handleClosePopup}>
                     <div className="popup-container" onClick={(e) => e.stopPropagation()}>
                         <div className="popup-content-main">
-                            <h2>Add Transaction for: {selectedCategoryForPopup.name}</h2>
-                            {submitTransactionError && <p style={{ color: 'red', marginTop: '-10px', marginBottom: '15px' }}>Error: {submitTransactionError}</p>}
-                            {submitTransactionSuccess && <p style={{ color: 'green', marginTop: '-10px', marginBottom: '15px' }}>{submitTransactionSuccess}</p>}
+                            <h2>Add Transaction: {selectedCategoryForPopup.name}</h2>
+                            {submitTransactionError && <p className="options-error">{submitTransactionError}</p>}
+                            {submitTransactionSuccess && <p className="options-success">{submitTransactionSuccess}</p>}
                             <form onSubmit={handleTransactionSubmit} className="popup-form">
-                                <div><label htmlFor="amount">Amount:</label><input type="text" inputMode="decimal" id="amount" className="input-amount" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAmountCalculation(e.target.value); }}} onBlur={(e) => handleAmountCalculation(e.target.value)} placeholder="0.00 or +5, -10 etc." required disabled={isSubmittingTransaction} autoFocus /></div>
-                                <div><label htmlFor="description">Description (Optional):</label><input type="text" id="description" className="input-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details..." disabled={isSubmittingTransaction} /></div>
-                                <div className="form-category-display"><label>Category:</label><span>{selectedCategoryForPopup.name}</span></div>
+                                <div className="popup-field">
+                                    <label htmlFor="amount">Amount:</label>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        id="amount"
+                                        className="input-amount"
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleAmountCalculation(e.target.value);
+                                            }
+                                        }}
+                                        onBlur={(e) => handleAmountCalculation(e.target.value)}
+                                        placeholder="0.00 or +5, -10 etc."
+                                        required
+                                        disabled={isSubmittingTransaction}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="popup-field">
+                                    <label htmlFor="description">Description (Optional):</label>
+                                    <input
+                                        type="text"
+                                        id="description"
+                                        className="input-description"
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        placeholder="Details..."
+                                        disabled={isSubmittingTransaction}
+                                    />
+                                </div>
+                                <div className="form-category-display">
+                                    <label>Category:</label>
+                                    <span>{selectedCategoryForPopup.name}</span>
+                                </div>
                                 <div className="form-group">
                                     <label htmlFor="goal-contribution-select">Contribute this Amount to Goal? (Optional)</label>
-                                    <select id="goal-contribution-select" value={goalIdToContribute} onChange={(e) => setGoalIdToContribute(e.target.value)} disabled={isSubmittingTransaction || loadingGoals || goals.length === 0} className="goal-contribution-select">
+                                    <select
+                                        id="goal-contribution-select"
+                                        value={goalIdToContribute}
+                                        onChange={(e) => setGoalIdToContribute(e.target.value)}
+                                        disabled={isSubmittingTransaction || loadingGoals || goals.length === 0}
+                                        className="goal-contribution-select"
+                                    >
                                         <option value="">-- No Goal Contribution --</option>
-                                        {goals.map(goal => ( <option key={goal.id} value={goal.id}> {goal.name} ({formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}) </option> ))}
+                                        {goals.map((goal) => (
+                                            <option key={goal.id} value={goal.id}>
+                                                {goal.name} ({formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)})
+                                            </option>
+                                        ))}
                                     </select>
-                                     {loadingGoals && <small> Loading goals...</small>}
-                                     {errorGoals && !loadingGoals && <small style={{color: 'red'}}> Error loading goals.</small>}
+                                    {loadingGoals && <small className="popup-goal-status">Loading goals...</small>}
+                                    {errorGoals && !loadingGoals && <small className="popup-goal-status popup-goal-status-error">Error loading goals.</small>}
                                 </div>
-                                <div className="popup-button-group"><button type="button" onClick={handleClosePopup} className="popup-cancel-btn" disabled={isSubmittingTransaction}>Cancel</button><button type="submit" className="popup-submit-btn" disabled={isSubmittingTransaction}>{isSubmittingTransaction ? 'Adding...' : 'Add Transaction'}</button></div>
+                                <div className="popup-button-group">
+                                    <button type="button" onClick={handleClosePopup} className="popup-cancel-btn" disabled={isSubmittingTransaction}>Cancel</button>
+                                    <button type="submit" className="popup-submit-btn" disabled={isSubmittingTransaction}>
+                                        {isSubmittingTransaction ? 'Adding...' : 'Add Transaction'}
+                                    </button>
+                                </div>
                             </form>
                         </div>
                         <div className="quick-add-panel">
@@ -657,15 +759,65 @@ function DashboardPage() {
                     <div className="options-popup-content" onClick={(e) => e.stopPropagation()}>
                         <h3>Options for: {optionsPopupCategory.name}</h3>
                         {categoryActionError && <p className="options-error">{categoryActionError}</p>}
-                        <div className="options-color-picker"> <label htmlFor="category-color">Colour:</label> <input type="color" id="category-color" value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)} disabled={isProcessingCategoryAction} /> <span>{selectedColor}</span> </div>
+                        <div className="options-color-picker">
+                            <label htmlFor="category-color">Colour:</label>
+                            <input
+                                type="color"
+                                id="category-color"
+                                value={selectedColor}
+                                onChange={(e) => setSelectedColor(e.target.value)}
+                                disabled={isProcessingCategoryAction}
+                            />
+                            <span>{selectedColor}</span>
+                        </div>
                         {isRenameMode ? (
                             <form onSubmit={handleUpdateCategorySubmit} className="rename-form">
-                                <label htmlFor="rename-category">New Name:</label> <input id="rename-category" type="text" value={renameCategoryName} onChange={(e) => { setRenameCategoryName(e.target.value); if (categoryActionError) setCategoryActionError(null); }} disabled={isProcessingCategoryAction} maxLength="100" autoFocus />
-                                <div className="options-button-group"> <button type="button" onClick={handleCancelRename} disabled={isProcessingCategoryAction}>Cancel Rename</button> <button type="submit" disabled={ isProcessingCategoryAction || (!renameCategoryName.trim() && selectedColor === (optionsPopupCategory.color || '#FFFFFF')) || (renameCategoryName.trim() === optionsPopupCategory.name && selectedColor === (optionsPopupCategory.color || '#FFFFFF')) }> {isProcessingCategoryAction ? 'Saving...' : 'Save Changes'} </button> </div>
+                                <label htmlFor="rename-category">New Name:</label>
+                                <input
+                                    id="rename-category"
+                                    type="text"
+                                    value={renameCategoryName}
+                                    onChange={(e) => {
+                                        setRenameCategoryName(e.target.value);
+                                        if (categoryActionError) {
+                                            setCategoryActionError(null);
+                                        }
+                                    }}
+                                    disabled={isProcessingCategoryAction}
+                                    maxLength="100"
+                                    autoFocus
+                                />
+                                <div className="options-button-group">
+                                    <button type="button" onClick={handleCancelRename} disabled={isProcessingCategoryAction}>Cancel Rename</button>
+                                    <button
+                                        type="submit"
+                                        disabled={
+                                            isProcessingCategoryAction
+                                            || (!renameCategoryName.trim() && selectedColor === (optionsPopupCategory.color || '#FFFFFF'))
+                                            || (renameCategoryName.trim() === optionsPopupCategory.name && selectedColor === (optionsPopupCategory.color || '#FFFFFF'))
+                                        }
+                                    >
+                                        {isProcessingCategoryAction ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                </div>
                             </form>
                         ) : (
                             <form onSubmit={handleUpdateCategorySubmit}>
-                                <div className="options-button-group"> <button type="button" className="delete-button" onClick={() => handleDeleteCategory(optionsPopupCategory.id, optionsPopupCategory.name)} disabled={isProcessingCategoryAction}> Delete </button> <button type="button" onClick={handleTriggerRename} disabled={isProcessingCategoryAction}>Rename</button> <button type="submit" disabled={isProcessingCategoryAction || selectedColor === (optionsPopupCategory.color || '#FFFFFF')}> {isProcessingCategoryAction ? 'Saving...' : 'Save Colour'} </button> <button type="button" onClick={handleCloseOptionsPopup} disabled={isProcessingCategoryAction}>Cancel</button> </div>
+                                <div className="options-button-group">
+                                    <button
+                                        type="button"
+                                        className="delete-button"
+                                        onClick={() => handleDeleteCategory(optionsPopupCategory.id, optionsPopupCategory.name)}
+                                        disabled={isProcessingCategoryAction}
+                                    >
+                                        Delete
+                                    </button>
+                                    <button type="button" onClick={handleTriggerRename} disabled={isProcessingCategoryAction}>Rename</button>
+                                    <button type="submit" disabled={isProcessingCategoryAction || selectedColor === (optionsPopupCategory.color || '#FFFFFF')}>
+                                        {isProcessingCategoryAction ? 'Saving...' : 'Save Colour'}
+                                    </button>
+                                    <button type="button" onClick={handleCloseOptionsPopup} disabled={isProcessingCategoryAction}>Cancel</button>
+                                </div>
                             </form>
                         )}
                     </div>
