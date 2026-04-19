@@ -223,17 +223,18 @@ function HistoryPage() {
 
   const isLoading = isCategoriesLoading || isTransactionsLoading;
   if (isLoading) {
-    return <div>Loading history data...</div>;
+    return <div className="page-status">Loading history data...</div>;
   }
 
   const displayError = categoriesError || transactionsError;
   if (displayError) {
-    return <div style={{ color: 'red', padding: '20px' }}>Error: {displayError}</div>;
+    return <div className="page-status page-status-error">Error: {displayError}</div>;
   }
 
   return (
     <div className="history-page-container">
       <h2>Transaction History</h2>
+      <p className="section-subtitle">Review income, expenses, and transaction-level detail across all categories.</p>
 
       {deleteError && <p className="options-error">{deleteError}</p>}
       {deleteSuccess && <p className="options-success">{deleteSuccess}</p>}
@@ -276,7 +277,7 @@ function HistoryPage() {
                 <li key={transaction.id}>
                   <span className="history-date">{transaction.transaction_date}</span>
                   <span className="history-category">({transaction.category_name || 'N/A'})</span>
-                  <span className="history-desc">{transaction.description || <i>(No description)</i>}</span>
+                  <span className="history-desc">{transaction.description || <span className="empty-description">No description</span>}</span>
                   <span className="history-amount income">{formatCurrency(transaction.amount)}</span>
                   <button onClick={() => deleteTransaction(transaction.id)} className="delete-button-history">Delete</button>
                 </li>
@@ -295,7 +296,7 @@ function HistoryPage() {
                 <li key={transaction.id}>
                   <span className="history-date">{transaction.transaction_date}</span>
                   <span className="history-category">({transaction.category_name || 'N/A'})</span>
-                  <span className="history-desc">{transaction.description || <i>(No description)</i>}</span>
+                  <span className="history-desc">{transaction.description || <span className="empty-description">No description</span>}</span>
                   <span className="history-amount expense">{formatCurrency(transaction.amount)}</span>
                   <button onClick={() => deleteTransaction(transaction.id)} className="delete-button-history">Delete</button>
                 </li>
@@ -311,7 +312,7 @@ function HistoryPage() {
               {groupedTransactions.uncategorised.map((transaction) => (
                 <li key={transaction.id}>
                   <span className="history-date">{transaction.transaction_date}</span>
-                  <span className="history-desc">{transaction.description || <i>(No description)</i>}</span>
+                  <span className="history-desc">{transaction.description || <span className="empty-description">No description</span>}</span>
                   <span className="history-amount">{formatCurrency(transaction.amount)}</span>
                   <button onClick={() => deleteTransaction(transaction.id)} className="delete-button-history">Delete</button>
                 </li>
