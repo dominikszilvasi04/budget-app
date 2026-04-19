@@ -22,12 +22,11 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/budgets', budgetRoutes);
 app.use('/api/goals', goalRoutes);
 
-// --- Simple Error Handling Middleware ---
 app.use((err, req, res, next) => {
-  console.error(err.stack); // Log error stack for debugging
+  console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong on the server!' });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

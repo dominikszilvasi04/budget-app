@@ -1,26 +1,20 @@
-// server/controllers/goalController.js
 const dbPool = require('../db');
 
-// GET all goals
 const getAllGoals = async (req, res) => {
-    // Later: Add filtering by user_id when auth is implemented
     try {
-        // Select relevant goal fields, order by creation date or name
-        const sql = `
+        const query = `
             SELECT
                 id, name, target_amount, current_amount, target_date, notes, created_at
             FROM goals
             ORDER BY created_at DESC;
         `;
-        const [goals] = await dbPool.query(sql);
+        const [goals] = await dbPool.query(query);
 
-        // Format numbers/dates if necessary before sending
-        const formattedGoals = goals.map(goal => ({
+        const formattedGoals = goals.map((goal) => ({
             ...goal,
             target_amount: parseFloat(goal.target_amount),
             current_amount: parseFloat(goal.current_amount),
-            // Format date to YYYY-MM-DD or keep as is depending on preference
-            target_date: goal.target_date ? new Date(goal.target_date).toISOString().split('T')[0] : null
+            target_date: goal.target_date ? new Date(goal.target_date).toISOString().split('T')[0] : null,
         }));
 
         res.json(formattedGoals);
@@ -30,147 +24,119 @@ const getAllGoals = async (req, res) => {
     }
 };
 
-// POST a new goal
 const addGoal = async (req, res) => {
     const { name, target_amount, target_date = null, notes = null } = req.body;
-    // Later: add user_id
 
-    // --- Validation ---
     if (!name || typeof name !== 'string' || name.trim().length === 0) { return res.status(400).json({ message: 'Goal name is required.' }); }
     if (name.length > 150) { return res.status(400).json({ message: 'Goal name max 150 chars.' }); }
+
     const parsedTargetAmount = parseFloat(target_amount);
     if (isNaN(parsedTargetAmount) || parsedTargetAmount <= 0) { return res.status(400).json({ message: 'Valid positive target amount is required.' }); }
-    // Optional: Validate target_date format if provided
+
     let validTargetDate = null;
     if (target_date) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(target_date)) {
              return res.status(400).json({ message: 'Invalid target date format. Use YYYY-MM-DD.' });
         }
-        validTargetDate = target_date; // Store validated date
+        validTargetDate = target_date;
     }
 
     const trimmedName = name.trim();
     const finalTargetAmount = parseFloat(parsedTargetAmount.toFixed(2));
 
     try {
-        const sql = `
+        const insertGoalQuery = `
             INSERT INTO goals (name, target_amount, current_amount, target_date, notes)
             VALUES (?, ?, ?, ?, ?);
         `;
-        // current_amount starts at 0
-        const [result] = await dbPool.query(sql, [trimmedName, finalTargetAmount, 0.00, validTargetDate, notes]);
+        const [insertResult] = await dbPool.query(insertGoalQuery, [trimmedName, finalTargetAmount, 0.00, validTargetDate, notes]);
 
-        const insertedId = result.insertId;
-        // Fetch the newly created goal
+        const insertedId = insertResult.insertId;
         const [newGoalRows] = await dbPool.query('SELECT id, name, target_amount, current_amount, target_date, notes, created_at FROM goals WHERE id = ?', [insertedId]);
         if (newGoalRows.length === 0) { throw new Error('Failed to retrieve newly added goal.'); }
 
-        // Format before sending back
          const formattedGoal = {
             ...newGoalRows[0],
             target_amount: parseFloat(newGoalRows[0].target_amount),
             current_amount: parseFloat(newGoalRows[0].current_amount),
-            target_date: newGoalRows[0].target_date ? new Date(newGoalRows[0].target_date).toISOString().split('T')[0] : null
+            target_date: newGoalRows[0].target_date ? new Date(newGoalRows[0].target_date).toISOString().split('T')[0] : null,
          };
 
         res.status(201).json({ message: 'Goal added successfully!', newGoal: formattedGoal });
 
     } catch (error) {
         console.error("Error adding goal:", error);
-        // Handle potential duplicate goal name if UNIQUE KEY is added later
-        // if (error.code === 'ER_DUP_ENTRY') { return res.status(409).json({ message: 'Goal name already exists.' }); }
         res.status(500).json({ message: 'Failed to add goal.' });
     }
 };
 
-// --- NEW Function: Add Contribution to a Goal ---
 const addContribution = async (req, res) => {
-    const { goalId } = req.params; // Get goal ID from URL parameter
-    const { amount, notes = null } = req.body; // Get amount and optional notes from body
+    const { goalId } = req.params;
+    const { amount, notes = null } = req.body;
 
-    // --- Validation ---
-    const contributionAmount = parseFloat(amount); // Use parseFloat for amount validation
+    const contributionAmount = parseFloat(amount);
     if (isNaN(contributionAmount) || contributionAmount <= 0) {
         return res.status(400).json({ message: 'Valid positive contribution amount is required.' });
     }
     if (isNaN(parseInt(goalId, 10))) {
          return res.status(400).json({ message: 'Invalid goal ID.' });
     }
-    const parsedGoalId = parseInt(goalId, 10);
-    const contributionDate = new Date().toISOString().split('T')[0]; // Use current date on server
 
-    let connection; // Declare connection outside try for use in finally
+    const parsedGoalId = parseInt(goalId, 10);
+    const contributionDate = new Date().toISOString().split('T')[0];
+
+    let connection;
+
     try {
-        // --- Start Database Transaction ---
         connection = await dbPool.getConnection();
         await connection.beginTransaction();
-        console.log("DB Transaction Started for contribution");
 
-        // 1. Insert the contribution record
-        const insertSql = `
+        const insertContributionQuery = `
             INSERT INTO goal_contributions (goal_id, amount, contribution_date, notes)
             VALUES (?, ?, ?, ?);
         `;
-        const [insertResult] = await connection.query(insertSql, [parsedGoalId, contributionAmount, contributionDate, notes]);
-        console.log("Contribution inserted, ID:", insertResult.insertId);
+        await connection.query(insertContributionQuery, [parsedGoalId, contributionAmount, contributionDate, notes]);
 
-        // 2. Update the goal's current_amount
-        const updateSql = `
+        const updateGoalQuery = `
             UPDATE goals
             SET current_amount = current_amount + ?
             WHERE id = ?;
         `;
-        const [updateResult] = await connection.query(updateSql, [contributionAmount, parsedGoalId]);
-        console.log("Goal current_amount updated, affected rows:", updateResult.affectedRows);
+        const [updateGoalResult] = await connection.query(updateGoalQuery, [contributionAmount, parsedGoalId]);
 
-        // Check if the goal update actually happened (goal might not exist)
-        if (updateResult.affectedRows === 0) {
-             // If goal wasn't found to update, rollback transaction and send error
+        if (updateGoalResult.affectedRows === 0) {
              await connection.rollback();
-             console.log("Goal not found during update, rolling back transaction.");
              return res.status(404).json({ message: `Goal with ID ${parsedGoalId} not found.` });
         }
 
-        // --- Commit Transaction ---
         await connection.commit();
-        console.log("DB Transaction Committed");
 
-        // Optionally fetch the updated goal data to return
         const [updatedGoalRows] = await connection.query('SELECT id, name, target_amount, current_amount, target_date, notes, created_at FROM goals WHERE id = ?', [parsedGoalId]);
 
-         // Format before sending back
          const formattedGoal = updatedGoalRows[0] ? {
             ...updatedGoalRows[0],
             target_amount: parseFloat(updatedGoalRows[0].target_amount),
             current_amount: parseFloat(updatedGoalRows[0].current_amount),
-            target_date: updatedGoalRows[0].target_date ? new Date(updatedGoalRows[0].target_date).toISOString().split('T')[0] : null
+            target_date: updatedGoalRows[0].target_date ? new Date(updatedGoalRows[0].target_date).toISOString().split('T')[0] : null,
          } : null;
 
-
-        res.status(201).json({ message: 'Contribution added successfully!', updatedGoal: formattedGoal }); // Send back updated goal
+        res.status(201).json({ message: 'Contribution added successfully!', updatedGoal: formattedGoal });
 
     } catch (error) {
         console.error("Error adding contribution:", error);
-        // If an error occurred, rollback the transaction
         if (connection) {
-            console.log("Error occurred, rolling back transaction.");
             await connection.rollback();
         }
-        // Handle specific errors like foreign key violation if needed, though update check handles missing goal
         res.status(500).json({ message: 'Failed to add contribution due to server error.' });
     } finally {
-        // Always release the connection back to the pool
         if (connection) {
-            console.log("Releasing DB connection.");
             connection.release();
         }
     }
-}
+};
 
-// --- NEW Function: Update Goal ---
 const updateGoal = async (req, res) => {
-    const { id } = req.params; // Goal ID from URL
-    // Get potential fields to update from body
+    const { id } = req.params;
     const { name, target_amount, target_date, notes } = req.body;
 
     if (isNaN(parseInt(id, 10))) { return res.status(400).json({ message: 'Invalid goal ID.' }); }
@@ -180,7 +146,6 @@ const updateGoal = async (req, res) => {
     const values = [];
     let setClause = '';
 
-    // --- Validation and Clause Building ---
     if (name !== undefined) {
         const trimmedName = name.trim();
         if (!trimmedName) return res.status(400).json({ message: 'Goal name cannot be empty if provided.' });
@@ -193,69 +158,57 @@ const updateGoal = async (req, res) => {
          const finalTargetAmount = parseFloat(parsedTargetAmount.toFixed(2));
          fieldsToUpdate.target_amount = finalTargetAmount; values.push(finalTargetAmount); setClause += (setClause ? ', ' : '') + 'target_amount = ?';
     }
-    // Handle target_date (allow null or valid date)
+
     let validTargetDate = undefined;
-    if (target_date !== undefined) { // Check if key exists (even if null)
+    if (target_date !== undefined) {
          if (target_date === null || target_date === '') {
-             validTargetDate = null; // Explicitly set to null
+             validTargetDate = null;
          } else if (/^\d{4}-\d{2}-\d{2}$/.test(target_date)) {
-             validTargetDate = target_date; // Valid date format
+             validTargetDate = target_date;
          } else {
               return res.status(400).json({ message: 'Invalid target date format. Use YYYY-MM-DD or leave empty.' });
          }
          fieldsToUpdate.target_date = validTargetDate; values.push(validTargetDate); setClause += (setClause ? ', ' : '') + 'target_date = ?';
     }
-    // Handle notes (allow null or string)
+
     if (notes !== undefined) {
-        fieldsToUpdate.notes = notes === null || notes.trim() === '' ? null : notes.trim(); // Allow null/empty to clear notes
+        fieldsToUpdate.notes = notes === null || notes.trim() === '' ? null : notes.trim();
         values.push(fieldsToUpdate.notes);
         setClause += (setClause ? ', ' : '') + 'notes = ?';
     }
-    // --- End Validation and Clause Building ---
-
 
     if (values.length === 0) { return res.status(400).json({ message: 'No update data provided.' }); }
-    values.push(goalId); // Add ID for WHERE clause
+    values.push(goalId);
 
     try {
-        // Check existence
         const [checkRows] = await dbPool.query('SELECT id FROM goals WHERE id = ?', [goalId]);
         if (checkRows.length === 0) { return res.status(404).json({ message: 'Goal not found.' }); }
 
-        // Perform update
         const updateSql = `UPDATE goals SET ${setClause} WHERE id = ?`;
         await dbPool.query(updateSql, values);
 
-        // Fetch updated goal
         const [updatedGoalRows] = await dbPool.query('SELECT id, name, target_amount, current_amount, target_date, notes, created_at FROM goals WHERE id = ?', [goalId]);
         if (updatedGoalRows.length === 0) { throw new Error('Failed to retrieve updated goal.'); }
 
-         // Format before sending back
          const formattedGoal = {
             ...updatedGoalRows[0],
             target_amount: parseFloat(updatedGoalRows[0].target_amount),
             current_amount: parseFloat(updatedGoalRows[0].current_amount),
-            target_date: updatedGoalRows[0].target_date ? new Date(updatedGoalRows[0].target_date).toISOString().split('T')[0] : null
+            target_date: updatedGoalRows[0].target_date ? new Date(updatedGoalRows[0].target_date).toISOString().split('T')[0] : null,
          };
 
         res.status(200).json({ message: 'Goal updated successfully!', updatedGoal: formattedGoal });
 
     } catch (error) {
         console.error('Error updating goal:', error);
-        // Handle potential duplicate name error if unique constraint exists
-        // if (error.code === 'ER_DUP_ENTRY' && fieldsToUpdate.name) { return res.status(409).json({ message: `Goal name already exists.` }); }
         res.status(500).json({ message: 'Failed to update goal.' });
     }
 };
 
-
-// --- NEW Function: Delete Goal ---
 const deleteGoal = async (req, res) => {
     const { id } = req.params;
     if (isNaN(parseInt(id, 10))) { return res.status(400).json({ message: 'Invalid goal ID.' }); }
     const goalId = parseInt(id, 10);
-
-    // ON DELETE CASCADE in DB schema handles deleting related contributions automatically
 
     try {
         const deleteSql = 'DELETE FROM goals WHERE id = ?';
@@ -273,6 +226,6 @@ module.exports = {
     getAllGoals,
     addGoal,
     addContribution,
-    updateGoal,     // Ensure it's listed here
-    deleteGoal      // Ensure it's listed here
+    updateGoal,
+    deleteGoal,
 };
