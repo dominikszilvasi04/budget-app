@@ -1,13 +1,11 @@
 // client/src/pages/DashboardPage.js
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-// --- Chart.js Imports ---
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from 'chart.js';
-// --- Register Chart.js components ---
+
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
-// --- Helper Functions ---
 const safeParseFloat = (value) => {
     if (typeof value === 'number') return value;
     if (typeof value !== 'string') return NaN;
@@ -26,22 +24,23 @@ const formatAmountForDisplay = (value) => {
 const formatCurrency = (num) => {
     const parsedNum = typeof num === 'number' ? num : safeParseFloat(num);
     if (isNaN(parsedNum)) { num = 0; } else { num = parsedNum; }
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'USD' }).format(num);
 };
 
 function getContrastYIQ(hexcolor, lightened = false){
     if (!hexcolor || typeof hexcolor !== 'string') return lightened ? '#e0e0e0' : '#000000';
     hexcolor = hexcolor.replace("#", "");
     if (hexcolor.length !== 6 || !/^[0-9A-F]{6}$/i.test(hexcolor)) { return lightened ? '#e0e0e0' : '#000000'; }
-	const r = parseInt(hexcolor.substr(0,2),16); const g = parseInt(hexcolor.substr(2,2),16); const b = parseInt(hexcolor.substr(4,2),16);
-	const yiq = ((r*299)+(g*587)+(b*114))/1000;
+    const r = parseInt(hexcolor.substr(0, 2), 16);
+    const g = parseInt(hexcolor.substr(2, 2), 16);
+    const b = parseInt(hexcolor.substr(4, 2), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
     const color = (yiq >= 128) ? '#000000' : '#FFFFFF';
     if (lightened) { return (yiq >= 128) ? '#dddddd' : '#555555'; }
-	return color;
+    return color;
 }
 
 
-// --- Chart Options for Expense Pie Chart ---
 const expenseChartOptions = {
     responsive: true, maintainAspectRatio: false,
     plugins: {
@@ -49,9 +48,14 @@ const expenseChartOptions = {
         title: { display: true, text: 'Expense Breakdown by Category (All Time)', font: { size: 16 } },
         tooltip: {
             callbacks: {
-                label: function(context) { // Use currency format
-                    let label = context.label || ''; if (label) { label += ': '; }
-                    if (context.raw !== null && context.raw !== undefined) { label += formatCurrency(context.raw); }
+                label: function(context) {
+                    let label = context.label || '';
+                    if (label) {
+                        label += ': ';
+                    }
+                    if (context.raw !== null && context.raw !== undefined) {
+                        label += formatCurrency(context.raw);
+                    }
                     return label;
                 }
             }
@@ -62,13 +66,17 @@ const incomeChartOptions = {
     responsive: true, maintainAspectRatio: false,
     plugins: {
         legend: { position: 'top', },
-        // Update title
         title: { display: true, text: 'Income Breakdown by Source (All Time)', font: { size: 16 } },
         tooltip: {
             callbacks: {
-                label: function(context) { // Use currency format
-                    let label = context.label || ''; if (label) { label += ': '; }
-                    if (context.raw !== null && context.raw !== undefined) { label += formatCurrency(context.raw); }
+                label: function(context) {
+                    let label = context.label || '';
+                    if (label) {
+                        label += ': ';
+                    }
+                    if (context.raw !== null && context.raw !== undefined) {
+                        label += formatCurrency(context.raw);
+                    }
                     return label;
                 }
             }
@@ -76,10 +84,7 @@ const incomeChartOptions = {
     },
 };
 
-
-// --- Component Definition ---
 function DashboardPage() {
-    // --- State Variables ---
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
     const [errorCategories, setErrorCategories] = useState(null);
@@ -89,26 +94,21 @@ function DashboardPage() {
     const [budgetData, setBudgetData] = useState([]);
     const [loadingBudgets, setLoadingBudgets] = useState(true);
     const [errorBudgets, setErrorBudgets] = useState(null);
-    // --- NEW: Goals state for dropdown ---
     const [goals, setGoals] = useState([]);
     const [loadingGoals, setLoadingGoals] = useState(true);
     const [errorGoals, setErrorGoals] = useState(null);
 
-    // Transaction Popup Form State
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
-    // --- NEW: State for selected goal in popup ---
-    const [goalIdToContribute, setGoalIdToContribute] = useState(''); // '' means none selected
+    const [goalIdToContribute, setGoalIdToContribute] = useState('');
     const [isSubmittingTransaction, setIsSubmittingTransaction] = useState(false);
     const [submitTransactionError, setSubmitTransactionError] = useState(null);
     const [submitTransactionSuccess, setSubmitTransactionSuccess] = useState(null);
     const [selectedCategoryForPopup, setSelectedCategoryForPopup] = useState(null);
-    // Add Category Form State
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [addCategoryError, setAddCategoryError] = useState(null);
     const [addCategorySuccess, setAddCategorySuccess] = useState(null);
-    // Category Options Popup State
     const [optionsPopupCategory, setOptionsPopupCategory] = useState(null);
     const [isRenameMode, setIsRenameMode] = useState(false);
     const [renameCategoryName, setRenameCategoryName] = useState('');
@@ -118,73 +118,100 @@ function DashboardPage() {
     const [transactionRefetchTrigger, setTransactionRefetchTrigger] = useState(0);
     const [dashboardViewType, setDashboardViewType] = useState('expense');
 
-    // --- Fetch Categories Effect ---
     useEffect(() => {
         const controller = new AbortController();
         const fetchCategories = async () => {
-            setLoadingCategories(true); setErrorCategories(null);
+            setLoadingCategories(true);
+            setErrorCategories(null);
             try {
                 const response = await axios.get('http://localhost:5001/api/categories', { signal: controller.signal });
                 setCategories(response.data.sort((a, b) => a.name.localeCompare(b.name)));
             } catch (err) {
-                if (!axios.isCancel(err)) { console.error("Error fetching categories:", err); setErrorCategories('Failed to load categories.');}
-            } finally { if (!controller.signal.aborted) setLoadingCategories(false); }
+                if (!axios.isCancel(err)) {
+                    console.error("Error fetching categories:", err);
+                    setErrorCategories('Failed to load categories.');
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setLoadingCategories(false);
+                }
+            }
         };
         fetchCategories();
         return () => controller.abort();
     }, []);
 
-    // --- Fetch Transactions Effect ---
     useEffect(() => {
         const controller = new AbortController();
         const fetchTransactions = async () => {
-            setLoadingTransactions(true); setErrorTransactions(null);
+            setLoadingTransactions(true);
+            setErrorTransactions(null);
             try {
                 const response = await axios.get('http://localhost:5001/api/transactions', { signal: controller.signal });
                 setTransactions(response.data);
             } catch (err) {
-                 if (axios.isCancel(err) || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') { console.log('Fetch transactions request cancelled:', err.message); }
-                 else { console.error("Error fetching transactions:", err); setErrorTransactions('Failed to load transactions.'); }
-            } finally { if (!controller.signal.aborted) setLoadingTransactions(false); }
+                if (axios.isCancel(err) || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+                    console.log('Fetch transactions request cancelled:', err.message);
+                } else {
+                    console.error("Error fetching transactions:", err);
+                    setErrorTransactions('Failed to load transactions.');
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setLoadingTransactions(false);
+                }
+            }
         };
         fetchTransactions();
         return () => { controller.abort(); };
     }, [transactionRefetchTrigger]);
 
-    // --- Fetch Budgets Effect ---
     useEffect(() => {
         const controller = new AbortController();
         const fetchBudgets = async () => {
-            setLoadingBudgets(true); setErrorBudgets(null);
+            setLoadingBudgets(true);
+            setErrorBudgets(null);
             try {
                 const response = await axios.get('http://localhost:5001/api/budgets/current', { signal: controller.signal });
                 setBudgetData(response.data);
             } catch (err) {
-                if (!axios.isCancel(err)) { console.error("Error fetching budget data:", err); setErrorBudgets('Failed to load budget data.'); }
-            } finally { if (!controller.signal.aborted) setLoadingBudgets(false); }
+                if (!axios.isCancel(err)) {
+                    console.error("Error fetching budget data:", err);
+                    setErrorBudgets('Failed to load budget data.');
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setLoadingBudgets(false);
+                }
+            }
         };
         fetchBudgets();
         return () => { controller.abort(); };
     }, [transactionRefetchTrigger]);
 
-    // --- NEW: Fetch Goals Effect ---
     useEffect(() => {
         const controller = new AbortController();
         const fetchGoalsData = async () => {
-            setLoadingGoals(true); setErrorGoals(null);
+            setLoadingGoals(true);
+            setErrorGoals(null);
             try {
                 const response = await axios.get('http://localhost:5001/api/goals', { signal: controller.signal });
                 setGoals(response.data);
             } catch (err) {
-                if (!axios.isCancel(err)) { console.error("Error fetching goals for dropdown:", err); setErrorGoals('Failed to load goals.'); }
-            } finally { if (!controller.signal.aborted) setLoadingGoals(false); }
+                if (!axios.isCancel(err)) {
+                    console.error("Error fetching goals for dropdown:", err);
+                    setErrorGoals('Failed to load goals.');
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setLoadingGoals(false);
+                }
+            }
         };
         fetchGoalsData();
         return () => controller.abort();
-    }, []); // Fetch goals once on mount
+    }, []);
 
-
-    // --- Calculate Category Totals ---
     const categoryTotals = useMemo(() => {
         if (loadingTransactions || !transactions) { return {}; }
         const totals = {};
@@ -197,7 +224,6 @@ function DashboardPage() {
         return totals;
     }, [transactions, loadingTransactions]);
 
-    // --- Budget Map ---
     const budgetMap = useMemo(() => {
         if (loadingBudgets || !budgetData) { return {}; }
         const map = {};
@@ -205,20 +231,18 @@ function DashboardPage() {
         return map;
     }, [budgetData, loadingBudgets]);
 
-    // --- ** Filtered Categories based on View Type ** ---
     const filteredCategories = useMemo(() => {
         return categories.filter(cat => cat.type === dashboardViewType);
-    }, [categories, dashboardViewType]); // Re-filter when categories or view type change
+    }, [categories, dashboardViewType]);
 
-    // --- Calculation for Expense Totals Map ---
     const expenseCategoryTotals = useMemo(() => {
         if (loadingCategories || loadingTransactions || !categories || !transactions) { return {}; }
         const categoryTypeMap = categories.reduce((acc, cat) => { acc[cat.id] = cat.type; return acc; }, {});
         const totals = {};
         transactions.forEach(transaction => {
-            const transactionAmount = safeParseFloat(transaction.amount); if (isNaN(transactionAmount)) return;
+            const transactionAmount = safeParseFloat(transaction.amount);
+            if (isNaN(transactionAmount)) return;
             const categoryId = transaction.category_id;
-            // Only include if category exists and is type 'expense'
             if (categoryId !== null && categoryTypeMap[categoryId] === 'expense') {
                 totals[categoryId] = (totals[categoryId] || 0) + transactionAmount;
             }
@@ -226,7 +250,6 @@ function DashboardPage() {
         return totals;
     }, [categories, transactions, loadingCategories, loadingTransactions]);
 
-    // --- MODIFIED: Prepare Data for Expense Pie Chart ---
     const expensePieChartData = useMemo(() => {
         if (loadingCategories || loadingTransactions || !categories) { return null; }
         const categoryDetailsMap = categories.reduce((acc, cat) => { if(cat.type === 'expense') { acc[cat.id] = { name: cat.name, color: cat.color || '#CCCCCC' }; } return acc; }, {});
@@ -247,51 +270,43 @@ function DashboardPage() {
                     label: 'Amount Spent',
                     data: dataValues,
                     backgroundColor: backgroundColors,
-                    // --- APPLY CHANGES HERE ---
-                    borderColor: 'black', // Use white borders for separation
-                    borderWidth: 1,       // Increase border width (adjust value as needed)
-                    // --- END CHANGES ---
+                    borderColor: 'black',
+                    borderWidth: 1,
                 },
             ],
         };
     }, [categories, expenseCategoryTotals, loadingCategories, loadingTransactions]);
 
-    // --- NEW: Calculate Income Totals Map ---
-    // Creates an object like { categoryId: totalIncomeAmount }
     const incomeCategoryTotals = useMemo(() => {
         if (loadingCategories || loadingTransactions || !categories || !transactions) { return {}; }
         const categoryTypeMap = categories.reduce((acc, cat) => { acc[cat.id] = cat.type; return acc; }, {});
         const totals = {};
         transactions.forEach(transaction => {
-            const transactionAmount = safeParseFloat(transaction.amount); if (isNaN(transactionAmount)) return;
+            const transactionAmount = safeParseFloat(transaction.amount);
+            if (isNaN(transactionAmount)) return;
             const categoryId = transaction.category_id;
-            // Check if category exists AND its type is 'income'
             if (categoryId !== null && categoryTypeMap[categoryId] === 'income') {
                 totals[categoryId] = (totals[categoryId] || 0) + transactionAmount;
             }
-            // NOTE: This assumes positive amounts are income for income categories.
         });
         return totals;
     }, [categories, transactions, loadingCategories, loadingTransactions]);
 
-    // --- NEW: Prepare Data for Income Pie Chart ---
     const incomePieChartData = useMemo(() => {
         if (loadingCategories || loadingTransactions || !categories) { return null; }
 
-        // Map for category details (name, color) - only need income types
         const categoryDetailsMap = categories.reduce((acc, cat) => {
-             if(cat.type === 'income') {
-                acc[cat.id] = { name: cat.name, color: cat.color || '#A9A9A9' }; // Different fallback gray?
-             }
+            if (cat.type === 'income') {
+                acc[cat.id] = { name: cat.name, color: cat.color || '#A9A9A9' };
+            }
             return acc;
         }, {});
 
-        // Get category IDs that have income > 0 AND are income types
         const incomeCategoryIds = Object.keys(incomeCategoryTotals).filter(id =>
-             incomeCategoryTotals[id] > 0 && categoryDetailsMap[id]
+            incomeCategoryTotals[id] > 0 && categoryDetailsMap[id]
         );
 
-        if (incomeCategoryIds.length === 0) { return null; } // No income data
+        if (incomeCategoryIds.length === 0) { return null; }
 
         const labels = []; const dataValues = []; const backgroundColors = [];
         incomeCategoryIds.forEach(id => {
@@ -308,19 +323,19 @@ function DashboardPage() {
                     label: 'Amount Received',
                     data: dataValues,
                     backgroundColor: backgroundColors,
-                     // --- APPLY SAME CHANGES HERE ---
-                    borderColor: 'black', // Use white borders for separation
-                    borderWidth: 1,       // Increase border width
-                    // --- END CHANGES ---
+                    borderColor: 'black',
+                    borderWidth: 1,
                 },
             ],
         };
     }, [categories, incomeCategoryTotals, loadingCategories, loadingTransactions]);
 
-    // --- Handlers ---
     const clearTransactionFormFields = () => {
-        setDescription(''); setAmount(''); setGoalIdToContribute(''); // Clear selected goal
-        setSubmitTransactionError(null); setSubmitTransactionSuccess(null);
+        setDescription('');
+        setAmount('');
+        setGoalIdToContribute('');
+        setSubmitTransactionError(null);
+        setSubmitTransactionSuccess(null);
     };
     const handleCategoryBoxClick = (category) => {
          if (optionsPopupCategory?.id === category.id) return;
@@ -331,10 +346,13 @@ function DashboardPage() {
     };
     const handleAmountCalculation = (inputValue) => {
         const currentNumericAmount = safeParseFloat(amount) || 0;
-        const trimmedInput = inputValue.trim(); let newNumericAmount = currentNumericAmount;
+        const trimmedInput = inputValue.trim();
+        let newNumericAmount = currentNumericAmount;
         if (trimmedInput === '') { newNumericAmount = 0; }
         else if (['+', '-', '*', '/'].includes(trimmedInput[0])) {
-            const operator = trimmedInput[0]; const valueStr = trimmedInput.substring(1); const operand = safeParseFloat(valueStr);
+            const operator = trimmedInput[0];
+            const valueStr = trimmedInput.substring(1);
+            const operand = safeParseFloat(valueStr);
             if (!isNaN(operand)) {
                 switch (operator) {
                     case '+': newNumericAmount = currentNumericAmount + operand; break;
@@ -348,9 +366,10 @@ function DashboardPage() {
         setAmount(formatAmountForDisplay(newNumericAmount));
     };
     const handleQuickAdd = (addValue) => {
-        const currentNumericAmount = safeParseFloat(amount) || 0; const newNumericAmount = currentNumericAmount + addValue; setAmount(formatAmountForDisplay(newNumericAmount));
+        const currentNumericAmount = safeParseFloat(amount) || 0;
+        const newNumericAmount = currentNumericAmount + addValue;
+        setAmount(formatAmountForDisplay(newNumericAmount));
     };
-    // --- Modified Transaction Form Submission Handler ---
     const handleTransactionSubmit = async (event) => {
         event.preventDefault();
         if (!selectedCategoryForPopup) { setSubmitTransactionError('No category selected.'); return; }
@@ -358,50 +377,40 @@ function DashboardPage() {
         if (isNaN(finalAmount)) { setSubmitTransactionError('Please enter a valid amount.'); setSubmitTransactionSuccess(null); return; }
 
         const currentDate = new Date().toISOString().split('T')[0];
-        // --- Include goalIdToContribute in payload if selected ---
         const transactionData = {
             description: description || null,
             amount: finalAmount,
             transaction_date: currentDate,
             category_id: selectedCategoryForPopup.id,
-            goalIdToContribute: goalIdToContribute || null // Send null if ''
+            goalIdToContribute: goalIdToContribute || null
         };
 
         setIsSubmittingTransaction(true); setSubmitTransactionError(null); setSubmitTransactionSuccess(null);
         try {
-            // Backend now handles both transaction and potential contribution
             const response = await axios.post('http://localhost:5001/api/transactions', transactionData);
             setSubmitTransactionSuccess(`Transaction added!`);
-             // If backend sent back updatedGoal data, we could potentially update a local goals state here too
-             if (response.data.updatedGoal) {
-                 console.log("Goal was updated:", response.data.updatedGoal);
-                 // If GoalsPage state was managed globally (e.g., Context, Redux), update it here.
-                 // For now, we rely on GoalsPage refetching itself.
-             }
-            setTransactionRefetchTrigger(prev => prev + 1); // Trigger refetch
+            if (response.data.updatedGoal) {
+                console.log("Goal was updated:", response.data.updatedGoal);
+            }
+            setTransactionRefetchTrigger(prev => prev + 1);
             setTimeout(() => { handleClosePopup(); }, 1500);
         } catch (err) { /* ... error handling ... */ }
         finally { setTimeout(() => setIsSubmittingTransaction(false), 500); }
     };
-    // --- ** Modified Category Add Handler ** ---
-    // --- Category Add Handler (with more logging) ---
-    // --- Modified Category Add Handler ---
+
     const handleAddCategorySubmit = async (event) => {
         event.preventDefault();
         const trimmedName = newCategoryName.trim();
         if (!trimmedName) { setAddCategoryError("Category name cannot be empty."); return; }
-        // --- Use dashboardViewType directly ---
         const categoryTypeToAdd = dashboardViewType;
 
         setIsAddingCategory(true);
         setAddCategoryError(null); setAddCategorySuccess(null);
         try {
-            // Pass the determined type to the API
             const response = await axios.post('http://localhost:5001/api/categories', {
                 name: trimmedName,
-                type: categoryTypeToAdd // Use state variable
+                type: categoryTypeToAdd
             });
-            // ... (rest of success handling: clear error, update state, clear input, show success msg) ...
              setAddCategoryError(null);
              setCategories(prevCategories => [...prevCategories, response.data.newCategory].sort((a, b) => a.name.localeCompare(b.name)));
              setNewCategoryName('');
@@ -418,8 +427,8 @@ function DashboardPage() {
         setOptionsPopupCategory(null); setIsRenameMode(false); setRenameCategoryName(''); setSelectedColor('#FFFFFF'); setCategoryActionError(null);
     };
     const handleTriggerRename = () => { setIsRenameMode(true); setCategoryActionError(null); };
-    const handleCancelRename = () => { setIsRenameMode(false); setRenameCategoryName(optionsPopupCategory ? optionsPopupCategory.name : ''); setCategoryActionError(null); /* Don't reset color on cancel rename */ };
-    // Combined Update Handler
+    const handleCancelRename = () => { setIsRenameMode(false); setRenameCategoryName(optionsPopupCategory ? optionsPopupCategory.name : ''); setCategoryActionError(null); };
+
     const handleUpdateCategorySubmit = async (event) => {
         event.preventDefault(); if (!optionsPopupCategory) return;
         const categoryId = optionsPopupCategory.id;
@@ -429,7 +438,7 @@ function DashboardPage() {
         const newColor = selectedColor;
         const isNameChanged = isRenameMode && newNameTrimmed && newNameTrimmed !== originalName;
         const isColorChanged = newColor !== originalColor;
-        if (!isNameChanged && !isColorChanged) { handleCloseOptionsPopup(); return; } // Nothing changed
+        if (!isNameChanged && !isColorChanged) { handleCloseOptionsPopup(); return; }
         if (isNameChanged && !newNameTrimmed) { setCategoryActionError("New name cannot be empty."); return; }
 
         setIsProcessingCategoryAction(true); setCategoryActionError(null);
@@ -448,57 +457,48 @@ function DashboardPage() {
         finally { setIsProcessingCategoryAction(false); }
     };
 
-    // --- Render Logic ---
-    // Combine ALL initial loading states needed for the main view
-    const isLoading = loadingCategories || loadingGoals; // Base page structure needs categories & goals for dropdown
+    const isLoading = loadingCategories || loadingGoals;
     if (isLoading) {
         return <div>Loading dashboard data...</div>;
     }
-    // Handle critical category error first
+
     if (errorCategories && categories.length === 0) {
         return <div style={{ color: 'red', padding: '20px' }}>Error loading categories: {errorCategories}. Cannot display dashboard.</div>;
     }
-    // Optionally display other non-critical errors (transactions, budgets, goals)
+
     const displayDataError = errorTransactions || errorBudgets || errorGoals;
 
-    // --- Main Return Statement ---
     return (
-        <> {/* React Fragment */}
+        <>
             <div className="main-layout-single-column">
                 <section className="categories-display-section-full">
-                    {/* Section Header with Title and Toggle */}
                     <div className="section-header-controls">
                         <h2>{dashboardViewType === 'expense' ? 'Expense Categories' : 'Income Sources'}</h2>
         
                     </div>
-                    {/* --- View Type Toggle (Moved Here and Centered via CSS) --- */}
-                    <div className="view-toggle-container"> {/* Container for centering */}
+                    <div className="view-toggle-container">
                         <div className="view-toggle">
                             <button
                                 className={`toggle-btn ${dashboardViewType === 'expense' ? 'active' : ''}`}
-                                onClick={() => setDashboardViewType('expense')} // Uses local setter
+                                onClick={() => setDashboardViewType('expense')}
                             >
                                 Expenses
                             </button>
                             <button
                                 className={`toggle-btn ${dashboardViewType === 'income' ? 'active' : ''}`}
-                                onClick={() => setDashboardViewType('income')} // Uses local setter
+                                onClick={() => setDashboardViewType('income')}
                             >
                                 Income
                             </button>
                         </div>
                     </div>
-                    {/* --- End View Type Toggle --- */}
 
-                    {/* Display Data Loading Errors */}
                     {displayDataError && !isLoading && <p style={{ color: 'orange', marginBottom: '15px' }}>Warning: Could not load all data ({displayDataError}). Totals/Budgets/Goals may be inaccurate.</p>}
 
-                    {/* Category Grid Display - Uses filteredCategories */}
                     {filteredCategories.length === 0 && !loadingCategories ? (
                          <p>No {dashboardViewType} categories defined yet. Add one below!</p>
                     ) : (
                         <div className="category-grid">
-                            {/* Map over FILTERED categories */}
                             {filteredCategories.map(category => {
                                 const allocatedBudget = budgetMap[category.id] ?? 0.00;
                                 const totalSpentOrReceived = categoryTotals[category.id] ?? 0.00;
@@ -512,7 +512,6 @@ function DashboardPage() {
                                     <div key={category.id} className="category-select-box" onClick={() => handleCategoryBoxClick(category)} style={{ backgroundColor: boxColor }}>
                                         <button className="category-options-btn" onClick={(e) => handleOptionsIconClick(e, category)} title="Category Options" style={{ color: optionsColor }} disabled={isProcessingCategoryAction && optionsPopupCategory?.id === category.id}>⚙️</button>
                                         <h3 style={{ color: textColor }}>{category.name}</h3>
-                                        {/* Conditional Financial Display */}
                                         {dashboardViewType === 'expense' ? (
                                             <>
                                                 <div className="category-financials" style={{ color: textColor, borderTopColor: borderColor }}>
@@ -524,7 +523,7 @@ function DashboardPage() {
                                                 </div>
                                                 <p className="category-spent-total" style={{ color: textColor }}>Spent: {formatCurrency(totalSpentOrReceived)}</p>
                                             </>
-                                        ) : ( // Income View
+                                        ) : (
                                             <>
                                                 <p className="category-spent-total income" style={{ color: textColor, marginTop: 'auto', paddingTop: '10px', borderTop: `1px dashed ${borderColor}` }}>
                                                     Received: {formatCurrency(totalSpentOrReceived)}
@@ -534,11 +533,10 @@ function DashboardPage() {
                                     </div> // End category-select-box
                                 );
                              })}
-                        </div> // End category-grid
+                        </div>
                     )}
 
 
-                    {/* Add Category Form (Type Select REMOVED) */}
                     <div className="add-category-container">
                          <h3>Add New {dashboardViewType === 'expense' ? 'Expense Category' : 'Income Source'}</h3>
                         <form onSubmit={handleAddCategorySubmit} className="add-category-form">
@@ -551,15 +549,8 @@ function DashboardPage() {
                                 maxLength="100"
                                 aria-describedby="category-add-status"
                             />
-                            {/* --- Type Selector REMOVED --- */}
-                            {/*
-                            <select value={newCategoryType} onChange={(e) => setNewCategoryType(e.target.value)} disabled={isAddingCategory} className="add-category-type-select">
-                                <option value="expense">Expense</option>
-                                <option value="income">Income</option>
-                            </select>
-                            */}
                             <button type="submit" disabled={isAddingCategory || !newCategoryName.trim()}>
-                                {isAddingCategory ? 'Adding...' : `Add ${dashboardViewType === 'expense' ? 'Category' : 'Source'}`} {/* Dynamic button text */}
+                                {isAddingCategory ? 'Adding...' : `Add ${dashboardViewType === 'expense' ? 'Category' : 'Source'}`}
                             </button>
                         </form>
                         <div id="category-add-status" className="category-add-status-container">
@@ -567,9 +558,7 @@ function DashboardPage() {
                             {addCategorySuccess && <span className="category-add-status success">{addCategorySuccess}</span>}
                         </div>
                     </div>
-                    {/* --- End Add Category Form --- */}
 
-                    {/* --- Expense Chart Section (Conditional) --- */}
                     {dashboardViewType === 'expense' && (
                         <div className="expense-chart-section">
                             <h3>Expense Breakdown</h3>
@@ -580,47 +569,37 @@ function DashboardPage() {
                             </div>
                         </div>
                     )}
-                    {/* --- End Expense Chart Section --- */}
 
-                    {/* --- NEW Income Chart Section (Conditional) --- */}
                     {dashboardViewType === 'income' && (
-                        <div className="income-chart-section"> {/* Use specific class */}
+                        <div className="income-chart-section">
                             <h3>Income Breakdown</h3>
-                            {/* Reuse chart container style or create new */}
                             <div className="income-chart-container">
                                 {loadingTransactions ? (
                                     <p>Loading transaction data...</p>
-                                ) : incomePieChartData ? ( // Use income chart data
-                                     <Pie data={incomePieChartData} options={incomeChartOptions} /> // Use income options
+                                ) : incomePieChartData ? (
+                                     <Pie data={incomePieChartData} options={incomeChartOptions} />
                                 ) : (
                                      <p>No income data recorded to display in chart.</p>
                                 )}
                             </div>
                         </div>
                     )}
-                    {/* --- End Income Chart Section --- */}
 
-                </section> {/* End categories-display-section-full */}
-            </div> {/* End main-layout-single-column */}
+                </section>
+            </div>
 
 
-            {/* --- Transaction Popup/Modal --- */}
             {selectedCategoryForPopup && (
                  <div className="popup-overlay" onClick={handleClosePopup}>
                     <div className="popup-container" onClick={(e) => e.stopPropagation()}>
-                        {/* Panel 1: Main Form Content */}
                         <div className="popup-content-main">
                             <h2>Add Transaction for: {selectedCategoryForPopup.name}</h2>
                             {submitTransactionError && <p style={{ color: 'red', marginTop: '-10px', marginBottom: '15px' }}>Error: {submitTransactionError}</p>}
                             {submitTransactionSuccess && <p style={{ color: 'green', marginTop: '-10px', marginBottom: '15px' }}>{submitTransactionSuccess}</p>}
                             <form onSubmit={handleTransactionSubmit} className="popup-form">
-                                {/* Amount Input */}
                                 <div><label htmlFor="amount">Amount:</label><input type="text" inputMode="decimal" id="amount" className="input-amount" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAmountCalculation(e.target.value); }}} onBlur={(e) => handleAmountCalculation(e.target.value)} placeholder="0.00 or +5, -10 etc." required disabled={isSubmittingTransaction} autoFocus /></div>
-                                {/* Description Input */}
                                 <div><label htmlFor="description">Description (Optional):</label><input type="text" id="description" className="input-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details..." disabled={isSubmittingTransaction} /></div>
-                                {/* Category Display */}
                                 <div className="form-category-display"><label>Category:</label><span>{selectedCategoryForPopup.name}</span></div>
-                                {/* Goal Contribution Dropdown */}
                                 <div className="form-group">
                                     <label htmlFor="goal-contribution-select">Contribute this Amount to Goal? (Optional)</label>
                                     <select id="goal-contribution-select" value={goalIdToContribute} onChange={(e) => setGoalIdToContribute(e.target.value)} disabled={isSubmittingTransaction || loadingGoals || goals.length === 0} className="goal-contribution-select">
@@ -630,11 +609,9 @@ function DashboardPage() {
                                      {loadingGoals && <small> Loading goals...</small>}
                                      {errorGoals && !loadingGoals && <small style={{color: 'red'}}> Error loading goals.</small>}
                                 </div>
-                                {/* Button Group */}
                                 <div className="popup-button-group"><button type="button" onClick={handleClosePopup} className="popup-cancel-btn" disabled={isSubmittingTransaction}>Cancel</button><button type="submit" className="popup-submit-btn" disabled={isSubmittingTransaction}>{isSubmittingTransaction ? 'Adding...' : 'Add Transaction'}</button></div>
                             </form>
                         </div>
-                        {/* Panel 2: Quick Add Buttons */}
                         <div className="quick-add-panel">
                             <h4>Quick Add</h4>
                             <div className="quick-add-buttons">
@@ -652,19 +629,20 @@ function DashboardPage() {
                                 <button type="button" onClick={() => setAmount(formatAmountForDisplay(50))} disabled={isSubmittingTransaction}>Set 50</button>
                                 <button type="button" onClick={() => setAmount(formatAmountForDisplay(100))} disabled={isSubmittingTransaction}>Set 100</button>
                             </div>
-                            <div className="quick-add-clear-container"> <button type="button" className="clear-button" onClick={() => setAmount('0.00')} disabled={isSubmittingTransaction}> Clear (0) </button> </div>
+                            <div className="quick-add-clear-container">
+                                <button type="button" className="clear-button" onClick={() => setAmount('0.00')} disabled={isSubmittingTransaction}>Clear (0)</button>
+                            </div>
                         </div>
                     </div>
                 </div>
              )}
 
-            {/* --- Category Options Popup/Modal --- */}
             {optionsPopupCategory && (
                 <div className="popup-overlay options-overlay" onClick={handleCloseOptionsPopup}>
                     <div className="options-popup-content" onClick={(e) => e.stopPropagation()}>
                         <h3>Options for: {optionsPopupCategory.name}</h3>
                         {categoryActionError && <p className="options-error">{categoryActionError}</p>}
-                        <div className="options-color-picker"> <label htmlFor="category-color">Color:</label> <input type="color" id="category-color" value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)} disabled={isProcessingCategoryAction} /> <span>{selectedColor}</span> </div>
+                        <div className="options-color-picker"> <label htmlFor="category-color">Colour:</label> <input type="color" id="category-color" value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)} disabled={isProcessingCategoryAction} /> <span>{selectedColor}</span> </div>
                         {isRenameMode ? (
                             <form onSubmit={handleUpdateCategorySubmit} className="rename-form">
                                 <label htmlFor="rename-category">New Name:</label> <input id="rename-category" type="text" value={renameCategoryName} onChange={(e) => { setRenameCategoryName(e.target.value); if (categoryActionError) setCategoryActionError(null); }} disabled={isProcessingCategoryAction} maxLength="100" autoFocus />
@@ -672,14 +650,14 @@ function DashboardPage() {
                             </form>
                         ) : (
                             <form onSubmit={handleUpdateCategorySubmit}>
-                                <div className="options-button-group"> <button type="button" className="delete-button" onClick={() => handleDeleteCategory(optionsPopupCategory.id, optionsPopupCategory.name)} disabled={isProcessingCategoryAction}> Delete </button> <button type="button" onClick={handleTriggerRename} disabled={isProcessingCategoryAction}>Rename</button> <button type="submit" disabled={isProcessingCategoryAction || selectedColor === (optionsPopupCategory.color || '#FFFFFF')}> {isProcessingCategoryAction ? 'Saving...' : 'Save Color'} </button> <button type="button" onClick={handleCloseOptionsPopup} disabled={isProcessingCategoryAction}>Cancel</button> </div>
+                                <div className="options-button-group"> <button type="button" className="delete-button" onClick={() => handleDeleteCategory(optionsPopupCategory.id, optionsPopupCategory.name)} disabled={isProcessingCategoryAction}> Delete </button> <button type="button" onClick={handleTriggerRename} disabled={isProcessingCategoryAction}>Rename</button> <button type="submit" disabled={isProcessingCategoryAction || selectedColor === (optionsPopupCategory.color || '#FFFFFF')}> {isProcessingCategoryAction ? 'Saving...' : 'Save Colour'} </button> <button type="button" onClick={handleCloseOptionsPopup} disabled={isProcessingCategoryAction}>Cancel</button> </div>
                             </form>
                         )}
                     </div>
                 </div>
             )}
-        </> // End React Fragment
+        </>
     );
-} // End of DashboardPage component
+}
 
 export default DashboardPage;
