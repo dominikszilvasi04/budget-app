@@ -26,3 +26,5 @@ Thumbs.db
 
 # Log files
 *.log
+# Local Copilot instruction files
+.github/
