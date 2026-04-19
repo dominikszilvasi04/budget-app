@@ -293,12 +293,13 @@ function GoalsPage() {
         }
     };
 
-    if (loading) { return <div>Loading goals...</div>; }
-    if (error) { return <div style={{ color: 'red', padding: '20px' }}>Error: {error}</div>; }
+    if (loading) { return <div className="page-status">Loading goals...</div>; }
+    if (error) { return <div className="page-status page-status-error">Error: {error}</div>; }
 
     return (
         <div className="goals-page-container">
             <h2>Savings Goals</h2>
+            <p className="section-subtitle">Track progress clearly and contribute to each goal from one place.</p>
 
             <div className="add-goal-form-container">
                 <h3>Add New Goal</h3>
@@ -358,7 +359,7 @@ function GoalsPage() {
                         <button type="submit" disabled={isAddingGoal || !goalName.trim() || !goalTargetAmount}>
                             {isAddingGoal ? 'Adding...' : 'Add Goal'}
                         </button>
-                        <div className="goal-add-status-container" style={{marginLeft: '15px'}}>
+                            <div className="goal-add-status-container">
                              {addGoalError && <span className="goal-add-status error">{addGoalError}</span>}
                              {addGoalSuccess && <span className="goal-add-status success">{addGoalSuccess}</span>}
                         </div>
