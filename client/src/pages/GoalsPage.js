@@ -384,7 +384,7 @@ function GoalsPage() {
                                         title="Goal Options"
                                         disabled={isProcessingGoalAction && optionsPopupGoal?.id === goal.id}
                                     >
-                                        ⚙️
+                                        ⋯
                                     </button>
 
                                     <h4>{goal.name}</h4>
