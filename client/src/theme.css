@@ -485,6 +485,13 @@ button:disabled {
   margin-bottom: 16px;
 }
 
+.insight-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
 .csv-import-label {
   display: inline-flex;
   align-items: center;

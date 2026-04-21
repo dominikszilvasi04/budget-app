@@ -6,6 +6,8 @@ import DashboardPage from './pages/DashboardPage';
 import HistoryPage from './pages/HistoryPage';
 import BudgetPage from './pages/BudgetPage';
 import GoalsPage from './pages/GoalsPage';
+import InsightsPage from './pages/InsightsPage';
+import RecurringPage from './pages/RecurringPage';
 
 function App() {
   return (
@@ -38,6 +40,18 @@ function App() {
             >
               Goals
             </NavLink>
+            <NavLink
+              to="/insights"
+              className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+            >
+              Insights
+            </NavLink>
+            <NavLink
+              to="/recurring"
+              className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+            >
+              Recurring
+            </NavLink>
           </nav>
         </header>
 
@@ -47,6 +61,8 @@ function App() {
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/budget" element={<BudgetPage />} />
             <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/insights" element={<InsightsPage />} />
+            <Route path="/recurring" element={<RecurringPage />} />
           </Routes>
         </main>
 
