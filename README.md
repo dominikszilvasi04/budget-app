@@ -9,9 +9,13 @@ This application features a React frontend that communicates with a robust Node.
 * **Dashboard Overview**: A central hub to view income vs. expense categories, see budget progress, and quickly add new transactions.
 * **Dynamic Categories**: Create, update, and delete custom categories for both income and expenses, each with a unique colour for easy identification.
 * **Transaction Management**: Log all transactions with details like description, amount, and date. View a comprehensive transaction history, sortable by type.
+* **Advanced History Controls**: Filter by type/category/date/amount/search, edit existing transactions, and import or export transactions as CSV.
 * **Monthly Budgeting**: Allocate a specific budget for each expense category for the current month and track your spending against it.
+* **Budget Period Planning**: Switch month views and roll over the previous month budget into a new period.
 * **Savings Goals**: Create detailed savings goals with target amounts and dates. Make contributions directly or link them to income transactions.
+* **Recurring Transactions**: Configure weekly or monthly recurring transaction rules and process due entries on demand.
 * **Data Visualisation**: Interactive charts on the dashboard and history pages provide a clear visual breakdown of financial habits.
+* **Insights Dashboard**: Review monthly net trend and top categories over configurable time windows.
 
 ## Screenshots
 https://imgur.com/a/I5FyabG
