@@ -85,7 +85,7 @@ function BudgetPage() {
                 signal: abortController?.signal,
                 params: { year: selectedYear, month: selectedMonthNumber },
             });
-            const budgetItems = response.data?.items || [];
+                const budgetItems = response.data?.items ?? response.data ?? [];
             const initialisedBudgets = budgetItems.map((budget) => ({
                 ...budget,
                 budget_amount: budget.budget_amount ?? 0,

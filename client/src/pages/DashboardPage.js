@@ -210,7 +210,7 @@ function DashboardPage() {
             setErrorBudgets(null);
             try {
                 const response = await axios.get('http://localhost:5001/api/budgets/current', { signal: controller.signal });
-                setBudgetData(response.data);
+                setBudgetData(response.data?.items ?? response.data ?? []);
             } catch (err) {
                 if (!axios.isCancel(err)) {
                     console.error("Error fetching budget data:", err);
@@ -264,7 +264,7 @@ function DashboardPage() {
     const budgetMap = useMemo(() => {
         if (loadingBudgets || !budgetData) { return {}; }
         const map = {};
-        budgetData.forEach(item => { map[item.id] = item.budget_amount ?? 0.00; });
+        (Array.isArray(budgetData) ? budgetData : []).forEach(item => { map[item.id] = item.budget_amount ?? 0.00; });
         return map;
     }, [budgetData, loadingBudgets]);
 
