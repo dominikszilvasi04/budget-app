@@ -918,6 +918,14 @@ textarea:focus-visible,
   border-color: rgba(255, 255, 255, 0.16);
 }
 
+.goals-list-container {
+  padding: 18px;
+}
+
+.goals-list-container h3 {
+  margin: 0 0 14px;
+}
+
 .goal-item-card:hover,
 .history-type-section:hover,
 .budget-item:hover {
