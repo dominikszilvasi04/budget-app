@@ -470,6 +470,50 @@ button:disabled {
   margin-bottom: 24px;
 }
 
+.history-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.history-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.insight-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.csv-import-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  min-height: 44px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--colour-primary), var(--colour-primary-strong));
+  color: var(--colour-text);
+}
+
+.csv-import-label input {
+  display: none;
+}
+
+.history-inline-status {
+  font-size: 14px;
+  color: var(--colour-text-soft);
+}
+
 .history-summary-text,
 .history-details-section {
   background: rgba(255, 255, 255, 0.02);
@@ -496,6 +540,19 @@ button:disabled {
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.history-action-buttons {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.history-edit-btn {
+  background: rgba(12, 92, 171, 0.3);
+  border: 1px solid rgba(12, 92, 171, 0.65);
+  color: #dbeafe;
+  min-height: 36px;
+  padding: 8px 10px;
 }
 
 .history-type-section li:last-child {

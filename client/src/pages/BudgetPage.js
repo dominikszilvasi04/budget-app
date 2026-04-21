@@ -57,6 +57,9 @@ const chartOptions = {
 };
 
 function BudgetPage() {
+    const now = new Date();
+    const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
     const [budgets, setBudgets] = useState([]);
     const [isBudgetsLoading, setIsBudgetsLoading] = useState(true);
     const [budgetsError, setBudgetsError] = useState(null);
@@ -66,14 +69,24 @@ function BudgetPage() {
     const [categoriesError, setCategoriesError] = useState(null);
 
     const [saveStatusByCategoryIdentifier, setSaveStatusByCategoryIdentifier] = useState({});
+    const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+    const [rolloverStatus, setRolloverStatus] = useState(null);
 
     const fetchBudgets = useCallback(async (abortController) => {
         setIsBudgetsLoading(true);
         setBudgetsError(null);
 
+        const [yearText, monthText] = selectedMonth.split('-');
+        const selectedYear = Number(yearText);
+        const selectedMonthNumber = Number(monthText);
+
         try {
-            const response = await axios.get('http://localhost:5001/api/budgets/current', { signal: abortController?.signal });
-            const initialisedBudgets = response.data.map((budget) => ({
+            const response = await axios.get('http://localhost:5001/api/budgets/current', {
+                signal: abortController?.signal,
+                params: { year: selectedYear, month: selectedMonthNumber },
+            });
+            const budgetItems = response.data?.items || [];
+            const initialisedBudgets = budgetItems.map((budget) => ({
                 ...budget,
                 budget_amount: budget.budget_amount ?? 0,
             }));
@@ -88,13 +101,43 @@ function BudgetPage() {
                 setIsBudgetsLoading(false);
             }
         }
-    }, []);
+    }, [selectedMonth]);
 
     useEffect(() => {
         const abortController = new AbortController();
         fetchBudgets(abortController);
         return () => abortController.abort();
     }, [fetchBudgets]);
+
+    const shiftSelectedMonth = (monthDelta) => {
+        const [yearText, monthText] = selectedMonth.split('-');
+        const updatedDate = new Date(Number(yearText), Number(monthText) - 1 + monthDelta, 1);
+        const updatedMonth = `${updatedDate.getFullYear()}-${String(updatedDate.getMonth() + 1).padStart(2, '0')}`;
+        setSelectedMonth(updatedMonth);
+        setRolloverStatus(null);
+    };
+
+    const rolloverFromPreviousMonth = async () => {
+        const [yearText, monthText] = selectedMonth.split('-');
+        const targetDate = new Date(Number(yearText), Number(monthText) - 1, 1);
+        const previousDate = new Date(targetDate.getFullYear(), targetDate.getMonth() - 1, 1);
+
+        try {
+            const response = await axios.post('http://localhost:5001/api/budgets/rollover', {
+                fromYear: previousDate.getFullYear(),
+                fromMonth: previousDate.getMonth() + 1,
+                toYear: targetDate.getFullYear(),
+                toMonth: targetDate.getMonth() + 1,
+            });
+            setRolloverStatus(`${response.data.copiedRowCount} budget row(s) copied from previous month.`);
+            const controller = new AbortController();
+            await fetchBudgets(controller);
+            controller.abort();
+        } catch (error) {
+            console.error('Error rolling over budgets:', error);
+            setRolloverStatus(error.response?.data?.message || 'Budget rollover failed.');
+        }
+    };
 
     useEffect(() => {
         const abortController = new AbortController();
@@ -242,6 +285,8 @@ function BudgetPage() {
             const response = await axios.put('http://localhost:5001/api/budgets/set', {
                 categoryId: categoryIdentifier,
                 amount: parsedAmount,
+                year: Number(selectedMonth.split('-')[0]),
+                month: Number(selectedMonth.split('-')[1]),
             });
 
             setBudgets((currentBudgets) => currentBudgets.map((budget) => (
@@ -298,6 +343,14 @@ function BudgetPage() {
         <div className="budget-page-container">
             <h2>Monthly Budget Allocation (Expenses)</h2>
             <p className="section-subtitle">Enter a monthly budget for each expense category. Changes are saved automatically.</p>
+
+            <div className="history-action-row">
+                <button type="button" onClick={() => shiftSelectedMonth(-1)}>Previous</button>
+                <input type="month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} />
+                <button type="button" onClick={() => shiftSelectedMonth(1)}>Next</button>
+                <button type="button" onClick={rolloverFromPreviousMonth}>Rollover Previous Month</button>
+            </div>
+            {rolloverStatus && <p className="history-inline-status">{rolloverStatus}</p>}
 
             {displayError && !isLoading && (
                 <p className="dashboard-warning-banner">Warning: {displayError}. Data may be incomplete.</p>
