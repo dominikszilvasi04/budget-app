@@ -64,6 +64,7 @@ function ForecastPage() {
   const [forecastData, setForecastData] = useState(null);
   const [plannedRows, setPlannedRows] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [availableScenarios, setAvailableScenarios] = useState(['base']);
 
   const [formState, setFormState] = useState(() => createDefaultPlannedState('base'));
   const [editingPlannedTransactionId, setEditingPlannedTransactionId] = useState(null);
@@ -77,7 +78,7 @@ function ForecastPage() {
     setErrorMessage(null);
 
     try {
-      const [forecastResponse, plannedResponse, categoriesResponse] = await Promise.all([
+      const [forecastResponse, plannedResponse, categoriesResponse, scenariosResponse] = await Promise.all([
         axios.get('http://localhost:5001/api/transactions/forecast', {
           params: {
             monthsAhead,
@@ -92,11 +93,14 @@ function ForecastPage() {
           },
         }),
         axios.get('http://localhost:5001/api/categories'),
+        axios.get('http://localhost:5001/api/transactions/planned/scenarios'),
       ]);
 
       setForecastData(forecastResponse.data);
       setPlannedRows(plannedResponse.data || []);
       setCategories(categoriesResponse.data || []);
+      const scenarios = scenariosResponse.data?.scenarios || ['base'];
+      setAvailableScenarios(Array.from(new Set(['base', ...scenarios])));
     } catch (error) {
       console.error('Error loading forecast data:', error);
       setErrorMessage('Failed to load forecast data.');
@@ -235,6 +239,26 @@ function ForecastPage() {
           borderColor: '#60a5fa',
           backgroundColor: 'rgba(96, 165, 250, 0.20)',
           tension: 0.2,
+          fill: false,
+        },
+        {
+          label: 'Net (Lower range)',
+          data: forecastData.months.map((month) => month.projected_net_low),
+          borderColor: 'rgba(96, 165, 250, 0.45)',
+          borderDash: [6, 5],
+          pointRadius: 0,
+          tension: 0.2,
+          fill: false,
+        },
+        {
+          label: 'Net (Upper range)',
+          data: forecastData.months.map((month) => month.projected_net_high),
+          borderColor: 'rgba(96, 165, 250, 0.45)',
+          borderDash: [6, 5],
+          pointRadius: 0,
+          tension: 0.2,
+          fill: '-1',
+          backgroundColor: 'rgba(96, 165, 250, 0.10)',
         },
       ],
     };
@@ -284,11 +308,17 @@ function ForecastPage() {
           id="forecast-scenario"
           type="text"
           value={scenario}
+          list="forecast-scenario-list"
           onChange={(event) => {
             setScenarioPreset('custom');
             setScenario(event.target.value || 'base');
           }}
         />
+        <datalist id="forecast-scenario-list">
+          {availableScenarios.map((scenarioOption) => (
+            <option key={scenarioOption} value={scenarioOption} />
+          ))}
+        </datalist>
 
         <label htmlFor="forecast-include-planned">Use planned</label>
         <input
@@ -310,6 +340,7 @@ function ForecastPage() {
         <p><span>Baseline expense</span><strong>{formatCurrency(assumptions.average_expense_base || 0)}</strong></p>
         <p><span>Adjusted income</span><strong>{formatCurrency(assumptions.average_income_adjusted || 0)}</strong></p>
         <p><span>Adjusted expense</span><strong>{formatCurrency(assumptions.average_expense_adjusted || 0)}</strong></p>
+        <p><span>Monthly net volatility</span><strong>{formatCurrency(assumptions.monthly_net_volatility || 0)}</strong></p>
         <p><span>Active recurring rules</span><strong>{assumptions.active_recurring_rule_count || 0}</strong></p>
         <p><span>Active planned rules</span><strong>{assumptions.active_planned_rule_count || 0}</strong></p>
       </div>
@@ -331,6 +362,16 @@ function ForecastPage() {
             </span>
           </p>
         </div>
+        <div className="history-summary-text">
+          <h4>Net range</h4>
+          <p>
+            <span>
+              {formatCurrency(forecastData?.summary?.projected_net_low_total || 0)}
+              {' to '}
+              {formatCurrency(forecastData?.summary?.projected_net_high_total || 0)}
+            </span>
+          </p>
+        </div>
       </div>
 
       <div className="history-chart-container forecast-chart-container">
@@ -345,6 +386,36 @@ function ForecastPage() {
           />
         ) : (
           <div className="chart-placeholder">No forecast data available.</div>
+        )}
+      </div>
+
+      <div className="history-type-section forecast-breakdown-table">
+        <h3>Monthly Breakdown</h3>
+        {!forecastData?.months?.length ? (
+          <p className="empty-state-message">No monthly projection data available.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Period</th>
+                <th scope="col">Income</th>
+                <th scope="col">Expenses</th>
+                <th scope="col">Net</th>
+                <th scope="col">Net range</th>
+              </tr>
+            </thead>
+            <tbody>
+              {forecastData.months.map((month) => (
+                <tr key={month.period}>
+                  <td>{month.period}</td>
+                  <td>{formatCurrency(month.projected_income)}</td>
+                  <td>{formatCurrency(month.projected_expense)}</td>
+                  <td className={month.projected_net >= 0 ? 'income-text' : 'expense-text'}>{formatCurrency(month.projected_net)}</td>
+                  <td>{`${formatCurrency(month.projected_net_low)} to ${formatCurrency(month.projected_net_high)}`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 

@@ -388,6 +388,16 @@ const getScenarioProfile = (scenarioValue) => {
     };
 };
 
+const getStandardDeviation = (values) => {
+    if (!Array.isArray(values) || values.length === 0) {
+        return 0;
+    }
+
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const squaredDistanceMean = values.reduce((sum, value) => sum + ((value - mean) ** 2), 0) / values.length;
+    return Math.sqrt(squaredDistanceMean);
+};
+
 const addDays = (dateValue, dayCount) => {
     const updatedDate = new Date(dateValue);
     updatedDate.setDate(updatedDate.getDate() + dayCount);
@@ -1084,6 +1094,29 @@ const getPlannedTransactions = async (req, res) => {
     }
 };
 
+const getPlannedScenarios = async (req, res) => {
+    try {
+        await ensurePlannedTransactionsTable();
+        const [rows] = await dbPool.query(
+            `
+            SELECT DISTINCT scenario
+            FROM planned_transactions
+            ORDER BY CASE WHEN scenario = 'base' THEN 0 ELSE 1 END, scenario ASC;
+            `
+        );
+
+        const scenarios = ['base', ...rows
+            .map((row) => String(row.scenario || '').trim())
+            .filter((value) => value && value !== 'base')
+        ];
+
+        res.status(200).json({ scenarios });
+    } catch (error) {
+        console.error('Error fetching planned scenarios:', error);
+        res.status(500).json({ message: 'Failed to fetch planned scenarios.' });
+    }
+};
+
 const createPlannedTransaction = async (req, res) => {
     const validationResult = validatePlannedTransactionPayload(req.body);
     if (!validationResult.isValid) {
@@ -1240,26 +1273,30 @@ const getForecast = async (req, res) => {
                 {
                     income: Number(row.income_total || 0),
                     expense: Number(row.expense_total || 0),
+                    net: Number(row.income_total || 0) - Number(row.expense_total || 0),
                 }
             ]))
         );
 
         let historicalIncomeTotal = 0;
         let historicalExpenseTotal = 0;
+        const historicalNetValues = [];
         for (let index = 0; index < historyMonths; index += 1) {
             const periodDate = new Date();
             periodDate.setDate(1);
             periodDate.setMonth(periodDate.getMonth() - (historyMonths - 1 - index));
             const period = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
-            const row = historicalMap.get(period) || { income: 0, expense: 0 };
+            const row = historicalMap.get(period) || { income: 0, expense: 0, net: 0 };
             historicalIncomeTotal += row.income;
             historicalExpenseTotal += row.expense;
+            historicalNetValues.push(row.net);
         }
 
         const averageIncome = historicalIncomeTotal / historyMonths;
         const averageExpense = historicalExpenseTotal / historyMonths;
         const adjustedAverageIncome = averageIncome * scenarioProfile.incomeMultiplier;
         const adjustedAverageExpense = averageExpense * scenarioProfile.expenseMultiplier;
+        const monthlyNetVolatility = getStandardDeviation(historicalNetValues);
 
         const impactByPeriod = new Map();
         let plannedRuleCount = 0;
@@ -1322,6 +1359,8 @@ const getForecast = async (req, res) => {
                 projected_income: projectedIncome,
                 projected_expense: projectedExpense,
                 projected_net: Number((projectedIncome - projectedExpense).toFixed(2)),
+                projected_net_low: Number((projectedIncome - projectedExpense - monthlyNetVolatility).toFixed(2)),
+                projected_net_high: Number((projectedIncome - projectedExpense + monthlyNetVolatility).toFixed(2)),
             };
         });
 
@@ -1348,11 +1387,14 @@ const getForecast = async (req, res) => {
                 average_expense_adjusted: Number(adjustedAverageExpense.toFixed(2)),
                 active_recurring_rule_count: recurringRuleCount,
                 active_planned_rule_count: plannedRuleCount,
+                monthly_net_volatility: Number(monthlyNetVolatility.toFixed(2)),
             },
             summary: {
                 projected_income_total: Number(projectedIncomeTotal.toFixed(2)),
                 projected_expense_total: Number(projectedExpenseTotal.toFixed(2)),
                 projected_net_total: Number((projectedIncomeTotal - projectedExpenseTotal).toFixed(2)),
+                projected_net_low_total: Number((projectedIncomeTotal - projectedExpenseTotal - (monthlyNetVolatility * monthsAhead)).toFixed(2)),
+                projected_net_high_total: Number((projectedIncomeTotal - projectedExpenseTotal + (monthlyNetVolatility * monthsAhead)).toFixed(2)),
             },
             months,
         });
@@ -1428,6 +1470,7 @@ module.exports = {
     deleteRecurringTransaction,
     processRecurringTransactions,
     getPlannedTransactions,
+    getPlannedScenarios,
     createPlannedTransaction,
     updatePlannedTransaction,
     deletePlannedTransaction,

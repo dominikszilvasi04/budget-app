@@ -693,6 +693,30 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.forecast-breakdown-table {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.forecast-breakdown-table table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 620px;
+}
+
+.forecast-breakdown-table th,
+.forecast-breakdown-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 14px;
+}
+
+.forecast-breakdown-table th {
+  color: var(--colour-text-soft);
+  font-weight: 600;
+}
+
 .goal-card-actions {
   margin-top: 12px;
 }
