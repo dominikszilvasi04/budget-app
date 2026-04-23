@@ -62,14 +62,19 @@ function ForecastPage() {
   const [includePlanned, setIncludePlanned] = useState(true);
 
   const [forecastData, setForecastData] = useState(null);
+  const [compareForecastData, setCompareForecastData] = useState(null);
   const [plannedRows, setPlannedRows] = useState([]);
   const [categories, setCategories] = useState([]);
   const [availableScenarios, setAvailableScenarios] = useState(['base']);
+  const [compareScenario, setCompareScenario] = useState('');
+  const [cloneTargetScenario, setCloneTargetScenario] = useState('');
+  const [overwriteScenarioOnClone, setOverwriteScenarioOnClone] = useState(false);
 
   const [formState, setFormState] = useState(() => createDefaultPlannedState('base'));
   const [editingPlannedTransactionId, setEditingPlannedTransactionId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isScenarioActionLoading, setIsScenarioActionLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
 
@@ -114,6 +119,43 @@ function ForecastPage() {
   }, [fetchData]);
 
   useEffect(() => {
+    if (!compareScenario || compareScenario === scenario) {
+      setCompareForecastData(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchCompareScenario = async () => {
+      try {
+        const response = await axios.get('http://localhost:5001/api/transactions/forecast', {
+          params: {
+            monthsAhead,
+            historyMonths,
+            scenario: compareScenario,
+            includePlanned,
+          },
+        });
+
+        if (!isCancelled) {
+          setCompareForecastData(response.data);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setCompareForecastData(null);
+          setErrorMessage(error.response?.data?.message || 'Failed to load comparison forecast.');
+        }
+      }
+    };
+
+    fetchCompareScenario();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [compareScenario, scenario, monthsAhead, historyMonths, includePlanned]);
+
+  useEffect(() => {
     if (editingPlannedTransactionId) {
       return;
     }
@@ -124,10 +166,63 @@ function ForecastPage() {
     }));
   }, [scenario, editingPlannedTransactionId]);
 
+  useEffect(() => {
+    if (compareScenario && !availableScenarios.includes(compareScenario)) {
+      setCompareScenario('');
+      setCompareForecastData(null);
+    }
+  }, [availableScenarios, compareScenario]);
+
   const setScenarioFromPreset = (nextPreset) => {
     setScenarioPreset(nextPreset);
     if (nextPreset !== 'custom') {
       setScenario(nextPreset);
+    }
+  };
+
+  const cloneCurrentScenario = async () => {
+    const targetScenario = String(cloneTargetScenario || '').trim();
+    if (!targetScenario) {
+      setErrorMessage('Please enter a target scenario name.');
+      return;
+    }
+
+    setIsScenarioActionLoading(true);
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    try {
+      const response = await axios.post('http://localhost:5001/api/transactions/planned/scenarios/clone', {
+        sourceScenario: scenario,
+        targetScenario,
+        overwrite: overwriteScenarioOnClone,
+      });
+      setStatusMessage(`${response.data.clonedCount} rule(s) cloned to '${targetScenario}'.`);
+      setCloneTargetScenario('');
+      setOverwriteScenarioOnClone(false);
+      await fetchData();
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || 'Failed to clone scenario.');
+    } finally {
+      setIsScenarioActionLoading(false);
+    }
+  };
+
+  const setScenarioRulesActiveState = async (isActive) => {
+    setIsScenarioActionLoading(true);
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    try {
+      const response = await axios.put(`http://localhost:5001/api/transactions/planned/scenarios/${encodeURIComponent(scenario)}/active`, {
+        is_active: isActive,
+      });
+      setStatusMessage(response.data.message || `Scenario ${isActive ? 'activated' : 'paused'}.`);
+      await fetchData();
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || 'Failed to update scenario state.');
+    } finally {
+      setIsScenarioActionLoading(false);
     }
   };
 
@@ -260,12 +355,34 @@ function ForecastPage() {
           fill: '-1',
           backgroundColor: 'rgba(96, 165, 250, 0.10)',
         },
+        ...(compareForecastData?.months?.length
+          ? [
+            {
+              label: `Compare Net (${compareScenario})`,
+              data: compareForecastData.months.map((month) => month.projected_net),
+              borderColor: 'rgba(245, 158, 11, 0.95)',
+              backgroundColor: 'rgba(245, 158, 11, 0.2)',
+              borderDash: [4, 4],
+              tension: 0.2,
+              fill: false,
+            },
+          ]
+          : []),
       ],
     };
-  }, [forecastData]);
+  }, [forecastData, compareForecastData, compareScenario]);
 
   const assumptions = forecastData?.assumptions || {};
   const activePlannedCount = plannedRows.filter((row) => row.is_active).length;
+  const scenarioDifference = useMemo(() => {
+    const currentNet = Number(forecastData?.summary?.projected_net_total || 0);
+    const compareNet = Number(compareForecastData?.summary?.projected_net_total || 0);
+    return {
+      currentNet,
+      compareNet,
+      delta: currentNet - compareNet,
+    };
+  }, [forecastData, compareForecastData]);
 
   if (isLoading) {
     return <div className="page-status">Loading forecast data...</div>;
@@ -329,6 +446,42 @@ function ForecastPage() {
         />
       </div>
 
+      <div className="history-action-row forecast-scenario-tools-row">
+        <label htmlFor="forecast-compare-scenario">Compare with</label>
+        <select
+          id="forecast-compare-scenario"
+          value={compareScenario}
+          onChange={(event) => setCompareScenario(event.target.value)}
+        >
+          <option value="">None</option>
+          {availableScenarios
+            .filter((scenarioOption) => scenarioOption !== scenario)
+            .map((scenarioOption) => (
+              <option key={scenarioOption} value={scenarioOption}>{scenarioOption}</option>
+            ))}
+        </select>
+
+        <label htmlFor="forecast-clone-target">Clone scenario to</label>
+        <input
+          id="forecast-clone-target"
+          type="text"
+          value={cloneTargetScenario}
+          onChange={(event) => setCloneTargetScenario(event.target.value)}
+          placeholder="new-scenario"
+        />
+        <label htmlFor="forecast-clone-overwrite">Overwrite</label>
+        <input
+          id="forecast-clone-overwrite"
+          type="checkbox"
+          checked={overwriteScenarioOnClone}
+          onChange={(event) => setOverwriteScenarioOnClone(event.target.checked)}
+        />
+
+        <button type="button" onClick={cloneCurrentScenario} disabled={isScenarioActionLoading}>Clone</button>
+        <button type="button" onClick={() => setScenarioRulesActiveState(true)} disabled={isScenarioActionLoading}>Activate all</button>
+        <button type="button" onClick={() => setScenarioRulesActiveState(false)} disabled={isScenarioActionLoading}>Pause all</button>
+      </div>
+
       {errorMessage && <p className="options-error">{errorMessage}</p>}
       {statusMessage && <p className="options-success">{statusMessage}</p>}
 
@@ -372,6 +525,16 @@ function ForecastPage() {
             </span>
           </p>
         </div>
+        {compareScenario && compareForecastData && (
+          <div className="history-summary-text">
+            <h4>Scenario delta vs {compareScenario}</h4>
+            <p>
+              <span className={scenarioDifference.delta >= 0 ? 'income-text' : 'expense-text'}>
+                {formatCurrency(scenarioDifference.delta)}
+              </span>
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="history-chart-container forecast-chart-container">

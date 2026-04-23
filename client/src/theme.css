@@ -669,6 +669,18 @@ button:disabled {
   height: 18px;
 }
 
+.forecast-scenario-tools-row {
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.forecast-scenario-tools-row input[type='checkbox'] {
+  min-height: auto;
+  width: 18px;
+  height: 18px;
+}
+
 .forecast-chart-container {
   min-height: 340px;
   padding: 14px;
