@@ -5,6 +5,11 @@ const router = express.Router();
 
 router.post('/', transactionController.addTransaction);
 router.get('/', transactionController.getAllTransactions);
+router.get('/forecast', transactionController.getForecast);
+router.get('/planned', transactionController.getPlannedTransactions);
+router.post('/planned', transactionController.createPlannedTransaction);
+router.put('/planned/:id', transactionController.updatePlannedTransaction);
+router.delete('/planned/:id', transactionController.deletePlannedTransaction);
 router.put('/:id', transactionController.updateTransaction);
 router.delete('/:id', transactionController.deleteTransaction);
 router.get('/insights/summary', transactionController.getTransactionInsights);

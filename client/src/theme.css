@@ -658,6 +658,26 @@ button:disabled {
   font-size: 14px;
 }
 
+.forecast-control-row {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.forecast-control-row input[type='checkbox'] {
+  min-height: auto;
+  width: 18px;
+  height: 18px;
+}
+
+.forecast-chart-container {
+  min-height: 340px;
+  padding: 14px;
+}
+
+.forecast-layout {
+  margin-top: 16px;
+}
+
 .goal-card-actions {
   margin-top: 12px;
 }

@@ -8,6 +8,7 @@ import BudgetPage from './pages/BudgetPage';
 import GoalsPage from './pages/GoalsPage';
 import InsightsPage from './pages/InsightsPage';
 import RecurringPage from './pages/RecurringPage';
+import ForecastPage from './pages/ForecastPage';
 
 function App() {
   return (
@@ -52,6 +53,12 @@ function App() {
             >
               Recurring
             </NavLink>
+            <NavLink
+              to="/forecast"
+              className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+            >
+              Forecast
+            </NavLink>
           </nav>
         </header>
 
@@ -63,6 +70,7 @@ function App() {
             <Route path="/goals" element={<GoalsPage />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/recurring" element={<RecurringPage />} />
+            <Route path="/forecast" element={<ForecastPage />} />
           </Routes>
         </main>
 
