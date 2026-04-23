@@ -1117,6 +1117,126 @@ const getPlannedScenarios = async (req, res) => {
     }
 };
 
+const clonePlannedScenario = async (req, res) => {
+    const sourceScenario = String(req.body.sourceScenario || '').trim();
+    const targetScenario = String(req.body.targetScenario || '').trim();
+    const overwrite = Boolean(req.body.overwrite);
+
+    if (!sourceScenario || !targetScenario) {
+        return res.status(400).json({ message: 'sourceScenario and targetScenario are required.' });
+    }
+
+    if (sourceScenario === targetScenario) {
+        return res.status(400).json({ message: 'targetScenario must be different from sourceScenario.' });
+    }
+
+    let connection;
+    try {
+        await ensurePlannedTransactionsTable();
+        connection = await dbPool.getConnection();
+        await connection.beginTransaction();
+
+        const [sourceRows] = await connection.query(
+            'SELECT * FROM planned_transactions WHERE scenario = ?',
+            [sourceScenario]
+        );
+
+        if (sourceRows.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'No planned transactions found for source scenario.' });
+        }
+
+        const [targetRows] = await connection.query(
+            'SELECT id FROM planned_transactions WHERE scenario = ?',
+            [targetScenario]
+        );
+
+        if (targetRows.length > 0 && !overwrite) {
+            await connection.rollback();
+            return res.status(409).json({ message: 'Target scenario already has rules. Enable overwrite to replace.' });
+        }
+
+        if (targetRows.length > 0 && overwrite) {
+            await connection.query('DELETE FROM planned_transactions WHERE scenario = ?', [targetScenario]);
+        }
+
+        const insertQuery = `
+            INSERT INTO planned_transactions
+            (description, amount, category_id, frequency, planned_date, start_date, end_date, day_of_week, day_of_month, scenario, is_active, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        for (const row of sourceRows) {
+            await connection.query(insertQuery, [
+                row.description,
+                row.amount,
+                row.category_id,
+                row.frequency,
+                row.planned_date,
+                row.start_date,
+                row.end_date,
+                row.day_of_week,
+                row.day_of_month,
+                targetScenario,
+                row.is_active,
+                row.notes,
+            ]);
+        }
+
+        await connection.commit();
+        res.status(201).json({
+            message: 'Scenario cloned successfully.',
+            sourceScenario,
+            targetScenario,
+            clonedCount: sourceRows.length,
+        });
+    } catch (error) {
+        console.error('Error cloning planned scenario:', error);
+        if (connection) {
+            await connection.rollback();
+        }
+        res.status(500).json({ message: 'Failed to clone planned scenario.' });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+};
+
+const setScenarioPlannedRuleActiveState = async (req, res) => {
+    const scenarioName = String(req.params.scenarioName || '').trim();
+    const isActive = req.body.is_active;
+
+    if (!scenarioName) {
+        return res.status(400).json({ message: 'Scenario name is required.' });
+    }
+
+    if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ message: 'is_active must be a boolean.' });
+    }
+
+    try {
+        await ensurePlannedTransactionsTable();
+        const [result] = await dbPool.query(
+            'UPDATE planned_transactions SET is_active = ? WHERE scenario = ?',
+            [isActive, scenarioName]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Scenario not found.' });
+        }
+
+        res.status(200).json({
+            message: `Scenario ${isActive ? 'activated' : 'paused'} successfully.`,
+            scenario: scenarioName,
+            affectedRows: result.affectedRows,
+        });
+    } catch (error) {
+        console.error('Error updating scenario active state:', error);
+        res.status(500).json({ message: 'Failed to update scenario active state.' });
+    }
+};
+
 const createPlannedTransaction = async (req, res) => {
     const validationResult = validatePlannedTransactionPayload(req.body);
     if (!validationResult.isValid) {
@@ -1471,6 +1591,8 @@ module.exports = {
     processRecurringTransactions,
     getPlannedTransactions,
     getPlannedScenarios,
+    clonePlannedScenario,
+    setScenarioPlannedRuleActiveState,
     createPlannedTransaction,
     updatePlannedTransaction,
     deletePlannedTransaction,
