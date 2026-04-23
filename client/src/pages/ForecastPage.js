@@ -14,30 +14,50 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Title);
 
+const SCENARIO_PRESETS = ['base', 'optimistic', 'cautious', 'custom'];
+
+const getTodayIso = () => new Date().toISOString().split('T')[0];
+
+const createDefaultPlannedState = (scenarioName = 'base') => ({
+  description: '',
+  amount: '',
+  category_id: '',
+  frequency: 'one_time',
+  planned_date: getTodayIso(),
+  start_date: getTodayIso(),
+  end_date: '',
+  day_of_week: '1',
+  day_of_month: '1',
+  scenario: scenarioName,
+  is_active: true,
+  notes: '',
+});
+
 const formatCurrency = (value) => {
   const parsedValue = typeof value === 'number' ? value : parseFloat(value);
   const safeValue = Number.isNaN(parsedValue) ? 0 : parsedValue;
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'USD' }).format(safeValue);
 };
 
-const defaultPlannedState = {
-  description: '',
-  amount: '',
-  category_id: '',
-  frequency: 'one_time',
-  planned_date: new Date().toISOString().split('T')[0],
-  start_date: new Date().toISOString().split('T')[0],
-  end_date: '',
-  day_of_week: '1',
-  day_of_month: '1',
-  scenario: 'base',
-  is_active: true,
-  notes: '',
-};
+const mapPlannedRowToFormState = (row) => ({
+  description: row.description || '',
+  amount: String(Number(row.amount || 0)),
+  category_id: String(row.category_id || ''),
+  frequency: row.frequency || 'one_time',
+  planned_date: row.planned_date || getTodayIso(),
+  start_date: row.start_date || getTodayIso(),
+  end_date: row.end_date || '',
+  day_of_week: String(row.day_of_week ?? '1'),
+  day_of_month: String(row.day_of_month ?? '1'),
+  scenario: row.scenario || 'base',
+  is_active: Boolean(row.is_active),
+  notes: row.notes || '',
+});
 
 function ForecastPage() {
   const [monthsAhead, setMonthsAhead] = useState('6');
   const [historyMonths, setHistoryMonths] = useState('12');
+  const [scenarioPreset, setScenarioPreset] = useState('base');
   const [scenario, setScenario] = useState('base');
   const [includePlanned, setIncludePlanned] = useState(true);
 
@@ -45,7 +65,8 @@ function ForecastPage() {
   const [plannedRows, setPlannedRows] = useState([]);
   const [categories, setCategories] = useState([]);
 
-  const [formState, setFormState] = useState(defaultPlannedState);
+  const [formState, setFormState] = useState(() => createDefaultPlannedState('base'));
+  const [editingPlannedTransactionId, setEditingPlannedTransactionId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -88,7 +109,25 @@ function ForecastPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleCreatePlannedTransaction = async (event) => {
+  useEffect(() => {
+    if (editingPlannedTransactionId) {
+      return;
+    }
+
+    setFormState((current) => ({
+      ...current,
+      scenario,
+    }));
+  }, [scenario, editingPlannedTransactionId]);
+
+  const setScenarioFromPreset = (nextPreset) => {
+    setScenarioPreset(nextPreset);
+    if (nextPreset !== 'custom') {
+      setScenario(nextPreset);
+    }
+  };
+
+  const handleSavePlannedTransaction = async (event) => {
     event.preventDefault();
 
     const payload = {
@@ -102,15 +141,51 @@ function ForecastPage() {
     setStatusMessage(null);
 
     try {
-      await axios.post('http://localhost:5001/api/transactions/planned', payload);
-      setStatusMessage('Planned transaction created.');
-      setFormState(defaultPlannedState);
+      if (editingPlannedTransactionId) {
+        await axios.put(`http://localhost:5001/api/transactions/planned/${editingPlannedTransactionId}`, payload);
+        setStatusMessage('Planned transaction updated.');
+      } else {
+        await axios.post('http://localhost:5001/api/transactions/planned', payload);
+        setStatusMessage('Planned transaction created.');
+      }
+
+      setEditingPlannedTransactionId(null);
+      setFormState(createDefaultPlannedState(scenario));
       await fetchData();
     } catch (error) {
-      console.error('Error creating planned transaction:', error);
-      setErrorMessage(error.response?.data?.message || 'Failed to create planned transaction.');
+      console.error('Error saving planned transaction:', error);
+      setErrorMessage(error.response?.data?.message || 'Failed to save planned transaction.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const startEditingPlannedTransaction = (plannedRow) => {
+    setEditingPlannedTransactionId(plannedRow.id);
+    setFormState(mapPlannedRowToFormState(plannedRow));
+    setStatusMessage(null);
+    setErrorMessage(null);
+  };
+
+  const cancelEditingPlannedTransaction = () => {
+    setEditingPlannedTransactionId(null);
+    setFormState(createDefaultPlannedState(scenario));
+  };
+
+  const handleTogglePlannedTransaction = async (plannedRow) => {
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    try {
+      await axios.put(`http://localhost:5001/api/transactions/planned/${plannedRow.id}`, {
+        ...plannedRow,
+        is_active: !plannedRow.is_active,
+      });
+      setStatusMessage(`Planned transaction ${plannedRow.is_active ? 'paused' : 'activated'}.`);
+      await fetchData();
+    } catch (error) {
+      console.error('Error toggling planned transaction:', error);
+      setErrorMessage(error.response?.data?.message || 'Failed to update planned transaction status.');
     }
   };
 
@@ -165,6 +240,9 @@ function ForecastPage() {
     };
   }, [forecastData]);
 
+  const assumptions = forecastData?.assumptions || {};
+  const activePlannedCount = plannedRows.filter((row) => row.is_active).length;
+
   if (isLoading) {
     return <div className="page-status">Loading forecast data...</div>;
   }
@@ -193,11 +271,23 @@ function ForecastPage() {
         </select>
 
         <label htmlFor="forecast-scenario">Scenario</label>
+        <select
+          id="forecast-scenario-preset"
+          value={scenarioPreset}
+          onChange={(event) => setScenarioFromPreset(event.target.value)}
+        >
+          {SCENARIO_PRESETS.map((preset) => (
+            <option key={preset} value={preset}>{preset}</option>
+          ))}
+        </select>
         <input
           id="forecast-scenario"
           type="text"
           value={scenario}
-          onChange={(event) => setScenario(event.target.value || 'base')}
+          onChange={(event) => {
+            setScenarioPreset('custom');
+            setScenario(event.target.value || 'base');
+          }}
         />
 
         <label htmlFor="forecast-include-planned">Use planned</label>
@@ -211,6 +301,18 @@ function ForecastPage() {
 
       {errorMessage && <p className="options-error">{errorMessage}</p>}
       {statusMessage && <p className="options-success">{statusMessage}</p>}
+
+      <div className="history-summary-text forecast-assumptions-panel">
+        <h4>Assumptions</h4>
+        <p><span>Model</span><strong>{assumptions.method || 'N/A'}</strong></p>
+        <p><span>Scenario profile</span><strong>{assumptions.scenario_profile || scenario}</strong></p>
+        <p><span>Baseline income</span><strong>{formatCurrency(assumptions.average_income_base || 0)}</strong></p>
+        <p><span>Baseline expense</span><strong>{formatCurrency(assumptions.average_expense_base || 0)}</strong></p>
+        <p><span>Adjusted income</span><strong>{formatCurrency(assumptions.average_income_adjusted || 0)}</strong></p>
+        <p><span>Adjusted expense</span><strong>{formatCurrency(assumptions.average_expense_adjusted || 0)}</strong></p>
+        <p><span>Active recurring rules</span><strong>{assumptions.active_recurring_rule_count || 0}</strong></p>
+        <p><span>Active planned rules</span><strong>{assumptions.active_planned_rule_count || 0}</strong></p>
+      </div>
 
       <div className="insight-stat-grid">
         <div className="history-summary-text">
@@ -248,8 +350,8 @@ function ForecastPage() {
 
       <div className="budget-content-layout forecast-layout">
         <div className="add-goal-form-container">
-          <h3>Add Planned Transaction</h3>
-          <form className="add-goal-form" onSubmit={handleCreatePlannedTransaction}>
+          <h3>{editingPlannedTransactionId ? 'Edit Planned Transaction' : 'Add Planned Transaction'}</h3>
+          <form className="add-goal-form" onSubmit={handleSavePlannedTransaction}>
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="planned-description">Description</label>
@@ -383,13 +485,16 @@ function ForecastPage() {
             )}
 
             <div className="form-row submit-row">
-              <button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Create Planned Transaction'}</button>
+              <button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : editingPlannedTransactionId ? 'Save Changes' : 'Create Planned Transaction'}</button>
+              {editingPlannedTransactionId && (
+                <button type="button" className="clear-button" onClick={cancelEditingPlannedTransaction}>Cancel</button>
+              )}
             </div>
           </form>
         </div>
 
         <div className="goals-list-container">
-          <h3>Planned Transactions</h3>
+          <h3>Planned Transactions ({activePlannedCount} active)</h3>
           {plannedRows.length === 0 ? (
             <p className="empty-state-message">No planned transactions for this scenario yet.</p>
           ) : (
@@ -401,6 +506,7 @@ function ForecastPage() {
                   <p>Category: {row.category_name || 'N/A'}</p>
                   <p>Frequency: {row.frequency}</p>
                   <p>Scenario: {row.scenario}</p>
+                  <p>Status: {row.is_active ? 'Active' : 'Paused'}</p>
                   <p>
                     Date:
                     {' '}
@@ -409,6 +515,18 @@ function ForecastPage() {
                       : `${row.start_date}${row.end_date ? ` to ${row.end_date}` : ''}`}
                   </p>
                   <div className="history-action-row">
+                    <button
+                      type="button"
+                      onClick={() => startEditingPlannedTransaction(row)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePlannedTransaction(row)}
+                    >
+                      {row.is_active ? 'Pause' : 'Activate'}
+                    </button>
                     <button
                       type="button"
                       className="delete-button-history"

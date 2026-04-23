@@ -359,6 +359,35 @@ const appendRecurringOccurrences = (rule, horizonStartDate, horizonEndDate, impa
     }
 };
 
+const getScenarioProfile = (scenarioValue) => {
+    const normalisedScenario = String(scenarioValue || 'base').trim().toLowerCase();
+
+    if (normalisedScenario === 'optimistic') {
+        return {
+            key: 'optimistic',
+            incomeMultiplier: 1.08,
+            expenseMultiplier: 0.94,
+            label: 'Higher income, lower expenses',
+        };
+    }
+
+    if (normalisedScenario === 'cautious') {
+        return {
+            key: 'cautious',
+            incomeMultiplier: 0.94,
+            expenseMultiplier: 1.08,
+            label: 'Lower income, higher expenses',
+        };
+    }
+
+    return {
+        key: normalisedScenario || 'base',
+        incomeMultiplier: 1,
+        expenseMultiplier: 1,
+        label: 'No baseline adjustment',
+    };
+};
+
 const addDays = (dateValue, dayCount) => {
     const updatedDate = new Date(dateValue);
     updatedDate.setDate(updatedDate.getDate() + dayCount);
@@ -1178,6 +1207,7 @@ const getForecast = async (req, res) => {
     const historyMonths = Math.min(Math.max(Number(req.query.historyMonths) || 12, 3), 36);
     const includePlanned = req.query.includePlanned !== 'false';
     const scenario = req.query.scenario && String(req.query.scenario).trim() ? String(req.query.scenario).trim() : 'base';
+    const scenarioProfile = getScenarioProfile(scenario);
 
     const startMonth = req.query.startMonth && /^\d{4}-\d{2}$/.test(req.query.startMonth)
         ? req.query.startMonth
@@ -1228,20 +1258,36 @@ const getForecast = async (req, res) => {
 
         const averageIncome = historicalIncomeTotal / historyMonths;
         const averageExpense = historicalExpenseTotal / historyMonths;
+        const adjustedAverageIncome = averageIncome * scenarioProfile.incomeMultiplier;
+        const adjustedAverageExpense = averageExpense * scenarioProfile.expenseMultiplier;
 
         const impactByPeriod = new Map();
+        let plannedRuleCount = 0;
 
         if (includePlanned) {
-            const [plannedRows] = await dbPool.query(
-                `
-                SELECT pt.*, c.type AS category_type
-                FROM planned_transactions pt
-                LEFT JOIN categories c ON c.id = pt.category_id
-                WHERE pt.is_active = TRUE
-                    AND pt.scenario = ?;
-                `,
-                [scenario]
-            );
+            const normalisedScenario = scenarioProfile.key;
+            const [plannedRows] = normalisedScenario === 'base'
+                ? await dbPool.query(
+                    `
+                    SELECT pt.*, c.type AS category_type
+                    FROM planned_transactions pt
+                    LEFT JOIN categories c ON c.id = pt.category_id
+                    WHERE pt.is_active = TRUE
+                        AND pt.scenario = 'base';
+                    `
+                )
+                : await dbPool.query(
+                    `
+                    SELECT pt.*, c.type AS category_type
+                    FROM planned_transactions pt
+                    LEFT JOIN categories c ON c.id = pt.category_id
+                    WHERE pt.is_active = TRUE
+                        AND (pt.scenario = 'base' OR pt.scenario = ?);
+                    `,
+                    [scenario]
+                );
+
+            plannedRuleCount = plannedRows.length;
 
             for (const row of plannedRows) {
                 appendPlannedOccurrences(normalisePlannedTransaction(row), startDate, endDate, impactByPeriod);
@@ -1257,19 +1303,20 @@ const getForecast = async (req, res) => {
             `
         );
 
+        const recurringRuleCount = recurringRows.length;
         for (const row of recurringRows) {
             appendRecurringOccurrences(row, startDate, endDate, impactByPeriod);
         }
 
         const months = periods.map((period) => {
             const impact = impactByPeriod.get(period) || { income: 0, expense: 0 };
-            const projectedIncome = Number((averageIncome + impact.income).toFixed(2));
-            const projectedExpense = Number((averageExpense + impact.expense).toFixed(2));
+            const projectedIncome = Number((adjustedAverageIncome + impact.income).toFixed(2));
+            const projectedExpense = Number((adjustedAverageExpense + impact.expense).toFixed(2));
 
             return {
                 period,
-                baseline_income: Number(averageIncome.toFixed(2)),
-                baseline_expense: Number(averageExpense.toFixed(2)),
+                baseline_income: Number(adjustedAverageIncome.toFixed(2)),
+                baseline_expense: Number(adjustedAverageExpense.toFixed(2)),
                 planned_income_impact: Number(impact.income.toFixed(2)),
                 planned_expense_impact: Number(impact.expense.toFixed(2)),
                 projected_income: projectedIncome,
@@ -1291,6 +1338,16 @@ const getForecast = async (req, res) => {
             },
             assumptions: {
                 method: 'trailing-average-plus-rules',
+                scenario_profile: scenarioProfile.key,
+                scenario_profile_label: scenarioProfile.label,
+                income_multiplier: Number(scenarioProfile.incomeMultiplier.toFixed(2)),
+                expense_multiplier: Number(scenarioProfile.expenseMultiplier.toFixed(2)),
+                average_income_base: Number(averageIncome.toFixed(2)),
+                average_expense_base: Number(averageExpense.toFixed(2)),
+                average_income_adjusted: Number(adjustedAverageIncome.toFixed(2)),
+                average_expense_adjusted: Number(adjustedAverageExpense.toFixed(2)),
+                active_recurring_rule_count: recurringRuleCount,
+                active_planned_rule_count: plannedRuleCount,
             },
             summary: {
                 projected_income_total: Number(projectedIncomeTotal.toFixed(2)),

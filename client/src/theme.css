@@ -678,6 +678,21 @@ button:disabled {
   margin-top: 16px;
 }
 
+.forecast-assumptions-panel {
+  margin: 14px 0;
+  padding: 14px;
+}
+
+.forecast-assumptions-panel strong {
+  font-weight: 600;
+}
+
+.forecast-layout .submit-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .goal-card-actions {
   margin-top: 12px;
 }
