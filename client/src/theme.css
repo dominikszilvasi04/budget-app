@@ -345,6 +345,34 @@ textarea {
   padding: 10px 12px;
 }
 
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='10' viewBox='0 0 14 10' fill='none'%3E%3Cpath d='M2 2.5L7 7.5L12 2.5' stroke='%23c5cfdf' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px 10px;
+}
+
+select:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+select option,
+select optgroup {
+  background: #141925;
+  color: #f4f7ff;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -483,6 +511,14 @@ button:disabled {
   align-items: center;
   gap: 10px;
   margin-bottom: 16px;
+}
+
+.history-action-row > select,
+.history-action-row > input[type='text'],
+.history-action-row > input[type='date'],
+.history-action-row > input[type='number'] {
+  width: auto;
+  min-width: 160px;
 }
 
 .insight-stat-grid {
@@ -661,6 +697,19 @@ button:disabled {
 .forecast-control-row {
   align-items: center;
   flex-wrap: wrap;
+}
+
+.forecast-control-row label,
+.forecast-scenario-tools-row label {
+  color: var(--colour-text-soft);
+}
+
+.forecast-control-row > select,
+.forecast-control-row > input[type='text'],
+.forecast-scenario-tools-row > select,
+.forecast-scenario-tools-row > input[type='text'] {
+  width: auto;
+  min-width: 160px;
 }
 
 .forecast-control-row input[type='checkbox'] {
