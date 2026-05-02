@@ -1,59 +1,94 @@
-# Personal Budget and Goals Tracker
+# Budget Tracker
 
-A full-stack web application designed to provide a clear and intuitive way to manage personal finances. Track income and expenses, set monthly budgets for different categories, and create savings goals to visualise progress towards financial targets.
+Budget Tracker is a full-stack personal finance application for managing day-to-day transactions, monthly budgets, recurring rules, savings goals, and forward-looking forecasts.
 
-This application features a React frontend that communicates with a robust Node.js and Express backend, powered by a MySQL database.
+## Features
 
-## Key Features
-
-* **Dashboard Overview**: A central hub to view income vs. expense categories, see budget progress, and quickly add new transactions.
-* **Dynamic Categories**: Create, update, and delete custom categories for both income and expenses, each with a unique colour for easy identification.
-* **Transaction Management**: Log all transactions with details like description, amount, and date. View a comprehensive transaction history, sortable by type.
-* **Advanced History Controls**: Filter by type/category/date/amount/search, edit existing transactions, and import or export transactions as CSV.
-* **Monthly Budgeting**: Allocate a specific budget for each expense category for the current month and track your spending against it.
-* **Budget Period Planning**: Switch month views and roll over the previous month budget into a new period.
-* **Savings Goals**: Create detailed savings goals with target amounts and dates. Make contributions directly or link them to income transactions.
-* **Recurring Transactions**: Configure weekly or monthly recurring transaction rules and process due entries on demand.
-* **Data Visualisation**: Interactive charts on the dashboard and history pages provide a clear visual breakdown of financial habits.
-* **Insights Dashboard**: Review monthly net trend and top categories over configurable time windows.
+- Dashboard with income/expense overview and category-level budget visibility
+- Category management (create, update, delete)
+- Transaction history with filtering, editing, CSV import/export
+- Monthly budgeting with period switching and budget rollover
+- Savings goals with contribution tracking
+- Recurring transaction rules (weekly/monthly) with manual processing
+- Insights and trend visualisation
+- Forecast planner with scenario support and confidence range
 
 ## Screenshots
+
 https://imgur.com/a/I5FyabG
 
 ## Tech Stack
 
-* **Frontend**: React, React Router, Axios, Chart.js
-* **Backend**: Node.js, Express.js
-* **Database**: MySQL
-* **Development**: Nodemon
+- Frontend: React, React Router, Axios, Chart.js
+- Backend: Node.js, Express
+- Database: MySQL
+- Tooling: ESLint, Prettier, Docker, GitHub Actions
 
-## CI/CD and Quality Gates
+## Repository Structure
 
-This repository now includes automated pipelines for pushes and pull requests:
+- [client](client) React application
+- [server](server) Express API and database access
+- [docker-compose.yml](docker-compose.yml) local multi-service development stack
+- [.github/workflows](.github/workflows) CI and container build workflows
 
-- [CI pipeline](.github/workflows/ci.yml)
-	- installs client and server dependencies
-	- runs lint checks for client and server
-	- runs Prettier formatting checks
-	- runs client tests
-	- builds the client production bundle
-- [Container build pipeline](.github/workflows/container-build.yml)
-	- validates Docker builds for both server and client images
+## Getting Started
 
-## Linting and Formatting
+### Prerequisites
 
-- Client lint: run `npm run lint` in [client/package.json](client/package.json)
-- Server lint: run `npm run lint` in [server/package.json](server/package.json)
-- Formatting check (root): `npx prettier@3.3.3 --check "**/*.{js,jsx,json,css,md,yml,yaml}"`
+- Node.js 18+
+- MySQL 8+
+- npm
 
-## Containers
+### 1) Configure environment
 
-- Server image: [server/Dockerfile](server/Dockerfile)
-- Client image: [client/Dockerfile](client/Dockerfile)
-- Local multi-service setup: [docker-compose.yml](docker-compose.yml)
+Create [server/.env](server/.env) with your database connection values:
 
-To build and run with Docker Compose:
+- `DB_HOST`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `PORT` (optional, default `5001`)
 
-1. Ensure Docker Desktop is running.
-2. Run `docker compose up --build` from the repository root.
-3. Open the client at `http://localhost:3000`.
+### 2) Install dependencies
+
+- `cd server && npm install`
+- `cd ../client && npm install`
+
+### 3) Run locally
+
+- API: `cd server && npm run dev`
+- Web app: `cd client && npm start`
+
+Default local URLs:
+
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:5001`
+
+## Docker
+
+Run the full stack with Docker Compose:
+
+- `docker compose up --build`
+
+Relevant files:
+
+- [server/Dockerfile](server/Dockerfile)
+- [client/Dockerfile](client/Dockerfile)
+- [docker-compose.yml](docker-compose.yml)
+
+## Quality Checks
+
+- Client lint: `cd client && npm run lint`
+- Server lint: `cd server && npm run lint`
+- Formatting check: `npx prettier@3.3.3 --check "**/*.{js,jsx,json,css,md,yml,yaml}"`
+
+## CI
+
+The project includes GitHub Actions workflows for pushes and pull requests:
+
+- [CI workflow](.github/workflows/ci.yml)
+- [Container build workflow](.github/workflows/container-build.yml)
+
+## Licence
+
+For now, this repository does not define a licence file.
