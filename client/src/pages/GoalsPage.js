@@ -15,7 +15,7 @@ const safeParseGoalFloat = (value) => {
   if (typeof value === 'number') return value > 0 ? value : NaN;
   if (typeof value !== 'string') return NaN;
   if (value.trim() === '') return NaN;
-  const cleanedValue = value.replace(/[\$,]/g, '').trim();
+  const cleanedValue = value.replace(/[$,]/g, '').trim();
   if (cleanedValue === '') return NaN;
   const parsed = parseFloat(cleanedValue);
   return isNaN(parsed) || parsed <= 0 ? NaN : parsed;
