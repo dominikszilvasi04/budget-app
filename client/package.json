@@ -19,7 +19,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "echo \"Skipping client tests\"",
+    "test": "react-scripts test",
     "lint": "npx eslint@8.57.1 src --ext .js,.jsx",
     "eject": "react-scripts eject"
   },
