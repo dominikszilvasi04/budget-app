@@ -13,10 +13,6 @@ Budget Tracker is a full-stack personal finance application for managing day-to-
 - Insights and trend visualisation
 - Forecast planner with scenario support and confidence range
 
-## Screenshots
-
-https://imgur.com/a/I5FyabG
-
 ## Tech Stack
 
 - Frontend: React, React Router, Axios, Chart.js

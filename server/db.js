@@ -11,7 +11,8 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-pool.getConnection()
+pool
+  .getConnection()
   .then((connection) => {
     console.log('Successfully connected to the database (using env vars).');
     connection.release();
@@ -19,9 +20,11 @@ pool.getConnection()
   .catch((error) => {
     console.error('Error connecting to the database:', error);
     if (error.code === 'ER_ACCESS_DENIED_ERROR') {
-        console.error('Check database username/password in your .env file.');
+      console.error('Check database username/password in your .env file.');
     } else if (error.code === 'ER_BAD_DB_ERROR') {
-        console.error(`Database '${process.env.DB_NAME}' not found. Check DB_NAME in .env and ensure database exists.`);
+      console.error(
+        `Database '${process.env.DB_NAME}' not found. Check DB_NAME in .env and ensure database exists.`
+      );
     }
   });
 

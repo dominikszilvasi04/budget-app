@@ -3,99 +3,91 @@ const dbPool = require('../db');
 const LINKED_TRANSACTION_PREFIX = 'Linked transaction ID:';
 
 const formatIsoDate = (value) => {
-    if (!value) {
-        return null;
-    }
-    return new Date(value).toISOString().split('T')[0];
+  if (!value) {
+    return null;
+  }
+  return new Date(value).toISOString().split('T')[0];
 };
 
 const toNumber = (value) => {
-    if (value === null || value === undefined || value === '') {
-        return NaN;
-    }
-    const parsedValue = Number(value);
-    return Number.isFinite(parsedValue) ? parsedValue : NaN;
+  if (value === null || value === undefined || value === '') {
+    return NaN;
+  }
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : NaN;
 };
 
 const parseCsvRow = (rowText) => {
-    const values = [];
-    let currentValue = '';
-    let inQuotes = false;
+  const values = [];
+  let currentValue = '';
+  let inQuotes = false;
 
-    for (let index = 0; index < rowText.length; index += 1) {
-        const character = rowText[index];
+  for (let index = 0; index < rowText.length; index += 1) {
+    const character = rowText[index];
 
-        if (character === '"') {
-            if (inQuotes && rowText[index + 1] === '"') {
-                currentValue += '"';
-                index += 1;
-            } else {
-                inQuotes = !inQuotes;
-            }
-        } else if (character === ',' && !inQuotes) {
-            values.push(currentValue.trim());
-            currentValue = '';
-        } else {
-            currentValue += character;
-        }
+    if (character === '"') {
+      if (inQuotes && rowText[index + 1] === '"') {
+        currentValue += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (character === ',' && !inQuotes) {
+      values.push(currentValue.trim());
+      currentValue = '';
+    } else {
+      currentValue += character;
     }
+  }
 
-    values.push(currentValue.trim());
-    return values;
+  values.push(currentValue.trim());
+  return values;
 };
 
 const buildTransactionFilters = (queryParams) => {
-    const {
-        startDate,
-        endDate,
-        categoryId,
-        type,
-        minAmount,
-        maxAmount,
-        search
-    } = queryParams;
+  const { startDate, endDate, categoryId, type, minAmount, maxAmount, search } = queryParams;
 
-    const whereConditions = [];
-    const queryValues = [];
+  const whereConditions = [];
+  const queryValues = [];
 
-    if (startDate) {
-        whereConditions.push('t.transaction_date >= ?');
-        queryValues.push(startDate);
-    }
-    if (endDate) {
-        whereConditions.push('t.transaction_date <= ?');
-        queryValues.push(endDate);
-    }
-    if (categoryId && Number.isInteger(Number(categoryId))) {
-        whereConditions.push('t.category_id = ?');
-        queryValues.push(Number(categoryId));
-    }
-    if (type === 'income' || type === 'expense') {
-        whereConditions.push('c.type = ?');
-        queryValues.push(type);
-    }
-    if (!Number.isNaN(toNumber(minAmount))) {
-        whereConditions.push('t.amount >= ?');
-        queryValues.push(toNumber(minAmount));
-    }
-    if (!Number.isNaN(toNumber(maxAmount))) {
-        whereConditions.push('t.amount <= ?');
-        queryValues.push(toNumber(maxAmount));
-    }
-    if (search && search.trim()) {
-        whereConditions.push('(t.description LIKE ? OR c.name LIKE ?)');
-        queryValues.push(`%${search.trim()}%`, `%${search.trim()}%`);
-    }
+  if (startDate) {
+    whereConditions.push('t.transaction_date >= ?');
+    queryValues.push(startDate);
+  }
+  if (endDate) {
+    whereConditions.push('t.transaction_date <= ?');
+    queryValues.push(endDate);
+  }
+  if (categoryId && Number.isInteger(Number(categoryId))) {
+    whereConditions.push('t.category_id = ?');
+    queryValues.push(Number(categoryId));
+  }
+  if (type === 'income' || type === 'expense') {
+    whereConditions.push('c.type = ?');
+    queryValues.push(type);
+  }
+  if (!Number.isNaN(toNumber(minAmount))) {
+    whereConditions.push('t.amount >= ?');
+    queryValues.push(toNumber(minAmount));
+  }
+  if (!Number.isNaN(toNumber(maxAmount))) {
+    whereConditions.push('t.amount <= ?');
+    queryValues.push(toNumber(maxAmount));
+  }
+  if (search && search.trim()) {
+    whereConditions.push('(t.description LIKE ? OR c.name LIKE ?)');
+    queryValues.push(`%${search.trim()}%`, `%${search.trim()}%`);
+  }
 
-    return {
-        whereClause: whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '',
-        queryValues,
-    };
+  return {
+    whereClause: whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '',
+    queryValues,
+  };
 };
 
 const ensureRecurringTable = async (connection) => {
-    const queryExecutor = connection || dbPool;
-    await queryExecutor.query(`
+  const queryExecutor = connection || dbPool;
+  await queryExecutor.query(`
         CREATE TABLE IF NOT EXISTS recurring_transactions (
             id INT AUTO_INCREMENT PRIMARY KEY,
             description VARCHAR(255) NULL,
@@ -115,8 +107,8 @@ const ensureRecurringTable = async (connection) => {
 };
 
 const ensurePlannedTransactionsTable = async (connection) => {
-    const queryExecutor = connection || dbPool;
-    await queryExecutor.query(`
+  const queryExecutor = connection || dbPool;
+  await queryExecutor.query(`
         CREATE TABLE IF NOT EXISTS planned_transactions (
             id INT AUTO_INCREMENT PRIMARY KEY,
             description VARCHAR(255) NULL,
@@ -142,343 +134,375 @@ const ensurePlannedTransactionsTable = async (connection) => {
 };
 
 const toDateOnlyString = (value) => {
-    if (!value) {
-        return null;
-    }
-    const parsedDate = new Date(value);
-    if (Number.isNaN(parsedDate.getTime())) {
-        return null;
-    }
-    return parsedDate.toISOString().split('T')[0];
+  if (!value) {
+    return null;
+  }
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+  return parsedDate.toISOString().split('T')[0];
 };
 
 const getMonthKey = (value) => {
-    const dateValue = new Date(value);
-    return `${dateValue.getUTCFullYear()}-${String(dateValue.getUTCMonth() + 1).padStart(2, '0')}`;
+  const dateValue = new Date(value);
+  return `${dateValue.getUTCFullYear()}-${String(dateValue.getUTCMonth() + 1).padStart(2, '0')}`;
 };
 
 const getMonthRange = (startMonth, monthsAhead) => {
-    const [yearPart, monthPart] = String(startMonth).split('-').map(Number);
-    const startDate = new Date(Date.UTC(yearPart, monthPart - 1, 1));
-    const periods = [];
-    for (let index = 0; index < monthsAhead; index += 1) {
-        const periodDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + index, 1));
-        periods.push(getMonthKey(periodDate));
-    }
+  const [yearPart, monthPart] = String(startMonth).split('-').map(Number);
+  const startDate = new Date(Date.UTC(yearPart, monthPart - 1, 1));
+  const periods = [];
+  for (let index = 0; index < monthsAhead; index += 1) {
+    const periodDate = new Date(
+      Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + index, 1)
+    );
+    periods.push(getMonthKey(periodDate));
+  }
 
-    const endDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + monthsAhead, 0));
-    return {
-        periods,
-        startDate,
-        endDate,
-    };
+  const endDate = new Date(
+    Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + monthsAhead, 0)
+  );
+  return {
+    periods,
+    startDate,
+    endDate,
+  };
 };
 
 const normalisePlannedTransaction = (row) => ({
-    ...row,
-    amount: Number(row.amount || 0),
-    planned_date: toDateOnlyString(row.planned_date),
-    start_date: toDateOnlyString(row.start_date),
-    end_date: toDateOnlyString(row.end_date),
+  ...row,
+  amount: Number(row.amount || 0),
+  planned_date: toDateOnlyString(row.planned_date),
+  start_date: toDateOnlyString(row.start_date),
+  end_date: toDateOnlyString(row.end_date),
 });
 
 const validatePlannedTransactionPayload = (payload) => {
-    const parsedAmount = toNumber(payload.amount);
-    const parsedCategoryId = Number(payload.category_id);
-    const frequency = payload.frequency || 'one_time';
-    const plannedDate = toDateOnlyString(payload.planned_date);
-    const startDate = toDateOnlyString(payload.start_date);
-    const endDate = toDateOnlyString(payload.end_date);
-    const dayOfWeek = payload.day_of_week === null || payload.day_of_week === undefined || payload.day_of_week === ''
-        ? null
-        : Number(payload.day_of_week);
-    const dayOfMonth = payload.day_of_month === null || payload.day_of_month === undefined || payload.day_of_month === ''
-        ? null
-        : Number(payload.day_of_month);
-    const scenario = payload.scenario && String(payload.scenario).trim() ? String(payload.scenario).trim() : 'base';
+  const parsedAmount = toNumber(payload.amount);
+  const parsedCategoryId = Number(payload.category_id);
+  const frequency = payload.frequency || 'one_time';
+  const plannedDate = toDateOnlyString(payload.planned_date);
+  const startDate = toDateOnlyString(payload.start_date);
+  const endDate = toDateOnlyString(payload.end_date);
+  const dayOfWeek =
+    payload.day_of_week === null || payload.day_of_week === undefined || payload.day_of_week === ''
+      ? null
+      : Number(payload.day_of_week);
+  const dayOfMonth =
+    payload.day_of_month === null ||
+    payload.day_of_month === undefined ||
+    payload.day_of_month === ''
+      ? null
+      : Number(payload.day_of_month);
+  const scenario =
+    payload.scenario && String(payload.scenario).trim() ? String(payload.scenario).trim() : 'base';
 
-    if (!Number.isFinite(parsedAmount) || !Number.isInteger(parsedCategoryId)) {
-        return { isValid: false, message: 'Invalid amount or category.' };
-    }
+  if (!Number.isFinite(parsedAmount) || !Number.isInteger(parsedCategoryId)) {
+    return { isValid: false, message: 'Invalid amount or category.' };
+  }
 
-    if (!['one_time', 'weekly', 'monthly'].includes(frequency)) {
-        return { isValid: false, message: 'frequency must be one_time, weekly, or monthly.' };
-    }
+  if (!['one_time', 'weekly', 'monthly'].includes(frequency)) {
+    return { isValid: false, message: 'frequency must be one_time, weekly, or monthly.' };
+  }
 
-    if (frequency === 'one_time' && !plannedDate) {
-        return { isValid: false, message: 'planned_date is required for one_time frequency.' };
-    }
+  if (frequency === 'one_time' && !plannedDate) {
+    return { isValid: false, message: 'planned_date is required for one_time frequency.' };
+  }
 
-    if (frequency !== 'one_time' && !startDate) {
-        return { isValid: false, message: 'start_date is required for recurring planned transactions.' };
-    }
-
-    if (frequency === 'weekly') {
-        if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
-            return { isValid: false, message: 'day_of_week must be an integer between 0 and 6.' };
-        }
-    }
-
-    if (frequency === 'monthly') {
-        if (!Number.isInteger(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) {
-            return { isValid: false, message: 'day_of_month must be an integer between 1 and 31.' };
-        }
-    }
-
-    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
-        return { isValid: false, message: 'end_date cannot be before start_date.' };
-    }
-
+  if (frequency !== 'one_time' && !startDate) {
     return {
-        isValid: true,
-        values: {
-            description: payload.description || null,
-            amount: Number(parsedAmount.toFixed(2)),
-            category_id: parsedCategoryId,
-            frequency,
-            planned_date: frequency === 'one_time' ? plannedDate : null,
-            start_date: frequency === 'one_time' ? null : startDate,
-            end_date: frequency === 'one_time' ? null : endDate,
-            day_of_week: frequency === 'weekly' ? dayOfWeek : null,
-            day_of_month: frequency === 'monthly' ? dayOfMonth : null,
-            scenario,
-            is_active: payload.is_active === undefined ? true : Boolean(payload.is_active),
-            notes: payload.notes || null,
-        }
+      isValid: false,
+      message: 'start_date is required for recurring planned transactions.',
     };
+  }
+
+  if (frequency === 'weekly') {
+    if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
+      return { isValid: false, message: 'day_of_week must be an integer between 0 and 6.' };
+    }
+  }
+
+  if (frequency === 'monthly') {
+    if (!Number.isInteger(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) {
+      return { isValid: false, message: 'day_of_month must be an integer between 1 and 31.' };
+    }
+  }
+
+  if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+    return { isValid: false, message: 'end_date cannot be before start_date.' };
+  }
+
+  return {
+    isValid: true,
+    values: {
+      description: payload.description || null,
+      amount: Number(parsedAmount.toFixed(2)),
+      category_id: parsedCategoryId,
+      frequency,
+      planned_date: frequency === 'one_time' ? plannedDate : null,
+      start_date: frequency === 'one_time' ? null : startDate,
+      end_date: frequency === 'one_time' ? null : endDate,
+      day_of_week: frequency === 'weekly' ? dayOfWeek : null,
+      day_of_month: frequency === 'monthly' ? dayOfMonth : null,
+      scenario,
+      is_active: payload.is_active === undefined ? true : Boolean(payload.is_active),
+      notes: payload.notes || null,
+    },
+  };
 };
 
 const addPlannedImpact = (impactByPeriod, period, categoryType, amount) => {
-    if (!impactByPeriod.has(period)) {
-        impactByPeriod.set(period, { income: 0, expense: 0 });
-    }
+  if (!impactByPeriod.has(period)) {
+    impactByPeriod.set(period, { income: 0, expense: 0 });
+  }
 
-    const existingPeriod = impactByPeriod.get(period);
-    if (categoryType === 'income') {
-        existingPeriod.income += Number(amount || 0);
-    } else {
-        existingPeriod.expense += Number(amount || 0);
-    }
+  const existingPeriod = impactByPeriod.get(period);
+  if (categoryType === 'income') {
+    existingPeriod.income += Number(amount || 0);
+  } else {
+    existingPeriod.expense += Number(amount || 0);
+  }
 };
 
 const getNextWeeklyDate = (baseDate, targetDayOfWeek) => {
-    const dateValue = new Date(baseDate);
-    const offset = (targetDayOfWeek - dateValue.getDay() + 7) % 7;
-    dateValue.setDate(dateValue.getDate() + offset);
-    return dateValue;
+  const dateValue = new Date(baseDate);
+  const offset = (targetDayOfWeek - dateValue.getDay() + 7) % 7;
+  dateValue.setDate(dateValue.getDate() + offset);
+  return dateValue;
 };
 
 const getNextMonthlyDate = (baseDate, preferredDay) => {
-    const dateValue = new Date(baseDate);
-    const daysInCurrentMonth = new Date(dateValue.getFullYear(), dateValue.getMonth() + 1, 0).getDate();
-    const targetDay = Math.min(preferredDay, daysInCurrentMonth);
-    dateValue.setDate(targetDay);
+  const dateValue = new Date(baseDate);
+  const daysInCurrentMonth = new Date(
+    dateValue.getFullYear(),
+    dateValue.getMonth() + 1,
+    0
+  ).getDate();
+  const targetDay = Math.min(preferredDay, daysInCurrentMonth);
+  dateValue.setDate(targetDay);
 
-    if (dateValue < baseDate) {
-        return addMonths(dateValue, 1, preferredDay);
-    }
+  if (dateValue < baseDate) {
+    return addMonths(dateValue, 1, preferredDay);
+  }
 
-    return dateValue;
+  return dateValue;
 };
 
 const appendPlannedOccurrences = (rule, horizonStartDate, horizonEndDate, impactByPeriod) => {
-    if (!rule.is_active) {
-        return;
+  if (!rule.is_active) {
+    return;
+  }
+
+  const categoryType = rule.category_type === 'income' ? 'income' : 'expense';
+
+  if (rule.frequency === 'one_time') {
+    if (!rule.planned_date) {
+      return;
     }
 
-    const categoryType = rule.category_type === 'income' ? 'income' : 'expense';
-
-    if (rule.frequency === 'one_time') {
-        if (!rule.planned_date) {
-            return;
-        }
-
-        const plannedDate = new Date(rule.planned_date);
-        if (plannedDate >= horizonStartDate && plannedDate <= horizonEndDate) {
-            addPlannedImpact(impactByPeriod, getMonthKey(plannedDate), categoryType, rule.amount);
-        }
-        return;
+    const plannedDate = new Date(rule.planned_date);
+    if (plannedDate >= horizonStartDate && plannedDate <= horizonEndDate) {
+      addPlannedImpact(impactByPeriod, getMonthKey(plannedDate), categoryType, rule.amount);
     }
+    return;
+  }
 
-    const startDate = rule.start_date ? new Date(rule.start_date) : null;
-    if (!startDate) {
-        return;
+  const startDate = rule.start_date ? new Date(rule.start_date) : null;
+  if (!startDate) {
+    return;
+  }
+
+  const effectiveStartDate = startDate > horizonStartDate ? startDate : horizonStartDate;
+  const endDate = rule.end_date ? new Date(rule.end_date) : null;
+  const effectiveEndDate = endDate && endDate < horizonEndDate ? endDate : horizonEndDate;
+
+  if (effectiveEndDate < effectiveStartDate) {
+    return;
+  }
+
+  if (rule.frequency === 'weekly') {
+    let cursorDate = getNextWeeklyDate(effectiveStartDate, Number(rule.day_of_week));
+    let safetyCounter = 0;
+    while (cursorDate <= effectiveEndDate && safetyCounter < 400) {
+      addPlannedImpact(impactByPeriod, getMonthKey(cursorDate), categoryType, rule.amount);
+      cursorDate = addDays(cursorDate, 7);
+      safetyCounter += 1;
     }
+    return;
+  }
 
-    const effectiveStartDate = startDate > horizonStartDate ? startDate : horizonStartDate;
-    const endDate = rule.end_date ? new Date(rule.end_date) : null;
-    const effectiveEndDate = endDate && endDate < horizonEndDate ? endDate : horizonEndDate;
-
-    if (effectiveEndDate < effectiveStartDate) {
-        return;
+  if (rule.frequency === 'monthly') {
+    let cursorDate = getNextMonthlyDate(effectiveStartDate, Number(rule.day_of_month));
+    let safetyCounter = 0;
+    while (cursorDate <= effectiveEndDate && safetyCounter < 100) {
+      addPlannedImpact(impactByPeriod, getMonthKey(cursorDate), categoryType, rule.amount);
+      cursorDate = addMonths(cursorDate, 1, Number(rule.day_of_month));
+      safetyCounter += 1;
     }
-
-    if (rule.frequency === 'weekly') {
-        let cursorDate = getNextWeeklyDate(effectiveStartDate, Number(rule.day_of_week));
-        let safetyCounter = 0;
-        while (cursorDate <= effectiveEndDate && safetyCounter < 400) {
-            addPlannedImpact(impactByPeriod, getMonthKey(cursorDate), categoryType, rule.amount);
-            cursorDate = addDays(cursorDate, 7);
-            safetyCounter += 1;
-        }
-        return;
-    }
-
-    if (rule.frequency === 'monthly') {
-        let cursorDate = getNextMonthlyDate(effectiveStartDate, Number(rule.day_of_month));
-        let safetyCounter = 0;
-        while (cursorDate <= effectiveEndDate && safetyCounter < 100) {
-            addPlannedImpact(impactByPeriod, getMonthKey(cursorDate), categoryType, rule.amount);
-            cursorDate = addMonths(cursorDate, 1, Number(rule.day_of_month));
-            safetyCounter += 1;
-        }
-    }
+  }
 };
 
 const appendRecurringOccurrences = (rule, horizonStartDate, horizonEndDate, impactByPeriod) => {
-    if (!rule.is_active) {
-        return;
-    }
+  if (!rule.is_active) {
+    return;
+  }
 
-    const categoryType = rule.category_type === 'income' ? 'income' : 'expense';
-    let dueDate = getNextDueDate(rule);
+  const categoryType = rule.category_type === 'income' ? 'income' : 'expense';
+  let dueDate = getNextDueDate(rule);
 
-    while (dueDate < horizonStartDate) {
-        dueDate = rule.interval_type === 'weekly'
-            ? addDays(dueDate, 7)
-            : addMonths(dueDate, 1, rule.day_of_month || dueDate.getDate());
-    }
+  while (dueDate < horizonStartDate) {
+    dueDate =
+      rule.interval_type === 'weekly'
+        ? addDays(dueDate, 7)
+        : addMonths(dueDate, 1, rule.day_of_month || dueDate.getDate());
+  }
 
-    let safetyCounter = 0;
-    while (dueDate <= horizonEndDate && safetyCounter < 120) {
-        addPlannedImpact(impactByPeriod, getMonthKey(dueDate), categoryType, rule.amount);
-        dueDate = rule.interval_type === 'weekly'
-            ? addDays(dueDate, 7)
-            : addMonths(dueDate, 1, rule.day_of_month || dueDate.getDate());
-        safetyCounter += 1;
-    }
+  let safetyCounter = 0;
+  while (dueDate <= horizonEndDate && safetyCounter < 120) {
+    addPlannedImpact(impactByPeriod, getMonthKey(dueDate), categoryType, rule.amount);
+    dueDate =
+      rule.interval_type === 'weekly'
+        ? addDays(dueDate, 7)
+        : addMonths(dueDate, 1, rule.day_of_month || dueDate.getDate());
+    safetyCounter += 1;
+  }
 };
 
 const getScenarioProfile = (scenarioValue) => {
-    const normalisedScenario = String(scenarioValue || 'base').trim().toLowerCase();
+  const normalisedScenario = String(scenarioValue || 'base')
+    .trim()
+    .toLowerCase();
 
-    if (normalisedScenario === 'optimistic') {
-        return {
-            key: 'optimistic',
-            incomeMultiplier: 1.08,
-            expenseMultiplier: 0.94,
-            label: 'Higher income, lower expenses',
-        };
-    }
-
-    if (normalisedScenario === 'cautious') {
-        return {
-            key: 'cautious',
-            incomeMultiplier: 0.94,
-            expenseMultiplier: 1.08,
-            label: 'Lower income, higher expenses',
-        };
-    }
-
+  if (normalisedScenario === 'optimistic') {
     return {
-        key: normalisedScenario || 'base',
-        incomeMultiplier: 1,
-        expenseMultiplier: 1,
-        label: 'No baseline adjustment',
+      key: 'optimistic',
+      incomeMultiplier: 1.08,
+      expenseMultiplier: 0.94,
+      label: 'Higher income, lower expenses',
     };
+  }
+
+  if (normalisedScenario === 'cautious') {
+    return {
+      key: 'cautious',
+      incomeMultiplier: 0.94,
+      expenseMultiplier: 1.08,
+      label: 'Lower income, higher expenses',
+    };
+  }
+
+  return {
+    key: normalisedScenario || 'base',
+    incomeMultiplier: 1,
+    expenseMultiplier: 1,
+    label: 'No baseline adjustment',
+  };
 };
 
 const getStandardDeviation = (values) => {
-    if (!Array.isArray(values) || values.length === 0) {
-        return 0;
-    }
+  if (!Array.isArray(values) || values.length === 0) {
+    return 0;
+  }
 
-    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-    const squaredDistanceMean = values.reduce((sum, value) => sum + ((value - mean) ** 2), 0) / values.length;
-    return Math.sqrt(squaredDistanceMean);
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const squaredDistanceMean =
+    values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+  return Math.sqrt(squaredDistanceMean);
 };
 
 const addDays = (dateValue, dayCount) => {
-    const updatedDate = new Date(dateValue);
-    updatedDate.setDate(updatedDate.getDate() + dayCount);
-    return updatedDate;
+  const updatedDate = new Date(dateValue);
+  updatedDate.setDate(updatedDate.getDate() + dayCount);
+  return updatedDate;
 };
 
 const addMonths = (dateValue, monthCount, preferredDay = null) => {
-    const updatedDate = new Date(dateValue);
-    const targetDay = preferredDay || updatedDate.getDate();
-    updatedDate.setDate(1);
-    updatedDate.setMonth(updatedDate.getMonth() + monthCount);
-    const finalDayOfMonth = new Date(updatedDate.getFullYear(), updatedDate.getMonth() + 1, 0).getDate();
-    updatedDate.setDate(Math.min(targetDay, finalDayOfMonth));
-    return updatedDate;
+  const updatedDate = new Date(dateValue);
+  const targetDay = preferredDay || updatedDate.getDate();
+  updatedDate.setDate(1);
+  updatedDate.setMonth(updatedDate.getMonth() + monthCount);
+  const finalDayOfMonth = new Date(
+    updatedDate.getFullYear(),
+    updatedDate.getMonth() + 1,
+    0
+  ).getDate();
+  updatedDate.setDate(Math.min(targetDay, finalDayOfMonth));
+  return updatedDate;
 };
 
 const getNextDueDate = (rule) => {
-    if (!rule.last_processed_date) {
-        return new Date(rule.start_date);
-    }
+  if (!rule.last_processed_date) {
+    return new Date(rule.start_date);
+  }
 
-    const lastProcessedDate = new Date(rule.last_processed_date);
-    if (rule.interval_type === 'weekly') {
-        return addDays(lastProcessedDate, 7);
-    }
+  const lastProcessedDate = new Date(rule.last_processed_date);
+  if (rule.interval_type === 'weekly') {
+    return addDays(lastProcessedDate, 7);
+  }
 
-    return addMonths(lastProcessedDate, 1, rule.day_of_month || new Date(rule.start_date).getDate());
+  return addMonths(lastProcessedDate, 1, rule.day_of_month || new Date(rule.start_date).getDate());
 };
 
 const runRecurringProcessor = async (connection) => {
-    await ensureRecurringTable(connection);
+  await ensureRecurringTable(connection);
 
-    const [rules] = await connection.query(`
+  const [rules] = await connection.query(`
         SELECT *
         FROM recurring_transactions
         WHERE is_active = TRUE;
     `);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-    let createdTransactionCount = 0;
+  let createdTransactionCount = 0;
 
-    for (const rule of rules) {
-        let dueDate = getNextDueDate(rule);
-        dueDate.setHours(0, 0, 0, 0);
+  for (const rule of rules) {
+    let dueDate = getNextDueDate(rule);
+    dueDate.setHours(0, 0, 0, 0);
 
-        let latestProcessedDate = null;
-        let safetyCounter = 0;
+    let latestProcessedDate = null;
+    let safetyCounter = 0;
 
-        while (dueDate <= today && safetyCounter < 120) {
-            await connection.query(
-                'INSERT INTO transactions (description, amount, transaction_date, category_id) VALUES (?, ?, ?, ?)',
-                [rule.description || null, Number(rule.amount), formatIsoDate(dueDate), rule.category_id]
-            );
+    while (dueDate <= today && safetyCounter < 120) {
+      await connection.query(
+        'INSERT INTO transactions (description, amount, transaction_date, category_id) VALUES (?, ?, ?, ?)',
+        [rule.description || null, Number(rule.amount), formatIsoDate(dueDate), rule.category_id]
+      );
 
-            latestProcessedDate = formatIsoDate(dueDate);
-            createdTransactionCount += 1;
-            safetyCounter += 1;
+      latestProcessedDate = formatIsoDate(dueDate);
+      createdTransactionCount += 1;
+      safetyCounter += 1;
 
-            dueDate = rule.interval_type === 'weekly'
-                ? addDays(dueDate, 7)
-                : addMonths(dueDate, 1, rule.day_of_month || dueDate.getDate());
-        }
-
-        if (latestProcessedDate) {
-            await connection.query(
-                'UPDATE recurring_transactions SET last_processed_date = ? WHERE id = ?',
-                [latestProcessedDate, rule.id]
-            );
-        }
+      dueDate =
+        rule.interval_type === 'weekly'
+          ? addDays(dueDate, 7)
+          : addMonths(dueDate, 1, rule.day_of_month || dueDate.getDate());
     }
 
-    return createdTransactionCount;
+    if (latestProcessedDate) {
+      await connection.query(
+        'UPDATE recurring_transactions SET last_processed_date = ? WHERE id = ?',
+        [latestProcessedDate, rule.id]
+      );
+    }
+  }
+
+  return createdTransactionCount;
 };
 
 const addTransaction = async (req, res) => {
-    const { description, amount, transaction_date, category_id, goalIdToContribute = null } = req.body;
+  const {
+    description,
+    amount,
+    transaction_date,
+    category_id,
+    goalIdToContribute = null,
+  } = req.body;
 
   if (amount === undefined || typeof amount !== 'number' || !transaction_date || !category_id) {
-      return res.status(400).json({ message: 'Missing/invalid fields (amount, date, category).' });
+    return res.status(400).json({ message: 'Missing/invalid fields (amount, date, category).' });
   }
 
   const parsedAmount = parseFloat(amount.toFixed(2));
@@ -486,90 +510,105 @@ const addTransaction = async (req, res) => {
 
   const parsedGoalId = goalIdToContribute ? parseInt(goalIdToContribute, 10) : null;
   if (goalIdToContribute && isNaN(parsedGoalId)) {
-       return res.status(400).json({ message: 'Invalid Goal ID provided for contribution.' });
+    return res.status(400).json({ message: 'Invalid Goal ID provided for contribution.' });
   }
 
   let connection;
   try {
-      connection = await dbPool.getConnection();
-      await connection.beginTransaction();
+    connection = await dbPool.getConnection();
+    await connection.beginTransaction();
 
-      const transactionInsertQuery = `
+    const transactionInsertQuery = `
           INSERT INTO transactions (description, amount, transaction_date, category_id)
           VALUES (?, ?, ?, ?)
       `;
 
-      const transactionValues = [description, parsedAmount, transaction_date, parsedCategoryId];
-      const [transactionResult] = await connection.query(transactionInsertQuery, transactionValues);
-      const newTransactionId = transactionResult.insertId;
+    const transactionValues = [description, parsedAmount, transaction_date, parsedCategoryId];
+    const [transactionResult] = await connection.query(transactionInsertQuery, transactionValues);
+    const newTransactionId = transactionResult.insertId;
 
-      let updatedGoal = null;
-      if (parsedGoalId && parsedAmount > 0) {
-           const contributionInsertQuery = `
+    let updatedGoal = null;
+    if (parsedGoalId && parsedAmount > 0) {
+      const contributionInsertQuery = `
                INSERT INTO goal_contributions (goal_id, amount, contribution_date, notes)
                VALUES (?, ?, ?, ?);
            `;
 
-           const contributionNotes = `Linked transaction ID: ${newTransactionId}`;
-           await connection.query(contributionInsertQuery, [parsedGoalId, parsedAmount, transaction_date, contributionNotes]);
+      const contributionNotes = `Linked transaction ID: ${newTransactionId}`;
+      await connection.query(contributionInsertQuery, [
+        parsedGoalId,
+        parsedAmount,
+        transaction_date,
+        contributionNotes,
+      ]);
 
-           const goalUpdateQuery = `
+      const goalUpdateQuery = `
                UPDATE goals
                SET current_amount = current_amount + ?
                WHERE id = ?;
            `;
-           const [goalUpdateResult] = await connection.query(goalUpdateQuery, [parsedAmount, parsedGoalId]);
+      const [goalUpdateResult] = await connection.query(goalUpdateQuery, [
+        parsedAmount,
+        parsedGoalId,
+      ]);
 
-           if (goalUpdateResult.affectedRows === 0) {
-                await connection.rollback();
-                return res.status(404).json({ message: `Goal with ID ${parsedGoalId} not found. Transaction not saved.` });
-           }
-
-           const [updatedGoalRows] = await connection.query('SELECT * FROM goals WHERE id = ?', [parsedGoalId]);
-            updatedGoal = updatedGoalRows[0] ? {
-               ...updatedGoalRows[0],
-               target_amount: parseFloat(updatedGoalRows[0].target_amount),
-               current_amount: parseFloat(updatedGoalRows[0].current_amount),
-               target_date: updatedGoalRows[0].target_date ? new Date(updatedGoalRows[0].target_date).toISOString().split('T')[0] : null,
-            } : null;
+      if (goalUpdateResult.affectedRows === 0) {
+        await connection.rollback();
+        return res
+          .status(404)
+          .json({ message: `Goal with ID ${parsedGoalId} not found. Transaction not saved.` });
       }
 
-      await connection.commit();
+      const [updatedGoalRows] = await connection.query('SELECT * FROM goals WHERE id = ?', [
+        parsedGoalId,
+      ]);
+      updatedGoal = updatedGoalRows[0]
+        ? {
+            ...updatedGoalRows[0],
+            target_amount: parseFloat(updatedGoalRows[0].target_amount),
+            current_amount: parseFloat(updatedGoalRows[0].current_amount),
+            target_date: updatedGoalRows[0].target_date
+              ? new Date(updatedGoalRows[0].target_date).toISOString().split('T')[0]
+              : null,
+          }
+        : null;
+    }
 
-      res.status(201).json({
-          message: 'Transaction added successfully!',
-          transactionId: newTransactionId,
-          updatedGoal,
-      });
+    await connection.commit();
 
+    res.status(201).json({
+      message: 'Transaction added successfully!',
+      transactionId: newTransactionId,
+      updatedGoal,
+    });
   } catch (error) {
-      console.error('Error adding transaction (with potential contribution):', error);
-      if (connection) {
-          await connection.rollback();
-      }
+    console.error('Error adding transaction (with potential contribution):', error);
+    if (connection) {
+      await connection.rollback();
+    }
 
-       if (error.code === 'ER_NO_REFERENCED_ROW_2' && error.message.includes('transactions_ibfk_1')) {
-            return res.status(404).json({ message: `Category with ID ${parsedCategoryId} not found.` });
-       }
+    if (error.code === 'ER_NO_REFERENCED_ROW_2' && error.message.includes('transactions_ibfk_1')) {
+      return res.status(404).json({ message: `Category with ID ${parsedCategoryId} not found.` });
+    }
 
-      res.status(500).json({ message: 'Failed to add transaction due to server error.' });
+    res.status(500).json({ message: 'Failed to add transaction due to server error.' });
   } finally {
-      if (connection) {
-          connection.release();
-      }
+    if (connection) {
+      connection.release();
+    }
   }
 };
 
 const getAllTransactions = async (req, res) => {
-    let connection;
+  let connection;
   try {
-        connection = await dbPool.getConnection();
-        await connection.beginTransaction();
-        await runRecurringProcessor(connection);
+    connection = await dbPool.getConnection();
+    await connection.beginTransaction();
+    await runRecurringProcessor(connection);
 
-        const { whereClause, queryValues } = buildTransactionFilters(req.query);
+    const { whereClause, queryValues } = buildTransactionFilters(req.query);
 
-        const query = `
+    const query = `
       SELECT
         t.id,
         t.description,
@@ -588,129 +627,147 @@ const getAllTransactions = async (req, res) => {
             LIMIT 1000;
     `;
 
-        const [transactions] = await connection.query(query, queryValues);
-        await connection.commit();
+    const [transactions] = await connection.query(query, queryValues);
+    await connection.commit();
 
     const formattedTransactions = transactions.map((transaction) => ({
-        ...transaction,
-        transaction_date: new Date(transaction.transaction_date).toISOString().split('T')[0],
+      ...transaction,
+      transaction_date: new Date(transaction.transaction_date).toISOString().split('T')[0],
     }));
 
     res.json(formattedTransactions);
-
   } catch (error) {
     console.error('Error fetching transactions:', error);
     if (connection) {
-        await connection.rollback();
+      await connection.rollback();
     }
     res.status(500).json({ message: 'Failed to fetch transactions' });
   } finally {
     if (connection) {
-        connection.release();
+      connection.release();
     }
   }
 };
 
 const updateTransaction = async (req, res) => {
-    const transactionId = Number(req.params.id);
-    if (!Number.isInteger(transactionId)) {
-        return res.status(400).json({ message: 'Invalid transaction ID.' });
+  const transactionId = Number(req.params.id);
+  if (!Number.isInteger(transactionId)) {
+    return res.status(400).json({ message: 'Invalid transaction ID.' });
+  }
+
+  const {
+    description,
+    amount,
+    transaction_date: transactionDate,
+    category_id: categoryId,
+    goalIdToContribute = null,
+  } = req.body;
+
+  let connection;
+  try {
+    connection = await dbPool.getConnection();
+    await connection.beginTransaction();
+
+    const [existingRows] = await connection.query('SELECT * FROM transactions WHERE id = ?', [
+      transactionId,
+    ]);
+    if (existingRows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Transaction not found.' });
     }
 
-    const {
-        description,
-        amount,
-        transaction_date: transactionDate,
-        category_id: categoryId,
-        goalIdToContribute = null
-    } = req.body;
+    const existingTransaction = existingRows[0];
+    const updatedAmount =
+      amount === undefined ? Number(existingTransaction.amount) : toNumber(amount);
+    const updatedCategoryId =
+      categoryId === undefined ? existingTransaction.category_id : Number(categoryId);
+    const updatedDate = transactionDate || formatIsoDate(existingTransaction.transaction_date);
+    const updatedDescription =
+      description === undefined ? existingTransaction.description : description;
 
-    let connection;
-    try {
-        connection = await dbPool.getConnection();
-        await connection.beginTransaction();
+    if (Number.isNaN(updatedAmount) || !updatedDate || !Number.isInteger(updatedCategoryId)) {
+      await connection.rollback();
+      return res.status(400).json({ message: 'Invalid transaction payload.' });
+    }
 
-        const [existingRows] = await connection.query('SELECT * FROM transactions WHERE id = ?', [transactionId]);
-        if (existingRows.length === 0) {
-            await connection.rollback();
-            return res.status(404).json({ message: 'Transaction not found.' });
-        }
+    await connection.query(
+      'UPDATE transactions SET description = ?, amount = ?, transaction_date = ?, category_id = ? WHERE id = ?',
+      [
+        updatedDescription || null,
+        Number(updatedAmount.toFixed(2)),
+        updatedDate,
+        updatedCategoryId,
+        transactionId,
+      ]
+    );
 
-        const existingTransaction = existingRows[0];
-        const updatedAmount = amount === undefined ? Number(existingTransaction.amount) : toNumber(amount);
-        const updatedCategoryId = categoryId === undefined ? existingTransaction.category_id : Number(categoryId);
-        const updatedDate = transactionDate || formatIsoDate(existingTransaction.transaction_date);
-        const updatedDescription = description === undefined ? existingTransaction.description : description;
+    const contributionLinkText = `${LINKED_TRANSACTION_PREFIX} ${transactionId}`;
+    const [linkedContributionRows] = await connection.query(
+      'SELECT id, goal_id, amount FROM goal_contributions WHERE notes = ?',
+      [contributionLinkText]
+    );
 
-        if (Number.isNaN(updatedAmount) || !updatedDate || !Number.isInteger(updatedCategoryId)) {
-            await connection.rollback();
-            return res.status(400).json({ message: 'Invalid transaction payload.' });
-        }
+    const linkedContribution = linkedContributionRows[0] || null;
 
+    if (linkedContribution) {
+      const previousContributionAmount = Number(linkedContribution.amount);
+      if (updatedAmount > 0) {
+        const differenceAmount = Number(updatedAmount.toFixed(2)) - previousContributionAmount;
         await connection.query(
-            'UPDATE transactions SET description = ?, amount = ?, transaction_date = ?, category_id = ? WHERE id = ?',
-            [updatedDescription || null, Number(updatedAmount.toFixed(2)), updatedDate, updatedCategoryId, transactionId]
+          'UPDATE goal_contributions SET amount = ?, contribution_date = ? WHERE id = ?',
+          [Number(updatedAmount.toFixed(2)), updatedDate, linkedContribution.id]
         );
-
-        const contributionLinkText = `${LINKED_TRANSACTION_PREFIX} ${transactionId}`;
-        const [linkedContributionRows] = await connection.query(
-            'SELECT id, goal_id, amount FROM goal_contributions WHERE notes = ?',
-            [contributionLinkText]
+        if (differenceAmount !== 0) {
+          await connection.query(
+            'UPDATE goals SET current_amount = current_amount + ? WHERE id = ?',
+            [differenceAmount, linkedContribution.goal_id]
+          );
+        }
+      } else {
+        await connection.query(
+          'UPDATE goals SET current_amount = current_amount - ? WHERE id = ?',
+          [previousContributionAmount, linkedContribution.goal_id]
         );
-
-        const linkedContribution = linkedContributionRows[0] || null;
-
-        if (linkedContribution) {
-            const previousContributionAmount = Number(linkedContribution.amount);
-            if (updatedAmount > 0) {
-                const differenceAmount = Number(updatedAmount.toFixed(2)) - previousContributionAmount;
-                await connection.query(
-                    'UPDATE goal_contributions SET amount = ?, contribution_date = ? WHERE id = ?',
-                    [Number(updatedAmount.toFixed(2)), updatedDate, linkedContribution.id]
-                );
-                if (differenceAmount !== 0) {
-                    await connection.query(
-                        'UPDATE goals SET current_amount = current_amount + ? WHERE id = ?',
-                        [differenceAmount, linkedContribution.goal_id]
-                    );
-                }
-            } else {
-                await connection.query('UPDATE goals SET current_amount = current_amount - ? WHERE id = ?', [previousContributionAmount, linkedContribution.goal_id]);
-                await connection.query('DELETE FROM goal_contributions WHERE id = ?', [linkedContribution.id]);
-            }
-        } else if (goalIdToContribute && updatedAmount > 0) {
-            const parsedGoalId = Number(goalIdToContribute);
-            if (Number.isInteger(parsedGoalId)) {
-                await connection.query(
-                    'INSERT INTO goal_contributions (goal_id, amount, contribution_date, notes) VALUES (?, ?, ?, ?)',
-                    [parsedGoalId, Number(updatedAmount.toFixed(2)), updatedDate, contributionLinkText]
-                );
-                await connection.query('UPDATE goals SET current_amount = current_amount + ? WHERE id = ?', [Number(updatedAmount.toFixed(2)), parsedGoalId]);
-            }
-        }
-
-        await connection.commit();
-        res.status(200).json({ message: 'Transaction updated successfully.' });
-    } catch (error) {
-        console.error('Error updating transaction:', error);
-        if (connection) {
-            await connection.rollback();
-        }
-        res.status(500).json({ message: 'Failed to update transaction due to server error.' });
-    } finally {
-        if (connection) {
-            connection.release();
-        }
+        await connection.query('DELETE FROM goal_contributions WHERE id = ?', [
+          linkedContribution.id,
+        ]);
+      }
+    } else if (goalIdToContribute && updatedAmount > 0) {
+      const parsedGoalId = Number(goalIdToContribute);
+      if (Number.isInteger(parsedGoalId)) {
+        await connection.query(
+          'INSERT INTO goal_contributions (goal_id, amount, contribution_date, notes) VALUES (?, ?, ?, ?)',
+          [parsedGoalId, Number(updatedAmount.toFixed(2)), updatedDate, contributionLinkText]
+        );
+        await connection.query(
+          'UPDATE goals SET current_amount = current_amount + ? WHERE id = ?',
+          [Number(updatedAmount.toFixed(2)), parsedGoalId]
+        );
+      }
     }
+
+    await connection.commit();
+    res.status(200).json({ message: 'Transaction updated successfully.' });
+  } catch (error) {
+    console.error('Error updating transaction:', error);
+    if (connection) {
+      await connection.rollback();
+    }
+    res.status(500).json({ message: 'Failed to update transaction due to server error.' });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
 };
 
 const getTransactionInsights = async (req, res) => {
-    const monthsBack = Number(req.query.months) || 12;
-    const boundedMonths = Math.min(Math.max(monthsBack, 1), 36);
+  const monthsBack = Number(req.query.months) || 12;
+  const boundedMonths = Math.min(Math.max(monthsBack, 1), 36);
 
-    try {
-        const [monthlyRows] = await dbPool.query(
-            `
+  try {
+    const [monthlyRows] = await dbPool.query(
+      `
             SELECT
                 DATE_FORMAT(t.transaction_date, '%Y-%m') AS period,
                 SUM(CASE WHEN c.type = 'income' THEN t.amount ELSE 0 END) AS income_total,
@@ -721,11 +778,11 @@ const getTransactionInsights = async (req, res) => {
             GROUP BY DATE_FORMAT(t.transaction_date, '%Y-%m')
             ORDER BY period ASC;
             `,
-            [boundedMonths]
-        );
+      [boundedMonths]
+    );
 
-        const [topCategoryRows] = await dbPool.query(
-            `
+    const [topCategoryRows] = await dbPool.query(
+      `
             SELECT
                 c.name,
                 c.type,
@@ -737,34 +794,34 @@ const getTransactionInsights = async (req, res) => {
             ORDER BY total_amount DESC
             LIMIT 8;
             `,
-            [boundedMonths]
-        );
+      [boundedMonths]
+    );
 
-        res.json({
-            months: boundedMonths,
-            monthly: monthlyRows.map((row) => ({
-                period: row.period,
-                income_total: Number(row.income_total || 0),
-                expense_total: Number(row.expense_total || 0),
-                net_total: Number(row.income_total || 0) - Number(row.expense_total || 0)
-            })),
-            topCategories: topCategoryRows.map((row) => ({
-                name: row.name || 'Uncategorised',
-                type: row.type || 'unknown',
-                total_amount: Number(row.total_amount || 0)
-            }))
-        });
-    } catch (error) {
-        console.error('Error fetching transaction insights:', error);
-        res.status(500).json({ message: 'Failed to fetch insights.' });
-    }
+    res.json({
+      months: boundedMonths,
+      monthly: monthlyRows.map((row) => ({
+        period: row.period,
+        income_total: Number(row.income_total || 0),
+        expense_total: Number(row.expense_total || 0),
+        net_total: Number(row.income_total || 0) - Number(row.expense_total || 0),
+      })),
+      topCategories: topCategoryRows.map((row) => ({
+        name: row.name || 'Uncategorised',
+        type: row.type || 'unknown',
+        total_amount: Number(row.total_amount || 0),
+      })),
+    });
+  } catch (error) {
+    console.error('Error fetching transaction insights:', error);
+    res.status(500).json({ message: 'Failed to fetch insights.' });
+  }
 };
 
 const exportTransactionsCsv = async (req, res) => {
-    try {
-        const { whereClause, queryValues } = buildTransactionFilters(req.query);
-        const [rows] = await dbPool.query(
-            `
+  try {
+    const { whereClause, queryValues } = buildTransactionFilters(req.query);
+    const [rows] = await dbPool.query(
+      `
             SELECT
                 t.id,
                 t.transaction_date,
@@ -779,302 +836,353 @@ const exportTransactionsCsv = async (req, res) => {
             ORDER BY t.transaction_date DESC, t.id DESC
             LIMIT 5000;
             `,
-            queryValues
-        );
+      queryValues
+    );
 
-        const headerRow = ['id', 'transaction_date', 'description', 'amount', 'category_id', 'category_name', 'category_type'];
-        const csvRows = rows.map((row) => [
-            row.id,
-            formatIsoDate(row.transaction_date),
-            `"${(row.description || '').replace(/"/g, '""')}"`,
-            Number(row.amount || 0).toFixed(2),
-            row.category_id || '',
-            `"${(row.category_name || '').replace(/"/g, '""')}"`,
-            row.category_type || ''
-        ].join(','));
+    const headerRow = [
+      'id',
+      'transaction_date',
+      'description',
+      'amount',
+      'category_id',
+      'category_name',
+      'category_type',
+    ];
+    const csvRows = rows.map((row) =>
+      [
+        row.id,
+        formatIsoDate(row.transaction_date),
+        `"${(row.description || '').replace(/"/g, '""')}"`,
+        Number(row.amount || 0).toFixed(2),
+        row.category_id || '',
+        `"${(row.category_name || '').replace(/"/g, '""')}"`,
+        row.category_type || '',
+      ].join(',')
+    );
 
-        const csvContent = [headerRow.join(','), ...csvRows].join('\n');
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', 'attachment; filename="transactions-export.csv"');
-        res.status(200).send(csvContent);
-    } catch (error) {
-        console.error('Error exporting CSV:', error);
-        res.status(500).json({ message: 'Failed to export CSV.' });
-    }
+    const csvContent = [headerRow.join(','), ...csvRows].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="transactions-export.csv"');
+    res.status(200).send(csvContent);
+  } catch (error) {
+    console.error('Error exporting CSV:', error);
+    res.status(500).json({ message: 'Failed to export CSV.' });
+  }
 };
 
 const importTransactionsCsv = async (req, res) => {
-    const { csvText } = req.body;
+  const { csvText } = req.body;
 
-    if (!csvText || typeof csvText !== 'string') {
-        return res.status(400).json({ message: 'csvText is required.' });
+  if (!csvText || typeof csvText !== 'string') {
+    return res.status(400).json({ message: 'csvText is required.' });
+  }
+
+  const rows = csvText.split(/\r?\n/).filter((row) => row.trim() !== '');
+  if (rows.length < 2) {
+    return res
+      .status(400)
+      .json({ message: 'CSV must include a header row and at least one data row.' });
+  }
+
+  const headers = parseCsvRow(rows[0]).map((header) => header.toLowerCase());
+  const descriptionIndex = headers.indexOf('description');
+  const amountIndex = headers.indexOf('amount');
+  const dateIndex = headers.indexOf('transaction_date');
+  const categoryIdIndex = headers.indexOf('category_id');
+  const categoryNameIndex = headers.indexOf('category_name');
+
+  if (
+    amountIndex === -1 ||
+    dateIndex === -1 ||
+    (categoryIdIndex === -1 && categoryNameIndex === -1)
+  ) {
+    return res.status(400).json({
+      message:
+        'CSV header must include amount, transaction_date, and category_id or category_name.',
+    });
+  }
+
+  let connection;
+  try {
+    connection = await dbPool.getConnection();
+    await connection.beginTransaction();
+
+    const [categoryRows] = await connection.query('SELECT id, name FROM categories');
+    const categoryByName = new Map(
+      categoryRows.map((row) => [String(row.name).toLowerCase(), row.id])
+    );
+
+    let importedCount = 0;
+    let skippedCount = 0;
+
+    for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+      const rowValues = parseCsvRow(rows[rowIndex]);
+      const parsedAmount = toNumber(rowValues[amountIndex]);
+      const parsedDate = rowValues[dateIndex];
+      const parsedDescription =
+        descriptionIndex === -1 ? null : rowValues[descriptionIndex] || null;
+
+      let parsedCategoryId = Number(rowValues[categoryIdIndex]);
+      if (!Number.isInteger(parsedCategoryId) && categoryNameIndex !== -1) {
+        const nameKey = String(rowValues[categoryNameIndex] || '').toLowerCase();
+        parsedCategoryId = categoryByName.get(nameKey);
+      }
+
+      if (Number.isNaN(parsedAmount) || !parsedDate || !Number.isInteger(parsedCategoryId)) {
+        skippedCount += 1;
+        continue;
+      }
+
+      await connection.query(
+        'INSERT INTO transactions (description, amount, transaction_date, category_id) VALUES (?, ?, ?, ?)',
+        [parsedDescription, Number(parsedAmount.toFixed(2)), parsedDate, parsedCategoryId]
+      );
+      importedCount += 1;
     }
 
-    const rows = csvText.split(/\r?\n/).filter((row) => row.trim() !== '');
-    if (rows.length < 2) {
-        return res.status(400).json({ message: 'CSV must include a header row and at least one data row.' });
+    await connection.commit();
+
+    res.status(200).json({
+      message: 'CSV import completed.',
+      importedCount,
+      skippedCount,
+    });
+  } catch (error) {
+    console.error('Error importing CSV:', error);
+    if (connection) {
+      await connection.rollback();
     }
-
-    const headers = parseCsvRow(rows[0]).map((header) => header.toLowerCase());
-    const descriptionIndex = headers.indexOf('description');
-    const amountIndex = headers.indexOf('amount');
-    const dateIndex = headers.indexOf('transaction_date');
-    const categoryIdIndex = headers.indexOf('category_id');
-    const categoryNameIndex = headers.indexOf('category_name');
-
-    if (amountIndex === -1 || dateIndex === -1 || (categoryIdIndex === -1 && categoryNameIndex === -1)) {
-        return res.status(400).json({ message: 'CSV header must include amount, transaction_date, and category_id or category_name.' });
+    res.status(500).json({ message: 'Failed to import CSV.' });
+  } finally {
+    if (connection) {
+      connection.release();
     }
-
-    let connection;
-    try {
-        connection = await dbPool.getConnection();
-        await connection.beginTransaction();
-
-        const [categoryRows] = await connection.query('SELECT id, name FROM categories');
-        const categoryByName = new Map(categoryRows.map((row) => [String(row.name).toLowerCase(), row.id]));
-
-        let importedCount = 0;
-        let skippedCount = 0;
-
-        for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
-            const rowValues = parseCsvRow(rows[rowIndex]);
-            const parsedAmount = toNumber(rowValues[amountIndex]);
-            const parsedDate = rowValues[dateIndex];
-            const parsedDescription = descriptionIndex === -1 ? null : (rowValues[descriptionIndex] || null);
-
-            let parsedCategoryId = Number(rowValues[categoryIdIndex]);
-            if (!Number.isInteger(parsedCategoryId) && categoryNameIndex !== -1) {
-                const nameKey = String(rowValues[categoryNameIndex] || '').toLowerCase();
-                parsedCategoryId = categoryByName.get(nameKey);
-            }
-
-            if (Number.isNaN(parsedAmount) || !parsedDate || !Number.isInteger(parsedCategoryId)) {
-                skippedCount += 1;
-                continue;
-            }
-
-            await connection.query(
-                'INSERT INTO transactions (description, amount, transaction_date, category_id) VALUES (?, ?, ?, ?)',
-                [parsedDescription, Number(parsedAmount.toFixed(2)), parsedDate, parsedCategoryId]
-            );
-            importedCount += 1;
-        }
-
-        await connection.commit();
-
-        res.status(200).json({
-            message: 'CSV import completed.',
-            importedCount,
-            skippedCount,
-        });
-    } catch (error) {
-        console.error('Error importing CSV:', error);
-        if (connection) {
-            await connection.rollback();
-        }
-        res.status(500).json({ message: 'Failed to import CSV.' });
-    } finally {
-        if (connection) {
-            connection.release();
-        }
-    }
+  }
 };
 
 const getRecurringTransactions = async (req, res) => {
-    try {
-        await ensureRecurringTable();
-        const [rows] = await dbPool.query(`
+  try {
+    await ensureRecurringTable();
+    const [rows] = await dbPool.query(`
             SELECT rt.*, c.name AS category_name
             FROM recurring_transactions rt
             LEFT JOIN categories c ON c.id = rt.category_id
             ORDER BY rt.created_at DESC;
         `);
 
-        res.json(rows.map((row) => ({
-            ...row,
-            amount: Number(row.amount),
-            start_date: formatIsoDate(row.start_date),
-            last_processed_date: formatIsoDate(row.last_processed_date),
-        })));
-    } catch (error) {
-        console.error('Error fetching recurring transactions:', error);
-        res.status(500).json({ message: 'Failed to fetch recurring transactions.' });
-    }
+    res.json(
+      rows.map((row) => ({
+        ...row,
+        amount: Number(row.amount),
+        start_date: formatIsoDate(row.start_date),
+        last_processed_date: formatIsoDate(row.last_processed_date),
+      }))
+    );
+  } catch (error) {
+    console.error('Error fetching recurring transactions:', error);
+    res.status(500).json({ message: 'Failed to fetch recurring transactions.' });
+  }
 };
 
 const createRecurringTransaction = async (req, res) => {
-    const {
-        description = null,
-        amount,
-        category_id: categoryId,
-        interval_type: intervalType,
-        day_of_week: dayOfWeek = null,
-        day_of_month: dayOfMonth = null,
-        start_date: startDate,
-        is_active: isActive = true,
-    } = req.body;
+  const {
+    description = null,
+    amount,
+    category_id: categoryId,
+    interval_type: intervalType,
+    day_of_week: dayOfWeek = null,
+    day_of_month: dayOfMonth = null,
+    start_date: startDate,
+    is_active: isActive = true,
+  } = req.body;
 
-    const parsedAmount = toNumber(amount);
-    const parsedCategoryId = Number(categoryId);
+  const parsedAmount = toNumber(amount);
+  const parsedCategoryId = Number(categoryId);
 
-    if (Number.isNaN(parsedAmount) || !Number.isInteger(parsedCategoryId) || !startDate || !['weekly', 'monthly'].includes(intervalType)) {
-        return res.status(400).json({ message: 'Invalid recurring transaction payload.' });
-    }
+  if (
+    Number.isNaN(parsedAmount) ||
+    !Number.isInteger(parsedCategoryId) ||
+    !startDate ||
+    !['weekly', 'monthly'].includes(intervalType)
+  ) {
+    return res.status(400).json({ message: 'Invalid recurring transaction payload.' });
+  }
 
-    try {
-        await ensureRecurringTable();
-        const [result] = await dbPool.query(
-            `
+  try {
+    await ensureRecurringTable();
+    const [result] = await dbPool.query(
+      `
             INSERT INTO recurring_transactions
             (description, amount, category_id, interval_type, day_of_week, day_of_month, start_date, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `,
-            [
-                description,
-                Number(parsedAmount.toFixed(2)),
-                parsedCategoryId,
-                intervalType,
-                dayOfWeek,
-                dayOfMonth,
-                startDate,
-                Boolean(isActive)
-            ]
-        );
-        res.status(201).json({ message: 'Recurring transaction created.', id: result.insertId });
-    } catch (error) {
-        console.error('Error creating recurring transaction:', error);
-        res.status(500).json({ message: 'Failed to create recurring transaction.' });
-    }
+      [
+        description,
+        Number(parsedAmount.toFixed(2)),
+        parsedCategoryId,
+        intervalType,
+        dayOfWeek,
+        dayOfMonth,
+        startDate,
+        Boolean(isActive),
+      ]
+    );
+    res.status(201).json({ message: 'Recurring transaction created.', id: result.insertId });
+  } catch (error) {
+    console.error('Error creating recurring transaction:', error);
+    res.status(500).json({ message: 'Failed to create recurring transaction.' });
+  }
 };
 
 const updateRecurringTransaction = async (req, res) => {
-    const recurringId = Number(req.params.id);
-    if (!Number.isInteger(recurringId)) {
-        return res.status(400).json({ message: 'Invalid recurring transaction ID.' });
-    }
+  const recurringId = Number(req.params.id);
+  if (!Number.isInteger(recurringId)) {
+    return res.status(400).json({ message: 'Invalid recurring transaction ID.' });
+  }
 
-    const {
-        description = null,
-        amount,
-        category_id: categoryId,
-        interval_type: intervalType,
-        day_of_week: dayOfWeek = null,
-        day_of_month: dayOfMonth = null,
-        start_date: startDate,
-        is_active: isActive = true,
-    } = req.body;
+  const {
+    description = null,
+    amount,
+    category_id: categoryId,
+    interval_type: intervalType,
+    day_of_week: dayOfWeek = null,
+    day_of_month: dayOfMonth = null,
+    start_date: startDate,
+    is_active: isActive = true,
+  } = req.body;
 
-    const parsedAmount = toNumber(amount);
-    const parsedCategoryId = Number(categoryId);
+  const parsedAmount = toNumber(amount);
+  const parsedCategoryId = Number(categoryId);
 
-    if (Number.isNaN(parsedAmount) || !Number.isInteger(parsedCategoryId) || !startDate || !['weekly', 'monthly'].includes(intervalType)) {
-        return res.status(400).json({ message: 'Invalid recurring transaction payload.' });
-    }
+  if (
+    Number.isNaN(parsedAmount) ||
+    !Number.isInteger(parsedCategoryId) ||
+    !startDate ||
+    !['weekly', 'monthly'].includes(intervalType)
+  ) {
+    return res.status(400).json({ message: 'Invalid recurring transaction payload.' });
+  }
 
-    try {
-        await ensureRecurringTable();
-        const [result] = await dbPool.query(
-            `
+  try {
+    await ensureRecurringTable();
+    const [result] = await dbPool.query(
+      `
             UPDATE recurring_transactions
             SET description = ?, amount = ?, category_id = ?, interval_type = ?, day_of_week = ?, day_of_month = ?, start_date = ?, is_active = ?
             WHERE id = ?
             `,
-            [description, Number(parsedAmount.toFixed(2)), parsedCategoryId, intervalType, dayOfWeek, dayOfMonth, startDate, Boolean(isActive), recurringId]
-        );
+      [
+        description,
+        Number(parsedAmount.toFixed(2)),
+        parsedCategoryId,
+        intervalType,
+        dayOfWeek,
+        dayOfMonth,
+        startDate,
+        Boolean(isActive),
+        recurringId,
+      ]
+    );
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Recurring transaction not found.' });
-        }
-
-        res.status(200).json({ message: 'Recurring transaction updated.' });
-    } catch (error) {
-        console.error('Error updating recurring transaction:', error);
-        res.status(500).json({ message: 'Failed to update recurring transaction.' });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Recurring transaction not found.' });
     }
+
+    res.status(200).json({ message: 'Recurring transaction updated.' });
+  } catch (error) {
+    console.error('Error updating recurring transaction:', error);
+    res.status(500).json({ message: 'Failed to update recurring transaction.' });
+  }
 };
 
 const deleteRecurringTransaction = async (req, res) => {
-    const recurringId = Number(req.params.id);
-    if (!Number.isInteger(recurringId)) {
-        return res.status(400).json({ message: 'Invalid recurring transaction ID.' });
-    }
+  const recurringId = Number(req.params.id);
+  if (!Number.isInteger(recurringId)) {
+    return res.status(400).json({ message: 'Invalid recurring transaction ID.' });
+  }
 
-    try {
-        await ensureRecurringTable();
-        const [result] = await dbPool.query('DELETE FROM recurring_transactions WHERE id = ?', [recurringId]);
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Recurring transaction not found.' });
-        }
-        res.status(200).json({ message: 'Recurring transaction deleted.' });
-    } catch (error) {
-        console.error('Error deleting recurring transaction:', error);
-        res.status(500).json({ message: 'Failed to delete recurring transaction.' });
+  try {
+    await ensureRecurringTable();
+    const [result] = await dbPool.query('DELETE FROM recurring_transactions WHERE id = ?', [
+      recurringId,
+    ]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Recurring transaction not found.' });
     }
+    res.status(200).json({ message: 'Recurring transaction deleted.' });
+  } catch (error) {
+    console.error('Error deleting recurring transaction:', error);
+    res.status(500).json({ message: 'Failed to delete recurring transaction.' });
+  }
 };
 
 const processRecurringTransactions = async (req, res) => {
-    let connection;
-    try {
-        connection = await dbPool.getConnection();
-        await connection.beginTransaction();
-        const createdTransactionCount = await runRecurringProcessor(connection);
-        await connection.commit();
+  let connection;
+  try {
+    connection = await dbPool.getConnection();
+    await connection.beginTransaction();
+    const createdTransactionCount = await runRecurringProcessor(connection);
+    await connection.commit();
 
-        res.status(200).json({
-            message: 'Recurring transactions processed successfully.',
-            createdTransactionCount,
-        });
-    } catch (error) {
-        console.error('Error processing recurring transactions:', error);
-        if (connection) {
-            await connection.rollback();
-        }
-        res.status(500).json({ message: 'Failed to process recurring transactions.' });
-    } finally {
-        if (connection) {
-            connection.release();
-        }
+    res.status(200).json({
+      message: 'Recurring transactions processed successfully.',
+      createdTransactionCount,
+    });
+  } catch (error) {
+    console.error('Error processing recurring transactions:', error);
+    if (connection) {
+      await connection.rollback();
     }
+    res.status(500).json({ message: 'Failed to process recurring transactions.' });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
 };
 
 const getPlannedTransactions = async (req, res) => {
-    const scenarioFilter = req.query.scenario && String(req.query.scenario).trim()
-        ? String(req.query.scenario).trim()
-        : null;
-    const fromDate = toDateOnlyString(req.query.from);
-    const toDate = toDateOnlyString(req.query.to);
-    const activeOnly = req.query.activeOnly === 'true';
+  const scenarioFilter =
+    req.query.scenario && String(req.query.scenario).trim()
+      ? String(req.query.scenario).trim()
+      : null;
+  const fromDate = toDateOnlyString(req.query.from);
+  const toDate = toDateOnlyString(req.query.to);
+  const activeOnly = req.query.activeOnly === 'true';
 
-    try {
-        await ensurePlannedTransactionsTable();
+  try {
+    await ensurePlannedTransactionsTable();
 
-        const whereConditions = [];
-        const queryValues = [];
+    const whereConditions = [];
+    const queryValues = [];
 
-        if (scenarioFilter) {
-            whereConditions.push('pt.scenario = ?');
-            queryValues.push(scenarioFilter);
-        }
+    if (scenarioFilter) {
+      whereConditions.push('pt.scenario = ?');
+      queryValues.push(scenarioFilter);
+    }
 
-        if (activeOnly) {
-            whereConditions.push('pt.is_active = TRUE');
-        }
+    if (activeOnly) {
+      whereConditions.push('pt.is_active = TRUE');
+    }
 
-        if (fromDate) {
-            whereConditions.push('((pt.frequency = \'one_time\' AND pt.planned_date >= ?) OR (pt.frequency != \'one_time\' AND (pt.end_date IS NULL OR pt.end_date >= ?)))');
-            queryValues.push(fromDate, fromDate);
-        }
+    if (fromDate) {
+      whereConditions.push(
+        "((pt.frequency = 'one_time' AND pt.planned_date >= ?) OR (pt.frequency != 'one_time' AND (pt.end_date IS NULL OR pt.end_date >= ?)))"
+      );
+      queryValues.push(fromDate, fromDate);
+    }
 
-        if (toDate) {
-            whereConditions.push('((pt.frequency = \'one_time\' AND pt.planned_date <= ?) OR (pt.frequency != \'one_time\' AND pt.start_date <= ?))');
-            queryValues.push(toDate, toDate);
-        }
+    if (toDate) {
+      whereConditions.push(
+        "((pt.frequency = 'one_time' AND pt.planned_date <= ?) OR (pt.frequency != 'one_time' AND pt.start_date <= ?))"
+      );
+      queryValues.push(toDate, toDate);
+    }
 
-        const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
-        const [rows] = await dbPool.query(
-            `
+    const [rows] = await dbPool.query(
+      `
             SELECT
                 pt.*,
                 c.name AS category_name,
@@ -1084,296 +1192,314 @@ const getPlannedTransactions = async (req, res) => {
             ${whereClause}
             ORDER BY pt.created_at DESC;
             `,
-            queryValues
-        );
+      queryValues
+    );
 
-        res.status(200).json(rows.map(normalisePlannedTransaction));
-    } catch (error) {
-        console.error('Error fetching planned transactions:', error);
-        res.status(500).json({ message: 'Failed to fetch planned transactions.' });
-    }
+    res.status(200).json(rows.map(normalisePlannedTransaction));
+  } catch (error) {
+    console.error('Error fetching planned transactions:', error);
+    res.status(500).json({ message: 'Failed to fetch planned transactions.' });
+  }
 };
 
 const getPlannedScenarios = async (req, res) => {
-    try {
-        await ensurePlannedTransactionsTable();
-        const [rows] = await dbPool.query(
-            `
+  try {
+    await ensurePlannedTransactionsTable();
+    const [rows] = await dbPool.query(
+      `
             SELECT DISTINCT scenario
             FROM planned_transactions
             ORDER BY CASE WHEN scenario = 'base' THEN 0 ELSE 1 END, scenario ASC;
             `
-        );
+    );
 
-        const scenarios = ['base', ...rows
-            .map((row) => String(row.scenario || '').trim())
-            .filter((value) => value && value !== 'base')
-        ];
+    const scenarios = [
+      'base',
+      ...rows
+        .map((row) => String(row.scenario || '').trim())
+        .filter((value) => value && value !== 'base'),
+    ];
 
-        res.status(200).json({ scenarios });
-    } catch (error) {
-        console.error('Error fetching planned scenarios:', error);
-        res.status(500).json({ message: 'Failed to fetch planned scenarios.' });
-    }
+    res.status(200).json({ scenarios });
+  } catch (error) {
+    console.error('Error fetching planned scenarios:', error);
+    res.status(500).json({ message: 'Failed to fetch planned scenarios.' });
+  }
 };
 
 const clonePlannedScenario = async (req, res) => {
-    const sourceScenario = String(req.body.sourceScenario || '').trim();
-    const targetScenario = String(req.body.targetScenario || '').trim();
-    const overwrite = Boolean(req.body.overwrite);
+  const sourceScenario = String(req.body.sourceScenario || '').trim();
+  const targetScenario = String(req.body.targetScenario || '').trim();
+  const overwrite = Boolean(req.body.overwrite);
 
-    if (!sourceScenario || !targetScenario) {
-        return res.status(400).json({ message: 'sourceScenario and targetScenario are required.' });
+  if (!sourceScenario || !targetScenario) {
+    return res.status(400).json({ message: 'sourceScenario and targetScenario are required.' });
+  }
+
+  if (sourceScenario === targetScenario) {
+    return res
+      .status(400)
+      .json({ message: 'targetScenario must be different from sourceScenario.' });
+  }
+
+  let connection;
+  try {
+    await ensurePlannedTransactionsTable();
+    connection = await dbPool.getConnection();
+    await connection.beginTransaction();
+
+    const [sourceRows] = await connection.query(
+      'SELECT * FROM planned_transactions WHERE scenario = ?',
+      [sourceScenario]
+    );
+
+    if (sourceRows.length === 0) {
+      await connection.rollback();
+      return res
+        .status(404)
+        .json({ message: 'No planned transactions found for source scenario.' });
     }
 
-    if (sourceScenario === targetScenario) {
-        return res.status(400).json({ message: 'targetScenario must be different from sourceScenario.' });
+    const [targetRows] = await connection.query(
+      'SELECT id FROM planned_transactions WHERE scenario = ?',
+      [targetScenario]
+    );
+
+    if (targetRows.length > 0 && !overwrite) {
+      await connection.rollback();
+      return res
+        .status(409)
+        .json({ message: 'Target scenario already has rules. Enable overwrite to replace.' });
     }
 
-    let connection;
-    try {
-        await ensurePlannedTransactionsTable();
-        connection = await dbPool.getConnection();
-        await connection.beginTransaction();
+    if (targetRows.length > 0 && overwrite) {
+      await connection.query('DELETE FROM planned_transactions WHERE scenario = ?', [
+        targetScenario,
+      ]);
+    }
 
-        const [sourceRows] = await connection.query(
-            'SELECT * FROM planned_transactions WHERE scenario = ?',
-            [sourceScenario]
-        );
-
-        if (sourceRows.length === 0) {
-            await connection.rollback();
-            return res.status(404).json({ message: 'No planned transactions found for source scenario.' });
-        }
-
-        const [targetRows] = await connection.query(
-            'SELECT id FROM planned_transactions WHERE scenario = ?',
-            [targetScenario]
-        );
-
-        if (targetRows.length > 0 && !overwrite) {
-            await connection.rollback();
-            return res.status(409).json({ message: 'Target scenario already has rules. Enable overwrite to replace.' });
-        }
-
-        if (targetRows.length > 0 && overwrite) {
-            await connection.query('DELETE FROM planned_transactions WHERE scenario = ?', [targetScenario]);
-        }
-
-        const insertQuery = `
+    const insertQuery = `
             INSERT INTO planned_transactions
             (description, amount, category_id, frequency, planned_date, start_date, end_date, day_of_week, day_of_month, scenario, is_active, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
-        for (const row of sourceRows) {
-            await connection.query(insertQuery, [
-                row.description,
-                row.amount,
-                row.category_id,
-                row.frequency,
-                row.planned_date,
-                row.start_date,
-                row.end_date,
-                row.day_of_week,
-                row.day_of_month,
-                targetScenario,
-                row.is_active,
-                row.notes,
-            ]);
-        }
-
-        await connection.commit();
-        res.status(201).json({
-            message: 'Scenario cloned successfully.',
-            sourceScenario,
-            targetScenario,
-            clonedCount: sourceRows.length,
-        });
-    } catch (error) {
-        console.error('Error cloning planned scenario:', error);
-        if (connection) {
-            await connection.rollback();
-        }
-        res.status(500).json({ message: 'Failed to clone planned scenario.' });
-    } finally {
-        if (connection) {
-            connection.release();
-        }
+    for (const row of sourceRows) {
+      await connection.query(insertQuery, [
+        row.description,
+        row.amount,
+        row.category_id,
+        row.frequency,
+        row.planned_date,
+        row.start_date,
+        row.end_date,
+        row.day_of_week,
+        row.day_of_month,
+        targetScenario,
+        row.is_active,
+        row.notes,
+      ]);
     }
+
+    await connection.commit();
+    res.status(201).json({
+      message: 'Scenario cloned successfully.',
+      sourceScenario,
+      targetScenario,
+      clonedCount: sourceRows.length,
+    });
+  } catch (error) {
+    console.error('Error cloning planned scenario:', error);
+    if (connection) {
+      await connection.rollback();
+    }
+    res.status(500).json({ message: 'Failed to clone planned scenario.' });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
 };
 
 const setScenarioPlannedRuleActiveState = async (req, res) => {
-    const scenarioName = String(req.params.scenarioName || '').trim();
-    const isActive = req.body.is_active;
+  const scenarioName = String(req.params.scenarioName || '').trim();
+  const isActive = req.body.is_active;
 
-    if (!scenarioName) {
-        return res.status(400).json({ message: 'Scenario name is required.' });
+  if (!scenarioName) {
+    return res.status(400).json({ message: 'Scenario name is required.' });
+  }
+
+  if (typeof isActive !== 'boolean') {
+    return res.status(400).json({ message: 'is_active must be a boolean.' });
+  }
+
+  try {
+    await ensurePlannedTransactionsTable();
+    const [result] = await dbPool.query(
+      'UPDATE planned_transactions SET is_active = ? WHERE scenario = ?',
+      [isActive, scenarioName]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Scenario not found.' });
     }
 
-    if (typeof isActive !== 'boolean') {
-        return res.status(400).json({ message: 'is_active must be a boolean.' });
-    }
-
-    try {
-        await ensurePlannedTransactionsTable();
-        const [result] = await dbPool.query(
-            'UPDATE planned_transactions SET is_active = ? WHERE scenario = ?',
-            [isActive, scenarioName]
-        );
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Scenario not found.' });
-        }
-
-        res.status(200).json({
-            message: `Scenario ${isActive ? 'activated' : 'paused'} successfully.`,
-            scenario: scenarioName,
-            affectedRows: result.affectedRows,
-        });
-    } catch (error) {
-        console.error('Error updating scenario active state:', error);
-        res.status(500).json({ message: 'Failed to update scenario active state.' });
-    }
+    res.status(200).json({
+      message: `Scenario ${isActive ? 'activated' : 'paused'} successfully.`,
+      scenario: scenarioName,
+      affectedRows: result.affectedRows,
+    });
+  } catch (error) {
+    console.error('Error updating scenario active state:', error);
+    res.status(500).json({ message: 'Failed to update scenario active state.' });
+  }
 };
 
 const createPlannedTransaction = async (req, res) => {
-    const validationResult = validatePlannedTransactionPayload(req.body);
-    if (!validationResult.isValid) {
-        return res.status(400).json({ message: validationResult.message });
-    }
+  const validationResult = validatePlannedTransactionPayload(req.body);
+  if (!validationResult.isValid) {
+    return res.status(400).json({ message: validationResult.message });
+  }
 
-    try {
-        await ensurePlannedTransactionsTable();
+  try {
+    await ensurePlannedTransactionsTable();
 
-        const values = validationResult.values;
-        const [result] = await dbPool.query(
-            `
+    const values = validationResult.values;
+    const [result] = await dbPool.query(
+      `
             INSERT INTO planned_transactions
             (description, amount, category_id, frequency, planned_date, start_date, end_date, day_of_week, day_of_month, scenario, is_active, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
-            [
-                values.description,
-                values.amount,
-                values.category_id,
-                values.frequency,
-                values.planned_date,
-                values.start_date,
-                values.end_date,
-                values.day_of_week,
-                values.day_of_month,
-                values.scenario,
-                values.is_active,
-                values.notes,
-            ]
-        );
+      [
+        values.description,
+        values.amount,
+        values.category_id,
+        values.frequency,
+        values.planned_date,
+        values.start_date,
+        values.end_date,
+        values.day_of_week,
+        values.day_of_month,
+        values.scenario,
+        values.is_active,
+        values.notes,
+      ]
+    );
 
-        res.status(201).json({ message: 'Planned transaction created.', id: result.insertId });
-    } catch (error) {
-        console.error('Error creating planned transaction:', error);
-        res.status(500).json({ message: 'Failed to create planned transaction.' });
-    }
+    res.status(201).json({ message: 'Planned transaction created.', id: result.insertId });
+  } catch (error) {
+    console.error('Error creating planned transaction:', error);
+    res.status(500).json({ message: 'Failed to create planned transaction.' });
+  }
 };
 
 const updatePlannedTransaction = async (req, res) => {
-    const plannedTransactionId = Number(req.params.id);
-    if (!Number.isInteger(plannedTransactionId)) {
-        return res.status(400).json({ message: 'Invalid planned transaction ID.' });
+  const plannedTransactionId = Number(req.params.id);
+  if (!Number.isInteger(plannedTransactionId)) {
+    return res.status(400).json({ message: 'Invalid planned transaction ID.' });
+  }
+
+  try {
+    await ensurePlannedTransactionsTable();
+
+    const [existingRows] = await dbPool.query('SELECT * FROM planned_transactions WHERE id = ?', [
+      plannedTransactionId,
+    ]);
+    if (existingRows.length === 0) {
+      return res.status(404).json({ message: 'Planned transaction not found.' });
     }
 
-    try {
-        await ensurePlannedTransactionsTable();
+    const existing = normalisePlannedTransaction(existingRows[0]);
+    const mergedPayload = {
+      ...existing,
+      ...req.body,
+      amount: req.body.amount === undefined ? existing.amount : req.body.amount,
+      category_id: req.body.category_id === undefined ? existing.category_id : req.body.category_id,
+      is_active: req.body.is_active === undefined ? existing.is_active : req.body.is_active,
+    };
 
-        const [existingRows] = await dbPool.query('SELECT * FROM planned_transactions WHERE id = ?', [plannedTransactionId]);
-        if (existingRows.length === 0) {
-            return res.status(404).json({ message: 'Planned transaction not found.' });
-        }
+    const validationResult = validatePlannedTransactionPayload(mergedPayload);
+    if (!validationResult.isValid) {
+      return res.status(400).json({ message: validationResult.message });
+    }
 
-        const existing = normalisePlannedTransaction(existingRows[0]);
-        const mergedPayload = {
-            ...existing,
-            ...req.body,
-            amount: req.body.amount === undefined ? existing.amount : req.body.amount,
-            category_id: req.body.category_id === undefined ? existing.category_id : req.body.category_id,
-            is_active: req.body.is_active === undefined ? existing.is_active : req.body.is_active,
-        };
-
-        const validationResult = validatePlannedTransactionPayload(mergedPayload);
-        if (!validationResult.isValid) {
-            return res.status(400).json({ message: validationResult.message });
-        }
-
-        const values = validationResult.values;
-        await dbPool.query(
-            `
+    const values = validationResult.values;
+    await dbPool.query(
+      `
             UPDATE planned_transactions
             SET description = ?, amount = ?, category_id = ?, frequency = ?, planned_date = ?, start_date = ?, end_date = ?, day_of_week = ?, day_of_month = ?, scenario = ?, is_active = ?, notes = ?
             WHERE id = ?
             `,
-            [
-                values.description,
-                values.amount,
-                values.category_id,
-                values.frequency,
-                values.planned_date,
-                values.start_date,
-                values.end_date,
-                values.day_of_week,
-                values.day_of_month,
-                values.scenario,
-                values.is_active,
-                values.notes,
-                plannedTransactionId,
-            ]
-        );
+      [
+        values.description,
+        values.amount,
+        values.category_id,
+        values.frequency,
+        values.planned_date,
+        values.start_date,
+        values.end_date,
+        values.day_of_week,
+        values.day_of_month,
+        values.scenario,
+        values.is_active,
+        values.notes,
+        plannedTransactionId,
+      ]
+    );
 
-        res.status(200).json({ message: 'Planned transaction updated.' });
-    } catch (error) {
-        console.error('Error updating planned transaction:', error);
-        res.status(500).json({ message: 'Failed to update planned transaction.' });
-    }
+    res.status(200).json({ message: 'Planned transaction updated.' });
+  } catch (error) {
+    console.error('Error updating planned transaction:', error);
+    res.status(500).json({ message: 'Failed to update planned transaction.' });
+  }
 };
 
 const deletePlannedTransaction = async (req, res) => {
-    const plannedTransactionId = Number(req.params.id);
-    if (!Number.isInteger(plannedTransactionId)) {
-        return res.status(400).json({ message: 'Invalid planned transaction ID.' });
+  const plannedTransactionId = Number(req.params.id);
+  if (!Number.isInteger(plannedTransactionId)) {
+    return res.status(400).json({ message: 'Invalid planned transaction ID.' });
+  }
+
+  try {
+    await ensurePlannedTransactionsTable();
+    const [result] = await dbPool.query('DELETE FROM planned_transactions WHERE id = ?', [
+      plannedTransactionId,
+    ]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Planned transaction not found.' });
     }
 
-    try {
-        await ensurePlannedTransactionsTable();
-        const [result] = await dbPool.query('DELETE FROM planned_transactions WHERE id = ?', [plannedTransactionId]);
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Planned transaction not found.' });
-        }
-
-        res.status(200).json({ message: 'Planned transaction deleted.' });
-    } catch (error) {
-        console.error('Error deleting planned transaction:', error);
-        res.status(500).json({ message: 'Failed to delete planned transaction.' });
-    }
+    res.status(200).json({ message: 'Planned transaction deleted.' });
+  } catch (error) {
+    console.error('Error deleting planned transaction:', error);
+    res.status(500).json({ message: 'Failed to delete planned transaction.' });
+  }
 };
 
 const getForecast = async (req, res) => {
-    const monthsAhead = Math.min(Math.max(Number(req.query.monthsAhead) || 6, 1), 24);
-    const historyMonths = Math.min(Math.max(Number(req.query.historyMonths) || 12, 3), 36);
-    const includePlanned = req.query.includePlanned !== 'false';
-    const scenario = req.query.scenario && String(req.query.scenario).trim() ? String(req.query.scenario).trim() : 'base';
-    const scenarioProfile = getScenarioProfile(scenario);
+  const monthsAhead = Math.min(Math.max(Number(req.query.monthsAhead) || 6, 1), 24);
+  const historyMonths = Math.min(Math.max(Number(req.query.historyMonths) || 12, 3), 36);
+  const includePlanned = req.query.includePlanned !== 'false';
+  const scenario =
+    req.query.scenario && String(req.query.scenario).trim()
+      ? String(req.query.scenario).trim()
+      : 'base';
+  const scenarioProfile = getScenarioProfile(scenario);
 
-    const startMonth = req.query.startMonth && /^\d{4}-\d{2}$/.test(req.query.startMonth)
-        ? req.query.startMonth
-        : getMonthKey(new Date());
+  const startMonth =
+    req.query.startMonth && /^\d{4}-\d{2}$/.test(req.query.startMonth)
+      ? req.query.startMonth
+      : getMonthKey(new Date());
 
-    const { periods, startDate, endDate } = getMonthRange(startMonth, monthsAhead);
+  const { periods, startDate, endDate } = getMonthRange(startMonth, monthsAhead);
 
-    try {
-        await ensurePlannedTransactionsTable();
-        await ensureRecurringTable();
+  try {
+    await ensurePlannedTransactionsTable();
+    await ensureRecurringTable();
 
-        const [historicalRows] = await dbPool.query(
-            `
+    const [historicalRows] = await dbPool.query(
+      `
             SELECT
                 DATE_FORMAT(t.transaction_date, '%Y-%m') AS period,
                 SUM(CASE WHEN c.type = 'income' THEN t.amount ELSE 0 END) AS income_total,
@@ -1384,217 +1510,241 @@ const getForecast = async (req, res) => {
             GROUP BY DATE_FORMAT(t.transaction_date, '%Y-%m')
             ORDER BY period ASC;
             `,
-            [historyMonths]
-        );
+      [historyMonths]
+    );
 
-        const historicalMap = new Map(
-            historicalRows.map((row) => ([
-                row.period,
-                {
-                    income: Number(row.income_total || 0),
-                    expense: Number(row.expense_total || 0),
-                    net: Number(row.income_total || 0) - Number(row.expense_total || 0),
-                }
-            ]))
-        );
+    const historicalMap = new Map(
+      historicalRows.map((row) => [
+        row.period,
+        {
+          income: Number(row.income_total || 0),
+          expense: Number(row.expense_total || 0),
+          net: Number(row.income_total || 0) - Number(row.expense_total || 0),
+        },
+      ])
+    );
 
-        let historicalIncomeTotal = 0;
-        let historicalExpenseTotal = 0;
-        const historicalNetValues = [];
-        for (let index = 0; index < historyMonths; index += 1) {
-            const periodDate = new Date();
-            periodDate.setDate(1);
-            periodDate.setMonth(periodDate.getMonth() - (historyMonths - 1 - index));
-            const period = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
-            const row = historicalMap.get(period) || { income: 0, expense: 0, net: 0 };
-            historicalIncomeTotal += row.income;
-            historicalExpenseTotal += row.expense;
-            historicalNetValues.push(row.net);
-        }
+    let historicalIncomeTotal = 0;
+    let historicalExpenseTotal = 0;
+    const historicalNetValues = [];
+    for (let index = 0; index < historyMonths; index += 1) {
+      const periodDate = new Date();
+      periodDate.setDate(1);
+      periodDate.setMonth(periodDate.getMonth() - (historyMonths - 1 - index));
+      const period = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
+      const row = historicalMap.get(period) || { income: 0, expense: 0, net: 0 };
+      historicalIncomeTotal += row.income;
+      historicalExpenseTotal += row.expense;
+      historicalNetValues.push(row.net);
+    }
 
-        const averageIncome = historicalIncomeTotal / historyMonths;
-        const averageExpense = historicalExpenseTotal / historyMonths;
-        const adjustedAverageIncome = averageIncome * scenarioProfile.incomeMultiplier;
-        const adjustedAverageExpense = averageExpense * scenarioProfile.expenseMultiplier;
-        const monthlyNetVolatility = getStandardDeviation(historicalNetValues);
+    const averageIncome = historicalIncomeTotal / historyMonths;
+    const averageExpense = historicalExpenseTotal / historyMonths;
+    const adjustedAverageIncome = averageIncome * scenarioProfile.incomeMultiplier;
+    const adjustedAverageExpense = averageExpense * scenarioProfile.expenseMultiplier;
+    const monthlyNetVolatility = getStandardDeviation(historicalNetValues);
 
-        const impactByPeriod = new Map();
-        let plannedRuleCount = 0;
+    const impactByPeriod = new Map();
+    let plannedRuleCount = 0;
 
-        if (includePlanned) {
-            const normalisedScenario = scenarioProfile.key;
-            const [plannedRows] = normalisedScenario === 'base'
-                ? await dbPool.query(
-                    `
+    if (includePlanned) {
+      const normalisedScenario = scenarioProfile.key;
+      const [plannedRows] =
+        normalisedScenario === 'base'
+          ? await dbPool.query(
+              `
                     SELECT pt.*, c.type AS category_type
                     FROM planned_transactions pt
                     LEFT JOIN categories c ON c.id = pt.category_id
                     WHERE pt.is_active = TRUE
                         AND pt.scenario = 'base';
                     `
-                )
-                : await dbPool.query(
-                    `
+            )
+          : await dbPool.query(
+              `
                     SELECT pt.*, c.type AS category_type
                     FROM planned_transactions pt
                     LEFT JOIN categories c ON c.id = pt.category_id
                     WHERE pt.is_active = TRUE
                         AND (pt.scenario = 'base' OR pt.scenario = ?);
                     `,
-                    [scenario]
-                );
+              [scenario]
+            );
 
-            plannedRuleCount = plannedRows.length;
+      plannedRuleCount = plannedRows.length;
 
-            for (const row of plannedRows) {
-                appendPlannedOccurrences(normalisePlannedTransaction(row), startDate, endDate, impactByPeriod);
-            }
-        }
+      for (const row of plannedRows) {
+        appendPlannedOccurrences(
+          normalisePlannedTransaction(row),
+          startDate,
+          endDate,
+          impactByPeriod
+        );
+      }
+    }
 
-        const [recurringRows] = await dbPool.query(
-            `
+    const [recurringRows] = await dbPool.query(
+      `
             SELECT rt.*, c.type AS category_type
             FROM recurring_transactions rt
             LEFT JOIN categories c ON c.id = rt.category_id
             WHERE rt.is_active = TRUE;
             `
-        );
+    );
 
-        const recurringRuleCount = recurringRows.length;
-        for (const row of recurringRows) {
-            appendRecurringOccurrences(row, startDate, endDate, impactByPeriod);
-        }
-
-        const months = periods.map((period) => {
-            const impact = impactByPeriod.get(period) || { income: 0, expense: 0 };
-            const projectedIncome = Number((adjustedAverageIncome + impact.income).toFixed(2));
-            const projectedExpense = Number((adjustedAverageExpense + impact.expense).toFixed(2));
-
-            return {
-                period,
-                baseline_income: Number(adjustedAverageIncome.toFixed(2)),
-                baseline_expense: Number(adjustedAverageExpense.toFixed(2)),
-                planned_income_impact: Number(impact.income.toFixed(2)),
-                planned_expense_impact: Number(impact.expense.toFixed(2)),
-                projected_income: projectedIncome,
-                projected_expense: projectedExpense,
-                projected_net: Number((projectedIncome - projectedExpense).toFixed(2)),
-                projected_net_low: Number((projectedIncome - projectedExpense - monthlyNetVolatility).toFixed(2)),
-                projected_net_high: Number((projectedIncome - projectedExpense + monthlyNetVolatility).toFixed(2)),
-            };
-        });
-
-        const projectedIncomeTotal = months.reduce((sum, month) => sum + month.projected_income, 0);
-        const projectedExpenseTotal = months.reduce((sum, month) => sum + month.projected_expense, 0);
-
-        res.status(200).json({
-            inputs: {
-                monthsAhead,
-                historyMonths,
-                scenario,
-                includePlanned,
-                startMonth,
-            },
-            assumptions: {
-                method: 'trailing-average-plus-rules',
-                scenario_profile: scenarioProfile.key,
-                scenario_profile_label: scenarioProfile.label,
-                income_multiplier: Number(scenarioProfile.incomeMultiplier.toFixed(2)),
-                expense_multiplier: Number(scenarioProfile.expenseMultiplier.toFixed(2)),
-                average_income_base: Number(averageIncome.toFixed(2)),
-                average_expense_base: Number(averageExpense.toFixed(2)),
-                average_income_adjusted: Number(adjustedAverageIncome.toFixed(2)),
-                average_expense_adjusted: Number(adjustedAverageExpense.toFixed(2)),
-                active_recurring_rule_count: recurringRuleCount,
-                active_planned_rule_count: plannedRuleCount,
-                monthly_net_volatility: Number(monthlyNetVolatility.toFixed(2)),
-            },
-            summary: {
-                projected_income_total: Number(projectedIncomeTotal.toFixed(2)),
-                projected_expense_total: Number(projectedExpenseTotal.toFixed(2)),
-                projected_net_total: Number((projectedIncomeTotal - projectedExpenseTotal).toFixed(2)),
-                projected_net_low_total: Number((projectedIncomeTotal - projectedExpenseTotal - (monthlyNetVolatility * monthsAhead)).toFixed(2)),
-                projected_net_high_total: Number((projectedIncomeTotal - projectedExpenseTotal + (monthlyNetVolatility * monthsAhead)).toFixed(2)),
-            },
-            months,
-        });
-    } catch (error) {
-        console.error('Error generating forecast:', error);
-        res.status(500).json({ message: 'Failed to generate forecast.' });
+    const recurringRuleCount = recurringRows.length;
+    for (const row of recurringRows) {
+      appendRecurringOccurrences(row, startDate, endDate, impactByPeriod);
     }
+
+    const months = periods.map((period) => {
+      const impact = impactByPeriod.get(period) || { income: 0, expense: 0 };
+      const projectedIncome = Number((adjustedAverageIncome + impact.income).toFixed(2));
+      const projectedExpense = Number((adjustedAverageExpense + impact.expense).toFixed(2));
+
+      return {
+        period,
+        baseline_income: Number(adjustedAverageIncome.toFixed(2)),
+        baseline_expense: Number(adjustedAverageExpense.toFixed(2)),
+        planned_income_impact: Number(impact.income.toFixed(2)),
+        planned_expense_impact: Number(impact.expense.toFixed(2)),
+        projected_income: projectedIncome,
+        projected_expense: projectedExpense,
+        projected_net: Number((projectedIncome - projectedExpense).toFixed(2)),
+        projected_net_low: Number(
+          (projectedIncome - projectedExpense - monthlyNetVolatility).toFixed(2)
+        ),
+        projected_net_high: Number(
+          (projectedIncome - projectedExpense + monthlyNetVolatility).toFixed(2)
+        ),
+      };
+    });
+
+    const projectedIncomeTotal = months.reduce((sum, month) => sum + month.projected_income, 0);
+    const projectedExpenseTotal = months.reduce((sum, month) => sum + month.projected_expense, 0);
+
+    res.status(200).json({
+      inputs: {
+        monthsAhead,
+        historyMonths,
+        scenario,
+        includePlanned,
+        startMonth,
+      },
+      assumptions: {
+        method: 'trailing-average-plus-rules',
+        scenario_profile: scenarioProfile.key,
+        scenario_profile_label: scenarioProfile.label,
+        income_multiplier: Number(scenarioProfile.incomeMultiplier.toFixed(2)),
+        expense_multiplier: Number(scenarioProfile.expenseMultiplier.toFixed(2)),
+        average_income_base: Number(averageIncome.toFixed(2)),
+        average_expense_base: Number(averageExpense.toFixed(2)),
+        average_income_adjusted: Number(adjustedAverageIncome.toFixed(2)),
+        average_expense_adjusted: Number(adjustedAverageExpense.toFixed(2)),
+        active_recurring_rule_count: recurringRuleCount,
+        active_planned_rule_count: plannedRuleCount,
+        monthly_net_volatility: Number(monthlyNetVolatility.toFixed(2)),
+      },
+      summary: {
+        projected_income_total: Number(projectedIncomeTotal.toFixed(2)),
+        projected_expense_total: Number(projectedExpenseTotal.toFixed(2)),
+        projected_net_total: Number((projectedIncomeTotal - projectedExpenseTotal).toFixed(2)),
+        projected_net_low_total: Number(
+          (
+            projectedIncomeTotal -
+            projectedExpenseTotal -
+            monthlyNetVolatility * monthsAhead
+          ).toFixed(2)
+        ),
+        projected_net_high_total: Number(
+          (
+            projectedIncomeTotal -
+            projectedExpenseTotal +
+            monthlyNetVolatility * monthsAhead
+          ).toFixed(2)
+        ),
+      },
+      months,
+    });
+  } catch (error) {
+    console.error('Error generating forecast:', error);
+    res.status(500).json({ message: 'Failed to generate forecast.' });
+  }
 };
 
 const deleteTransaction = async (req, res) => {
-    const { id } = req.params;
-    if (isNaN(parseInt(id, 10))) {
-        return res.status(400).json({ message: 'Invalid transaction ID.' });
+  const { id } = req.params;
+  if (isNaN(parseInt(id, 10))) {
+    return res.status(400).json({ message: 'Invalid transaction ID.' });
+  }
+  const transactionId = parseInt(id, 10);
+
+  let connection;
+  try {
+    connection = await dbPool.getConnection();
+    await connection.beginTransaction();
+
+    const contributionLinkText = `${LINKED_TRANSACTION_PREFIX} ${transactionId}`;
+    const findContributionQuery =
+      'SELECT id, goal_id, amount FROM goal_contributions WHERE notes = ?';
+    const [contributionRows] = await connection.query(findContributionQuery, [
+      contributionLinkText,
+    ]);
+
+    if (contributionRows.length > 0) {
+      const contribution = contributionRows[0];
+      const amountToReverse = parseFloat(contribution.amount);
+
+      const updateGoalQuery = 'UPDATE goals SET current_amount = current_amount - ? WHERE id = ?';
+      await connection.query(updateGoalQuery, [amountToReverse, contribution.goal_id]);
+
+      const deleteContributionQuery = 'DELETE FROM goal_contributions WHERE id = ?';
+      await connection.query(deleteContributionQuery, [contribution.id]);
     }
-    const transactionId = parseInt(id, 10);
 
-    let connection;
-    try {
-        connection = await dbPool.getConnection();
-        await connection.beginTransaction();
+    const deleteTransactionQuery = 'DELETE FROM transactions WHERE id = ?';
+    const [result] = await connection.query(deleteTransactionQuery, [transactionId]);
 
-        const contributionLinkText = `${LINKED_TRANSACTION_PREFIX} ${transactionId}`;
-        const findContributionQuery = 'SELECT id, goal_id, amount FROM goal_contributions WHERE notes = ?';
-        const [contributionRows] = await connection.query(findContributionQuery, [contributionLinkText]);
-
-        if (contributionRows.length > 0) {
-            const contribution = contributionRows[0];
-            const amountToReverse = parseFloat(contribution.amount);
-
-            const updateGoalQuery = 'UPDATE goals SET current_amount = current_amount - ? WHERE id = ?';
-            await connection.query(updateGoalQuery, [amountToReverse, contribution.goal_id]);
-
-            const deleteContributionQuery = 'DELETE FROM goal_contributions WHERE id = ?';
-            await connection.query(deleteContributionQuery, [contribution.id]);
-        }
-
-        const deleteTransactionQuery = 'DELETE FROM transactions WHERE id = ?';
-        const [result] = await connection.query(deleteTransactionQuery, [transactionId]);
-
-        if (result.affectedRows === 0) {
-            await connection.rollback();
-            return res.status(404).json({ message: 'Transaction not found.' });
-        }
-
-        await connection.commit();
-
-        res.status(200).json({ message: `Transaction with ID ${transactionId} deleted successfully.` });
-
-    } catch (error) {
-        console.error('Error deleting transaction:', error);
-        if (connection) {
-            await connection.rollback();
-        }
-        res.status(500).json({ message: 'Failed to delete transaction due to server error.' });
-    } finally {
-        if (connection) {
-            connection.release();
-        }
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Transaction not found.' });
     }
+
+    await connection.commit();
+
+    res.status(200).json({ message: `Transaction with ID ${transactionId} deleted successfully.` });
+  } catch (error) {
+    console.error('Error deleting transaction:', error);
+    if (connection) {
+      await connection.rollback();
+    }
+    res.status(500).json({ message: 'Failed to delete transaction due to server error.' });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
 };
 
 module.exports = {
   addTransaction,
   getAllTransactions,
-    updateTransaction,
+  updateTransaction,
   deleteTransaction,
-    getTransactionInsights,
-    exportTransactionsCsv,
-    importTransactionsCsv,
-    getRecurringTransactions,
-    createRecurringTransaction,
-    updateRecurringTransaction,
-    deleteRecurringTransaction,
-    processRecurringTransactions,
-    getPlannedTransactions,
-    getPlannedScenarios,
-    clonePlannedScenario,
-    setScenarioPlannedRuleActiveState,
-    createPlannedTransaction,
-    updatePlannedTransaction,
-    deletePlannedTransaction,
-    getForecast,
+  getTransactionInsights,
+  exportTransactionsCsv,
+  importTransactionsCsv,
+  getRecurringTransactions,
+  createRecurringTransaction,
+  updateRecurringTransaction,
+  deleteRecurringTransaction,
+  processRecurringTransactions,
+  getPlannedTransactions,
+  getPlannedScenarios,
+  clonePlannedScenario,
+  setScenarioPlannedRuleActiveState,
+  createPlannedTransaction,
+  updatePlannedTransaction,
+  deletePlannedTransaction,
+  getForecast,
 };

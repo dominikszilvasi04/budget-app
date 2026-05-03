@@ -8,7 +8,10 @@ router.get('/', transactionController.getAllTransactions);
 router.get('/forecast', transactionController.getForecast);
 router.get('/planned/scenarios', transactionController.getPlannedScenarios);
 router.post('/planned/scenarios/clone', transactionController.clonePlannedScenario);
-router.put('/planned/scenarios/:scenarioName/active', transactionController.setScenarioPlannedRuleActiveState);
+router.put(
+  '/planned/scenarios/:scenarioName/active',
+  transactionController.setScenarioPlannedRuleActiveState
+);
 router.get('/planned', transactionController.getPlannedTransactions);
 router.post('/planned', transactionController.createPlannedTransaction);
 router.put('/planned/:id', transactionController.updatePlannedTransaction);

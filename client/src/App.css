@@ -1,7 +1,34 @@
 /* Legacy App.css removed. Styles now live in src/theme.css. */
-.goal-rename-form label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 0.95em; }
-.goal-rename-form input[type="text"], .goal-rename-form input[type="number"], .goal-rename-form input[type="date"], .goal-rename-form textarea { width: 100%; padding: 10px 12px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;  }
-.goal-rename-form textarea { resize: vertical; min-height: 50px; margin-bottom: 15px; }
-.goal-rename-form input:focus, .goal-rename-form textarea:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25); }
+.goal-rename-form label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 0.95em;
+}
+.goal-rename-form input[type='text'],
+.goal-rename-form input[type='number'],
+.goal-rename-form input[type='date'],
+.goal-rename-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+.goal-rename-form textarea {
+  resize: vertical;
+  min-height: 50px;
+  margin-bottom: 15px;
+}
+.goal-rename-form input:focus,
+.goal-rename-form textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
 
-.goal-rename-form .options-button-group { margin-top: 15px;  }
+.goal-rename-form .options-button-group {
+  margin-top: 15px;
+}

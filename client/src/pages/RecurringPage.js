@@ -52,7 +52,11 @@ function RecurringPage() {
     const parsedAmount = Number(formState.amount);
     const parsedCategoryId = Number(formState.category_id);
 
-    if (!Number.isFinite(parsedAmount) || !Number.isInteger(parsedCategoryId) || !formState.start_date) {
+    if (
+      !Number.isFinite(parsedAmount) ||
+      !Number.isInteger(parsedCategoryId) ||
+      !formState.start_date
+    ) {
       setErrorMessage('Please provide valid amount, category, and start date.');
       return;
     }
@@ -115,7 +119,9 @@ function RecurringPage() {
   const handleProcessRules = async () => {
     try {
       const response = await axios.post('http://localhost:5001/api/transactions/recurring/process');
-      setStatusMessage(`${response.data.createdTransactionCount} recurring transaction(s) created.`);
+      setStatusMessage(
+        `${response.data.createdTransactionCount} recurring transaction(s) created.`
+      );
       await fetchData();
     } catch (error) {
       console.error('Error processing recurring rules:', error);
@@ -130,10 +136,14 @@ function RecurringPage() {
   return (
     <div className="goals-page-container">
       <h2>Recurring Transactions</h2>
-      <p className="section-subtitle">Automate regular income and expense entries with weekly or monthly rules.</p>
+      <p className="section-subtitle">
+        Automate regular income and expense entries with weekly or monthly rules.
+      </p>
 
       <div className="history-action-row">
-        <button type="button" onClick={handleProcessRules}>Process Due Rules Now</button>
+        <button type="button" onClick={handleProcessRules}>
+          Process Due Rules Now
+        </button>
         <span className="history-inline-status">Active rules: {activeRuleCount}</span>
       </div>
 
@@ -150,7 +160,9 @@ function RecurringPage() {
                 id="recurring-description"
                 type="text"
                 value={formState.description}
-                onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, description: event.target.value }))
+                }
               />
             </div>
             <div className="form-group">
@@ -161,7 +173,9 @@ function RecurringPage() {
                 step="0.01"
                 required
                 value={formState.amount}
-                onChange={(event) => setFormState((current) => ({ ...current, amount: event.target.value }))}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, amount: event.target.value }))
+                }
               />
             </div>
           </div>
@@ -172,11 +186,15 @@ function RecurringPage() {
                 id="recurring-category"
                 required
                 value={formState.category_id}
-                onChange={(event) => setFormState((current) => ({ ...current, category_id: event.target.value }))}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, category_id: event.target.value }))
+                }
               >
                 <option value="">Select category</option>
                 {categories.map((category) => (
-                  <option key={category.id} value={category.id}>{category.name} ({category.type})</option>
+                  <option key={category.id} value={category.id}>
+                    {category.name} ({category.type})
+                  </option>
                 ))}
               </select>
             </div>
@@ -185,7 +203,9 @@ function RecurringPage() {
               <select
                 id="recurring-interval"
                 value={formState.interval_type}
-                onChange={(event) => setFormState((current) => ({ ...current, interval_type: event.target.value }))}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, interval_type: event.target.value }))
+                }
               >
                 <option value="monthly">Monthly</option>
                 <option value="weekly">Weekly</option>
@@ -202,7 +222,9 @@ function RecurringPage() {
                   min="1"
                   max="31"
                   value={formState.day_of_month}
-                  onChange={(event) => setFormState((current) => ({ ...current, day_of_month: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((current) => ({ ...current, day_of_month: event.target.value }))
+                  }
                 />
               </div>
             ) : (
@@ -211,7 +233,9 @@ function RecurringPage() {
                 <select
                   id="recurring-day-of-week"
                   value={formState.day_of_week}
-                  onChange={(event) => setFormState((current) => ({ ...current, day_of_week: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((current) => ({ ...current, day_of_week: event.target.value }))
+                  }
                 >
                   <option value="0">Sunday</option>
                   <option value="1">Monday</option>
@@ -229,12 +253,16 @@ function RecurringPage() {
                 id="recurring-start-date"
                 type="date"
                 value={formState.start_date}
-                onChange={(event) => setFormState((current) => ({ ...current, start_date: event.target.value }))}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, start_date: event.target.value }))
+                }
               />
             </div>
           </div>
           <div className="form-row submit-row">
-            <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Create Rule'}</button>
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Create Rule'}
+            </button>
           </div>
         </form>
       </div>
@@ -254,8 +282,16 @@ function RecurringPage() {
                 <p>Starts: {rule.start_date}</p>
                 <p>Last processed: {rule.last_processed_date || 'Never'}</p>
                 <div className="history-action-row">
-                  <button type="button" onClick={() => handleToggleRule(rule)}>{rule.is_active ? 'Pause' : 'Activate'}</button>
-                  <button type="button" className="delete-button-history" onClick={() => handleDeleteRule(rule.id)}>Delete</button>
+                  <button type="button" onClick={() => handleToggleRule(rule)}>
+                    {rule.is_active ? 'Pause' : 'Activate'}
+                  </button>
+                  <button
+                    type="button"
+                    className="delete-button-history"
+                    onClick={() => handleDeleteRule(rule.id)}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}

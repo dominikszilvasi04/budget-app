@@ -126,11 +126,15 @@ function HistoryPage() {
         if (selectedCategoryFilter !== 'all') query.append('categoryId', selectedCategoryFilter);
         if (startDateFilter) query.append('startDate', startDateFilter);
         if (endDateFilter) query.append('endDate', endDateFilter);
-        if (minimumAmountFilter.trim() !== '') query.append('minAmount', minimumAmountFilter.trim());
-        if (maximumAmountFilter.trim() !== '') query.append('maxAmount', maximumAmountFilter.trim());
+        if (minimumAmountFilter.trim() !== '')
+          query.append('minAmount', minimumAmountFilter.trim());
+        if (maximumAmountFilter.trim() !== '')
+          query.append('maxAmount', maximumAmountFilter.trim());
         if (searchFilter.trim()) query.append('search', searchFilter.trim());
 
-        const response = await axios.get(`http://localhost:5001/api/transactions?${query.toString()}`);
+        const response = await axios.get(
+          `http://localhost:5001/api/transactions?${query.toString()}`
+        );
         setTransactions(response.data);
       } catch (error) {
         console.error('Error fetching transactions:', error);
@@ -225,8 +229,12 @@ function HistoryPage() {
 
     try {
       const csvText = await selectedFile.text();
-      const response = await axios.post('http://localhost:5001/api/transactions/import/csv', { csvText });
-      setImportStatus(`Imported ${response.data.importedCount} row(s). Skipped ${response.data.skippedCount}.`);
+      const response = await axios.post('http://localhost:5001/api/transactions/import/csv', {
+        csvText,
+      });
+      setImportStatus(
+        `Imported ${response.data.importedCount} row(s). Skipped ${response.data.skippedCount}.`
+      );
       setRefreshIndex((currentValue) => currentValue + 1);
     } catch (error) {
       console.error('Error importing CSV:', error);
@@ -245,7 +253,9 @@ function HistoryPage() {
     setDeleteSuccess(null);
 
     try {
-      const response = await axios.delete(`http://localhost:5001/api/transactions/${transactionIdentifier}`);
+      const response = await axios.delete(
+        `http://localhost:5001/api/transactions/${transactionIdentifier}`
+      );
       setDeleteSuccess(response.data.message || 'Transaction deleted.');
       setRefreshIndex((currentValue) => currentValue + 1);
       setTimeout(() => setDeleteSuccess(null), 3000);
@@ -278,7 +288,8 @@ function HistoryPage() {
 
     transactions.forEach((transaction) => {
       const categoryIdentifier = transaction.category_id;
-      const categoryType = categoryIdentifier !== null ? categoryTypeByIdentifier[categoryIdentifier] : null;
+      const categoryType =
+        categoryIdentifier !== null ? categoryTypeByIdentifier[categoryIdentifier] : null;
 
       if (categoryType === 'income') {
         incomeTransactions.push(transaction);
@@ -289,8 +300,14 @@ function HistoryPage() {
       }
     });
 
-    const incomeTotal = incomeTransactions.reduce((total, transaction) => total + (parseNumber(transaction.amount) || 0), 0);
-    const expenseTotal = expenseTransactions.reduce((total, transaction) => total + (parseNumber(transaction.amount) || 0), 0);
+    const incomeTotal = incomeTransactions.reduce(
+      (total, transaction) => total + (parseNumber(transaction.amount) || 0),
+      0
+    );
+    const expenseTotal = expenseTransactions.reduce(
+      (total, transaction) => total + (parseNumber(transaction.amount) || 0),
+      0
+    );
 
     return {
       income: incomeTransactions,
@@ -351,29 +368,66 @@ function HistoryPage() {
   return (
     <div className="history-page-container">
       <h2>Transaction History</h2>
-      <p className="section-subtitle">Review income, expenses, and transaction-level detail across all categories.</p>
+      <p className="section-subtitle">
+        Review income, expenses, and transaction-level detail across all categories.
+      </p>
 
       <div className="history-filter-bar">
-        <select value={selectedTypeFilter} onChange={(event) => setSelectedTypeFilter(event.target.value)}>
+        <select
+          value={selectedTypeFilter}
+          onChange={(event) => setSelectedTypeFilter(event.target.value)}
+        >
           <option value="all">All Types</option>
           <option value="income">Income</option>
           <option value="expense">Expense</option>
         </select>
-        <select value={selectedCategoryFilter} onChange={(event) => setSelectedCategoryFilter(event.target.value)}>
+        <select
+          value={selectedCategoryFilter}
+          onChange={(event) => setSelectedCategoryFilter(event.target.value)}
+        >
           <option value="all">All Categories</option>
           {categories.map((category) => (
-            <option key={category.id} value={category.id}>{category.name}</option>
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
           ))}
         </select>
-        <input type="date" value={startDateFilter} onChange={(event) => setStartDateFilter(event.target.value)} />
-        <input type="date" value={endDateFilter} onChange={(event) => setEndDateFilter(event.target.value)} />
-        <input type="number" step="0.01" placeholder="Min" value={minimumAmountFilter} onChange={(event) => setMinimumAmountFilter(event.target.value)} />
-        <input type="number" step="0.01" placeholder="Max" value={maximumAmountFilter} onChange={(event) => setMaximumAmountFilter(event.target.value)} />
-        <input type="search" placeholder="Search description" value={searchFilter} onChange={(event) => setSearchFilter(event.target.value)} />
+        <input
+          type="date"
+          value={startDateFilter}
+          onChange={(event) => setStartDateFilter(event.target.value)}
+        />
+        <input
+          type="date"
+          value={endDateFilter}
+          onChange={(event) => setEndDateFilter(event.target.value)}
+        />
+        <input
+          type="number"
+          step="0.01"
+          placeholder="Min"
+          value={minimumAmountFilter}
+          onChange={(event) => setMinimumAmountFilter(event.target.value)}
+        />
+        <input
+          type="number"
+          step="0.01"
+          placeholder="Max"
+          value={maximumAmountFilter}
+          onChange={(event) => setMaximumAmountFilter(event.target.value)}
+        />
+        <input
+          type="search"
+          placeholder="Search description"
+          value={searchFilter}
+          onChange={(event) => setSearchFilter(event.target.value)}
+        />
       </div>
 
       <div className="history-action-row">
-        <button type="button" onClick={handleExportCsv}>Export CSV</button>
+        <button type="button" onClick={handleExportCsv}>
+          Export CSV
+        </button>
         <label className="csv-import-label">
           Import CSV
           <input type="file" accept=".csv,text/csv" onChange={handleImportCsv} />
@@ -396,15 +450,23 @@ function HistoryPage() {
         <div className="history-summary-text">
           <h4>Summary (All Time)</h4>
           <p>
-            Total Income: <span className="income-text">{formatCurrency(groupedTransactions.incomeTotal)}</span>
+            Total Income:{' '}
+            <span className="income-text">{formatCurrency(groupedTransactions.incomeTotal)}</span>
           </p>
           <p>
-            Total Expenses: <span className="expense-text">{formatCurrency(groupedTransactions.expenseTotal)}</span>
+            Total Expenses:{' '}
+            <span className="expense-text">{formatCurrency(groupedTransactions.expenseTotal)}</span>
           </p>
           <hr />
           <p>
             Surplus:
-            <span className={groupedTransactions.incomeTotal >= groupedTransactions.expenseTotal ? 'income-text' : 'expense-text'}>
+            <span
+              className={
+                groupedTransactions.incomeTotal >= groupedTransactions.expenseTotal
+                  ? 'income-text'
+                  : 'expense-text'
+              }
+            >
               {formatCurrency(groupedTransactions.incomeTotal - groupedTransactions.expenseTotal)}
             </span>
           </p>
@@ -422,11 +484,27 @@ function HistoryPage() {
                 <li key={transaction.id}>
                   <span className="history-date">{transaction.transaction_date}</span>
                   <span className="history-category">({transaction.category_name || 'N/A'})</span>
-                  <span className="history-desc">{transaction.description || <span className="empty-description">No description</span>}</span>
-                  <span className="history-amount income">{formatCurrency(transaction.amount)}</span>
+                  <span className="history-desc">
+                    {transaction.description || (
+                      <span className="empty-description">No description</span>
+                    )}
+                  </span>
+                  <span className="history-amount income">
+                    {formatCurrency(transaction.amount)}
+                  </span>
                   <div className="history-action-buttons">
-                    <button onClick={() => openEditTransaction(transaction)} className="history-edit-btn">Edit</button>
-                    <button onClick={() => deleteTransaction(transaction.id)} className="delete-button-history">Delete</button>
+                    <button
+                      onClick={() => openEditTransaction(transaction)}
+                      className="history-edit-btn"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteTransaction(transaction.id)}
+                      className="delete-button-history"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </li>
               ))}
@@ -444,11 +522,27 @@ function HistoryPage() {
                 <li key={transaction.id}>
                   <span className="history-date">{transaction.transaction_date}</span>
                   <span className="history-category">({transaction.category_name || 'N/A'})</span>
-                  <span className="history-desc">{transaction.description || <span className="empty-description">No description</span>}</span>
-                  <span className="history-amount expense">{formatCurrency(transaction.amount)}</span>
+                  <span className="history-desc">
+                    {transaction.description || (
+                      <span className="empty-description">No description</span>
+                    )}
+                  </span>
+                  <span className="history-amount expense">
+                    {formatCurrency(transaction.amount)}
+                  </span>
                   <div className="history-action-buttons">
-                    <button onClick={() => openEditTransaction(transaction)} className="history-edit-btn">Edit</button>
-                    <button onClick={() => deleteTransaction(transaction.id)} className="delete-button-history">Delete</button>
+                    <button
+                      onClick={() => openEditTransaction(transaction)}
+                      className="history-edit-btn"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteTransaction(transaction.id)}
+                      className="delete-button-history"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </li>
               ))}
@@ -463,11 +557,25 @@ function HistoryPage() {
               {groupedTransactions.uncategorised.map((transaction) => (
                 <li key={transaction.id}>
                   <span className="history-date">{transaction.transaction_date}</span>
-                  <span className="history-desc">{transaction.description || <span className="empty-description">No description</span>}</span>
+                  <span className="history-desc">
+                    {transaction.description || (
+                      <span className="empty-description">No description</span>
+                    )}
+                  </span>
                   <span className="history-amount">{formatCurrency(transaction.amount)}</span>
                   <div className="history-action-buttons">
-                    <button onClick={() => openEditTransaction(transaction)} className="history-edit-btn">Edit</button>
-                    <button onClick={() => deleteTransaction(transaction.id)} className="delete-button-history">Delete</button>
+                    <button
+                      onClick={() => openEditTransaction(transaction)}
+                      className="history-edit-btn"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteTransaction(transaction.id)}
+                      className="delete-button-history"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </li>
               ))}
@@ -484,28 +592,57 @@ function HistoryPage() {
             <form onSubmit={handleUpdateTransaction} className="popup-form">
               <div className="form-group">
                 <label htmlFor="edit-transaction-amount">Amount</label>
-                <input id="edit-transaction-amount" type="number" step="0.01" value={editAmount} onChange={(event) => setEditAmount(event.target.value)} required />
+                <input
+                  id="edit-transaction-amount"
+                  type="number"
+                  step="0.01"
+                  value={editAmount}
+                  onChange={(event) => setEditAmount(event.target.value)}
+                  required
+                />
               </div>
               <div className="form-group">
                 <label htmlFor="edit-transaction-description">Description</label>
-                <input id="edit-transaction-description" type="text" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} />
+                <input
+                  id="edit-transaction-description"
+                  type="text"
+                  value={editDescription}
+                  onChange={(event) => setEditDescription(event.target.value)}
+                />
               </div>
               <div className="form-group">
                 <label htmlFor="edit-transaction-date">Date</label>
-                <input id="edit-transaction-date" type="date" value={editDate} onChange={(event) => setEditDate(event.target.value)} required />
+                <input
+                  id="edit-transaction-date"
+                  type="date"
+                  value={editDate}
+                  onChange={(event) => setEditDate(event.target.value)}
+                  required
+                />
               </div>
               <div className="form-group">
                 <label htmlFor="edit-transaction-category">Category</label>
-                <select id="edit-transaction-category" value={editCategoryId} onChange={(event) => setEditCategoryId(event.target.value)} required>
+                <select
+                  id="edit-transaction-category"
+                  value={editCategoryId}
+                  onChange={(event) => setEditCategoryId(event.target.value)}
+                  required
+                >
                   <option value="">Select a category</option>
                   {categories.map((category) => (
-                    <option key={category.id} value={category.id}>{category.name}</option>
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
                   ))}
                 </select>
               </div>
               <div className="options-button-group">
-                <button type="button" onClick={closeEditTransaction}>Cancel</button>
-                <button type="submit" disabled={isUpdatingTransaction}>{isUpdatingTransaction ? 'Saving...' : 'Save'}</button>
+                <button type="button" onClick={closeEditTransaction}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={isUpdatingTransaction}>
+                  {isUpdatingTransaction ? 'Saving...' : 'Save'}
+                </button>
               </div>
             </form>
           </div>

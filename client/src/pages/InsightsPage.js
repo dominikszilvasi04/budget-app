@@ -13,7 +13,16 @@ import {
   Title,
 } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, Title);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Tooltip,
+  Legend,
+  Title
+);
 
 const formatCurrency = (value) => {
   const parsedValue = typeof value === 'number' ? value : parseFloat(value);
@@ -32,7 +41,9 @@ function InsightsPage() {
       setIsLoading(true);
       setErrorMessage(null);
       try {
-        const response = await axios.get(`http://localhost:5001/api/transactions/insights/summary?months=${monthsWindow}`);
+        const response = await axios.get(
+          `http://localhost:5001/api/transactions/insights/summary?months=${monthsWindow}`
+        );
         setInsightData(response.data);
       } catch (error) {
         console.error('Error fetching insights:', error);
@@ -89,8 +100,12 @@ function InsightsPage() {
         {
           label: 'Total Amount',
           data: insightData.topCategories.map((item) => item.total_amount),
-          backgroundColor: insightData.topCategories.map((item) => (item.type === 'income' ? 'rgba(16, 185, 129, 0.65)' : 'rgba(239, 68, 68, 0.65)')),
-          borderColor: insightData.topCategories.map((item) => (item.type === 'income' ? '#10b981' : '#ef4444')),
+          backgroundColor: insightData.topCategories.map((item) =>
+            item.type === 'income' ? 'rgba(16, 185, 129, 0.65)' : 'rgba(239, 68, 68, 0.65)'
+          ),
+          borderColor: insightData.topCategories.map((item) =>
+            item.type === 'income' ? '#10b981' : '#ef4444'
+          ),
           borderWidth: 1,
         },
       ],
@@ -127,11 +142,17 @@ function InsightsPage() {
   return (
     <div className="history-page-container">
       <h2>Insights</h2>
-      <p className="section-subtitle">Explore trends, top categories, and net movement over time.</p>
+      <p className="section-subtitle">
+        Explore trends, top categories, and net movement over time.
+      </p>
 
       <div className="history-action-row">
         <label htmlFor="insights-month-window">Period</label>
-        <select id="insights-month-window" value={monthsWindow} onChange={(event) => setMonthsWindow(event.target.value)}>
+        <select
+          id="insights-month-window"
+          value={monthsWindow}
+          onChange={(event) => setMonthsWindow(event.target.value)}
+        >
           <option value="3">Last 3 months</option>
           <option value="6">Last 6 months</option>
           <option value="12">Last 12 months</option>
@@ -142,15 +163,23 @@ function InsightsPage() {
       <div className="insight-stat-grid">
         <div className="history-summary-text">
           <h4>Total Income</h4>
-          <p><span className="income-text">{formatCurrency(totals.income)}</span></p>
+          <p>
+            <span className="income-text">{formatCurrency(totals.income)}</span>
+          </p>
         </div>
         <div className="history-summary-text">
           <h4>Total Expenses</h4>
-          <p><span className="expense-text">{formatCurrency(totals.expense)}</span></p>
+          <p>
+            <span className="expense-text">{formatCurrency(totals.expense)}</span>
+          </p>
         </div>
         <div className="history-summary-text">
           <h4>Net</h4>
-          <p><span className={totals.net >= 0 ? 'income-text' : 'expense-text'}>{formatCurrency(totals.net)}</span></p>
+          <p>
+            <span className={totals.net >= 0 ? 'income-text' : 'expense-text'}>
+              {formatCurrency(totals.net)}
+            </span>
+          </p>
         </div>
       </div>
 
@@ -178,7 +207,10 @@ function InsightsPage() {
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { title: { display: true, text: 'Top Categories' }, legend: { display: false } },
+                plugins: {
+                  title: { display: true, text: 'Top Categories' },
+                  legend: { display: false },
+                },
               }}
             />
           ) : (

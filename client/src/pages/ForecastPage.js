@@ -83,23 +83,24 @@ function ForecastPage() {
     setErrorMessage(null);
 
     try {
-      const [forecastResponse, plannedResponse, categoriesResponse, scenariosResponse] = await Promise.all([
-        axios.get('http://localhost:5001/api/transactions/forecast', {
-          params: {
-            monthsAhead,
-            historyMonths,
-            scenario,
-            includePlanned,
-          },
-        }),
-        axios.get('http://localhost:5001/api/transactions/planned', {
-          params: {
-            scenario,
-          },
-        }),
-        axios.get('http://localhost:5001/api/categories'),
-        axios.get('http://localhost:5001/api/transactions/planned/scenarios'),
-      ]);
+      const [forecastResponse, plannedResponse, categoriesResponse, scenariosResponse] =
+        await Promise.all([
+          axios.get('http://localhost:5001/api/transactions/forecast', {
+            params: {
+              monthsAhead,
+              historyMonths,
+              scenario,
+              includePlanned,
+            },
+          }),
+          axios.get('http://localhost:5001/api/transactions/planned', {
+            params: {
+              scenario,
+            },
+          }),
+          axios.get('http://localhost:5001/api/categories'),
+          axios.get('http://localhost:5001/api/transactions/planned/scenarios'),
+        ]);
 
       setForecastData(forecastResponse.data);
       setPlannedRows(plannedResponse.data || []);
@@ -192,11 +193,14 @@ function ForecastPage() {
     setStatusMessage(null);
 
     try {
-      const response = await axios.post('http://localhost:5001/api/transactions/planned/scenarios/clone', {
-        sourceScenario: scenario,
-        targetScenario,
-        overwrite: overwriteScenarioOnClone,
-      });
+      const response = await axios.post(
+        'http://localhost:5001/api/transactions/planned/scenarios/clone',
+        {
+          sourceScenario: scenario,
+          targetScenario,
+          overwrite: overwriteScenarioOnClone,
+        }
+      );
       setStatusMessage(`${response.data.clonedCount} rule(s) cloned to '${targetScenario}'.`);
       setCloneTargetScenario('');
       setOverwriteScenarioOnClone(false);
@@ -214,9 +218,12 @@ function ForecastPage() {
     setStatusMessage(null);
 
     try {
-      const response = await axios.put(`http://localhost:5001/api/transactions/planned/scenarios/${encodeURIComponent(scenario)}/active`, {
-        is_active: isActive,
-      });
+      const response = await axios.put(
+        `http://localhost:5001/api/transactions/planned/scenarios/${encodeURIComponent(scenario)}/active`,
+        {
+          is_active: isActive,
+        }
+      );
       setStatusMessage(response.data.message || `Scenario ${isActive ? 'activated' : 'paused'}.`);
       await fetchData();
     } catch (error) {
@@ -241,7 +248,10 @@ function ForecastPage() {
 
     try {
       if (editingPlannedTransactionId) {
-        await axios.put(`http://localhost:5001/api/transactions/planned/${editingPlannedTransactionId}`, payload);
+        await axios.put(
+          `http://localhost:5001/api/transactions/planned/${editingPlannedTransactionId}`,
+          payload
+        );
         setStatusMessage('Planned transaction updated.');
       } else {
         await axios.post('http://localhost:5001/api/transactions/planned', payload);
@@ -284,7 +294,9 @@ function ForecastPage() {
       await fetchData();
     } catch (error) {
       console.error('Error toggling planned transaction:', error);
-      setErrorMessage(error.response?.data?.message || 'Failed to update planned transaction status.');
+      setErrorMessage(
+        error.response?.data?.message || 'Failed to update planned transaction status.'
+      );
     }
   };
 
@@ -357,16 +369,16 @@ function ForecastPage() {
         },
         ...(compareForecastData?.months?.length
           ? [
-            {
-              label: `Compare Net (${compareScenario})`,
-              data: compareForecastData.months.map((month) => month.projected_net),
-              borderColor: 'rgba(245, 158, 11, 0.95)',
-              backgroundColor: 'rgba(245, 158, 11, 0.2)',
-              borderDash: [4, 4],
-              tension: 0.2,
-              fill: false,
-            },
-          ]
+              {
+                label: `Compare Net (${compareScenario})`,
+                data: compareForecastData.months.map((month) => month.projected_net),
+                borderColor: 'rgba(245, 158, 11, 0.95)',
+                backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                borderDash: [4, 4],
+                tension: 0.2,
+                fill: false,
+              },
+            ]
           : []),
       ],
     };
@@ -391,11 +403,17 @@ function ForecastPage() {
   return (
     <div className="history-page-container">
       <h2>Forecast Planner</h2>
-      <p className="section-subtitle">Project income and expenses with what-if planned transactions.</p>
+      <p className="section-subtitle">
+        Project income and expenses with what-if planned transactions.
+      </p>
 
       <div className="history-action-row forecast-control-row">
         <label htmlFor="forecast-months-ahead">Months ahead</label>
-        <select id="forecast-months-ahead" value={monthsAhead} onChange={(event) => setMonthsAhead(event.target.value)}>
+        <select
+          id="forecast-months-ahead"
+          value={monthsAhead}
+          onChange={(event) => setMonthsAhead(event.target.value)}
+        >
           <option value="3">3</option>
           <option value="6">6</option>
           <option value="12">12</option>
@@ -404,7 +422,11 @@ function ForecastPage() {
         </select>
 
         <label htmlFor="forecast-history-months">History window</label>
-        <select id="forecast-history-months" value={historyMonths} onChange={(event) => setHistoryMonths(event.target.value)}>
+        <select
+          id="forecast-history-months"
+          value={historyMonths}
+          onChange={(event) => setHistoryMonths(event.target.value)}
+        >
           <option value="6">6</option>
           <option value="12">12</option>
           <option value="24">24</option>
@@ -418,7 +440,9 @@ function ForecastPage() {
           onChange={(event) => setScenarioFromPreset(event.target.value)}
         >
           {SCENARIO_PRESETS.map((preset) => (
-            <option key={preset} value={preset}>{preset}</option>
+            <option key={preset} value={preset}>
+              {preset}
+            </option>
           ))}
         </select>
         <input
@@ -457,7 +481,9 @@ function ForecastPage() {
           {availableScenarios
             .filter((scenarioOption) => scenarioOption !== scenario)
             .map((scenarioOption) => (
-              <option key={scenarioOption} value={scenarioOption}>{scenarioOption}</option>
+              <option key={scenarioOption} value={scenarioOption}>
+                {scenarioOption}
+              </option>
             ))}
         </select>
 
@@ -477,9 +503,23 @@ function ForecastPage() {
           onChange={(event) => setOverwriteScenarioOnClone(event.target.checked)}
         />
 
-        <button type="button" onClick={cloneCurrentScenario} disabled={isScenarioActionLoading}>Clone</button>
-        <button type="button" onClick={() => setScenarioRulesActiveState(true)} disabled={isScenarioActionLoading}>Activate all</button>
-        <button type="button" onClick={() => setScenarioRulesActiveState(false)} disabled={isScenarioActionLoading}>Pause all</button>
+        <button type="button" onClick={cloneCurrentScenario} disabled={isScenarioActionLoading}>
+          Clone
+        </button>
+        <button
+          type="button"
+          onClick={() => setScenarioRulesActiveState(true)}
+          disabled={isScenarioActionLoading}
+        >
+          Activate all
+        </button>
+        <button
+          type="button"
+          onClick={() => setScenarioRulesActiveState(false)}
+          disabled={isScenarioActionLoading}
+        >
+          Pause all
+        </button>
       </div>
 
       {errorMessage && <p className="options-error">{errorMessage}</p>}
@@ -487,30 +527,71 @@ function ForecastPage() {
 
       <div className="history-summary-text forecast-assumptions-panel">
         <h4>Assumptions</h4>
-        <p><span>Model</span><strong>{assumptions.method || 'N/A'}</strong></p>
-        <p><span>Scenario profile</span><strong>{assumptions.scenario_profile || scenario}</strong></p>
-        <p><span>Baseline income</span><strong>{formatCurrency(assumptions.average_income_base || 0)}</strong></p>
-        <p><span>Baseline expense</span><strong>{formatCurrency(assumptions.average_expense_base || 0)}</strong></p>
-        <p><span>Adjusted income</span><strong>{formatCurrency(assumptions.average_income_adjusted || 0)}</strong></p>
-        <p><span>Adjusted expense</span><strong>{formatCurrency(assumptions.average_expense_adjusted || 0)}</strong></p>
-        <p><span>Monthly net volatility</span><strong>{formatCurrency(assumptions.monthly_net_volatility || 0)}</strong></p>
-        <p><span>Active recurring rules</span><strong>{assumptions.active_recurring_rule_count || 0}</strong></p>
-        <p><span>Active planned rules</span><strong>{assumptions.active_planned_rule_count || 0}</strong></p>
+        <p>
+          <span>Model</span>
+          <strong>{assumptions.method || 'N/A'}</strong>
+        </p>
+        <p>
+          <span>Scenario profile</span>
+          <strong>{assumptions.scenario_profile || scenario}</strong>
+        </p>
+        <p>
+          <span>Baseline income</span>
+          <strong>{formatCurrency(assumptions.average_income_base || 0)}</strong>
+        </p>
+        <p>
+          <span>Baseline expense</span>
+          <strong>{formatCurrency(assumptions.average_expense_base || 0)}</strong>
+        </p>
+        <p>
+          <span>Adjusted income</span>
+          <strong>{formatCurrency(assumptions.average_income_adjusted || 0)}</strong>
+        </p>
+        <p>
+          <span>Adjusted expense</span>
+          <strong>{formatCurrency(assumptions.average_expense_adjusted || 0)}</strong>
+        </p>
+        <p>
+          <span>Monthly net volatility</span>
+          <strong>{formatCurrency(assumptions.monthly_net_volatility || 0)}</strong>
+        </p>
+        <p>
+          <span>Active recurring rules</span>
+          <strong>{assumptions.active_recurring_rule_count || 0}</strong>
+        </p>
+        <p>
+          <span>Active planned rules</span>
+          <strong>{assumptions.active_planned_rule_count || 0}</strong>
+        </p>
       </div>
 
       <div className="insight-stat-grid">
         <div className="history-summary-text">
           <h4>Projected Income</h4>
-          <p><span className="income-text">{formatCurrency(forecastData?.summary?.projected_income_total || 0)}</span></p>
+          <p>
+            <span className="income-text">
+              {formatCurrency(forecastData?.summary?.projected_income_total || 0)}
+            </span>
+          </p>
         </div>
         <div className="history-summary-text">
           <h4>Projected Expenses</h4>
-          <p><span className="expense-text">{formatCurrency(forecastData?.summary?.projected_expense_total || 0)}</span></p>
+          <p>
+            <span className="expense-text">
+              {formatCurrency(forecastData?.summary?.projected_expense_total || 0)}
+            </span>
+          </p>
         </div>
         <div className="history-summary-text">
           <h4>Projected Net</h4>
           <p>
-            <span className={(forecastData?.summary?.projected_net_total || 0) >= 0 ? 'income-text' : 'expense-text'}>
+            <span
+              className={
+                (forecastData?.summary?.projected_net_total || 0) >= 0
+                  ? 'income-text'
+                  : 'expense-text'
+              }
+            >
               {formatCurrency(forecastData?.summary?.projected_net_total || 0)}
             </span>
           </p>
@@ -573,7 +654,9 @@ function ForecastPage() {
                   <td>{month.period}</td>
                   <td>{formatCurrency(month.projected_income)}</td>
                   <td>{formatCurrency(month.projected_expense)}</td>
-                  <td className={month.projected_net >= 0 ? 'income-text' : 'expense-text'}>{formatCurrency(month.projected_net)}</td>
+                  <td className={month.projected_net >= 0 ? 'income-text' : 'expense-text'}>
+                    {formatCurrency(month.projected_net)}
+                  </td>
                   <td>{`${formatCurrency(month.projected_net_low)} to ${formatCurrency(month.projected_net_high)}`}</td>
                 </tr>
               ))}
@@ -584,7 +667,9 @@ function ForecastPage() {
 
       <div className="budget-content-layout forecast-layout">
         <div className="add-goal-form-container">
-          <h3>{editingPlannedTransactionId ? 'Edit Planned Transaction' : 'Add Planned Transaction'}</h3>
+          <h3>
+            {editingPlannedTransactionId ? 'Edit Planned Transaction' : 'Add Planned Transaction'}
+          </h3>
           <form className="add-goal-form" onSubmit={handleSavePlannedTransaction}>
             <div className="form-row">
               <div className="form-group">
@@ -593,7 +678,9 @@ function ForecastPage() {
                   id="planned-description"
                   type="text"
                   value={formState.description}
-                  onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((current) => ({ ...current, description: event.target.value }))
+                  }
                 />
               </div>
               <div className="form-group">
@@ -604,7 +691,9 @@ function ForecastPage() {
                   step="0.01"
                   required
                   value={formState.amount}
-                  onChange={(event) => setFormState((current) => ({ ...current, amount: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((current) => ({ ...current, amount: event.target.value }))
+                  }
                 />
               </div>
             </div>
@@ -616,11 +705,15 @@ function ForecastPage() {
                   id="planned-category"
                   required
                   value={formState.category_id}
-                  onChange={(event) => setFormState((current) => ({ ...current, category_id: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((current) => ({ ...current, category_id: event.target.value }))
+                  }
                 >
                   <option value="">Select category</option>
                   {categories.map((category) => (
-                    <option key={category.id} value={category.id}>{category.name} ({category.type})</option>
+                    <option key={category.id} value={category.id}>
+                      {category.name} ({category.type})
+                    </option>
                   ))}
                 </select>
               </div>
@@ -629,7 +722,9 @@ function ForecastPage() {
                 <select
                   id="planned-frequency"
                   value={formState.frequency}
-                  onChange={(event) => setFormState((current) => ({ ...current, frequency: event.target.value }))}
+                  onChange={(event) =>
+                    setFormState((current) => ({ ...current, frequency: event.target.value }))
+                  }
                 >
                   <option value="one_time">One time</option>
                   <option value="weekly">Weekly</option>
@@ -646,7 +741,9 @@ function ForecastPage() {
                     id="planned-date"
                     type="date"
                     value={formState.planned_date}
-                    onChange={(event) => setFormState((current) => ({ ...current, planned_date: event.target.value }))}
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, planned_date: event.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -659,7 +756,9 @@ function ForecastPage() {
                       id="planned-start-date"
                       type="date"
                       value={formState.start_date}
-                      onChange={(event) => setFormState((current) => ({ ...current, start_date: event.target.value }))}
+                      onChange={(event) =>
+                        setFormState((current) => ({ ...current, start_date: event.target.value }))
+                      }
                     />
                   </div>
                   <div className="form-group">
@@ -668,7 +767,9 @@ function ForecastPage() {
                       id="planned-end-date"
                       type="date"
                       value={formState.end_date}
-                      onChange={(event) => setFormState((current) => ({ ...current, end_date: event.target.value }))}
+                      onChange={(event) =>
+                        setFormState((current) => ({ ...current, end_date: event.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -680,7 +781,12 @@ function ForecastPage() {
                       <select
                         id="planned-day-of-week"
                         value={formState.day_of_week}
-                        onChange={(event) => setFormState((current) => ({ ...current, day_of_week: event.target.value }))}
+                        onChange={(event) =>
+                          setFormState((current) => ({
+                            ...current,
+                            day_of_week: event.target.value,
+                          }))
+                        }
                       >
                         <option value="0">Sunday</option>
                         <option value="1">Monday</option>
@@ -700,7 +806,12 @@ function ForecastPage() {
                         min="1"
                         max="31"
                         value={formState.day_of_month}
-                        onChange={(event) => setFormState((current) => ({ ...current, day_of_month: event.target.value }))}
+                        onChange={(event) =>
+                          setFormState((current) => ({
+                            ...current,
+                            day_of_month: event.target.value,
+                          }))
+                        }
                       />
                     </div>
                   )}
@@ -711,7 +822,9 @@ function ForecastPage() {
                       id="planned-row-scenario"
                       type="text"
                       value={formState.scenario}
-                      onChange={(event) => setFormState((current) => ({ ...current, scenario: event.target.value }))}
+                      onChange={(event) =>
+                        setFormState((current) => ({ ...current, scenario: event.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -719,9 +832,21 @@ function ForecastPage() {
             )}
 
             <div className="form-row submit-row">
-              <button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : editingPlannedTransactionId ? 'Save Changes' : 'Create Planned Transaction'}</button>
+              <button type="submit" disabled={isSaving}>
+                {isSaving
+                  ? 'Saving...'
+                  : editingPlannedTransactionId
+                    ? 'Save Changes'
+                    : 'Create Planned Transaction'}
+              </button>
               {editingPlannedTransactionId && (
-                <button type="button" className="clear-button" onClick={cancelEditingPlannedTransaction}>Cancel</button>
+                <button
+                  type="button"
+                  className="clear-button"
+                  onClick={cancelEditingPlannedTransaction}
+                >
+                  Cancel
+                </button>
               )}
             </div>
           </form>
@@ -742,23 +867,16 @@ function ForecastPage() {
                   <p>Scenario: {row.scenario}</p>
                   <p>Status: {row.is_active ? 'Active' : 'Paused'}</p>
                   <p>
-                    Date:
-                    {' '}
+                    Date:{' '}
                     {row.frequency === 'one_time'
                       ? row.planned_date
                       : `${row.start_date}${row.end_date ? ` to ${row.end_date}` : ''}`}
                   </p>
                   <div className="history-action-row">
-                    <button
-                      type="button"
-                      onClick={() => startEditingPlannedTransaction(row)}
-                    >
+                    <button type="button" onClick={() => startEditingPlannedTransaction(row)}>
                       Edit
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleTogglePlannedTransaction(row)}
-                    >
+                    <button type="button" onClick={() => handleTogglePlannedTransaction(row)}>
                       {row.is_active ? 'Pause' : 'Activate'}
                     </button>
                     <button

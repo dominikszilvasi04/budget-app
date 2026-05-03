@@ -73,7 +73,6 @@ function App() {
             <Route path="/forecast" element={<ForecastPage />} />
           </Routes>
         </main>
-
       </div>
     </Router>
   );

@@ -27,7 +27,9 @@
 body {
   margin: 0;
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
-  background: radial-gradient(1200px 800px at 10% -10%, rgba(12, 92, 171, 0.26), transparent 60%), radial-gradient(1000px 700px at 90% -20%, rgba(16, 185, 129, 0.2), transparent 55%), var(--colour-surface-0);
+  background: radial-gradient(1200px 800px at 10% -10%, rgba(12, 92, 171, 0.26), transparent 60%),
+    radial-gradient(1000px 700px at 90% -20%, rgba(16, 185, 129, 0.2), transparent 55%),
+    var(--colour-surface-0);
   color: var(--colour-text);
   font-size: 16px;
   line-height: 1.5;
@@ -81,7 +83,9 @@ nav .nav-link {
   font-weight: 600;
   padding: 8px 2px;
   border-bottom: 2px solid transparent;
-  transition: color 0.2s ease, border-color 0.2s ease;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 nav .nav-link:hover {
@@ -857,7 +861,10 @@ button {
 
 button {
   background: linear-gradient(135deg, var(--colour-primary), var(--colour-primary-strong));
-  transition: transform 0.15s ease, filter 0.15s ease, background 0.2s ease;
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease,
+    background 0.2s ease;
 }
 
 button:hover {
@@ -901,7 +908,9 @@ textarea:focus-visible,
 .history-chart-container:hover {
   border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-2px);
-  transition: transform 0.18s ease, border-color 0.2s ease;
+  transition:
+    transform 0.18s ease,
+    border-color 0.2s ease;
 }
 
 .category-select-box h3,
